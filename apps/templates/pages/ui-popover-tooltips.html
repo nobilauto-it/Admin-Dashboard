@@ -1,0 +1,144 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Pop-Tooltips{% endblock %}
+
+{% block styles %}
+
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Popover &amp; Tooltips</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">UI Kit</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Popover &amp; Tolltips</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Popovers Example</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="button-items">
+                    <button class="btn btn-primary" data-bs-container="body"
+                            data-bs-content="Vivamus sagittis lacus vel augue laoreet rutrum faucibus."
+                            data-bs-placement="top" data-bs-toggle="popover" type="button">
+                        Popover on top
+                    </button>
+                    <button class="btn btn-primary" data-bs-container="body"
+                            data-bs-content="Vivamus sagittis lacus vel augue laoreet rutrum faucibus."
+                            data-bs-placement="right" data-bs-toggle="popover" type="button">
+                        Popover on right
+                    </button>
+                    <button class="btn btn-primary" data-bs-container="body"
+                            data-bs-content="Vivamus sagittis lacus vel augue laoreet rutrum faucibus."
+                            data-bs-placement="bottom" data-bs-toggle="popover" type="button">
+                        Popover on bottom
+                    </button>
+                    <button class="btn btn-primary" data-bs-container="body"
+                            data-bs-content="Vivamus sagittis lacus vel augue laoreet rutrum faucibus."
+                            data-bs-placement="left" data-bs-toggle="popover" type="button">
+                        Popover on left
+                    </button>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Bootstrap Tooltips</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="button-items">
+                    <button class="btn btn-primary" data-bs-placement="top" data-bs-toggle="tooltip"
+                            title="Tooltip on top" type="button">
+                        Tooltip on top
+                    </button>
+                    <button class="btn btn-primary" data-bs-placement="right" data-bs-toggle="tooltip"
+                            title="Tooltip on right" type="button">
+                        Tooltip on right
+                    </button>
+                    <button class="btn btn-primary" data-bs-placement="bottom" data-bs-toggle="tooltip"
+                            title="Tooltip on bottom" type="button">
+                        Tooltip on bottom
+                    </button>
+                    <button class="btn btn-primary" data-bs-placement="left" data-bs-toggle="tooltip"
+                            title="Tooltip on left" type="button">
+                        Tooltip on left
+                    </button>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Custom &amp; Dismiss Popover</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="button-items">
+                    <button class="btn btn-secondary" data-bs-content="This popover is themed via CSS variables."
+                            data-bs-custom-class="custom-popover" data-bs-placement="right"
+                            data-bs-title="Custom popover" data-bs-toggle="popover" type="button">
+                        Custom popover
+                    </button>
+                    <a class="btn btn-danger"
+                       data-bs-content="And here's some amazing content. It's very engaging. Right?"
+                       data-bs-toggle="popover" data-bs-trigger="focus" role="button" tabindex="0"
+                       title="Dismissible popover">Dismissible popover</a>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Custom Tooltip</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="button-items">
+                    <button class="btn btn-dark custom-tooltip" data-bs-custom-class="custom-tooltip"
+                            data-bs-placement="top" data-bs-title="This top tooltip is themed via CSS variables."
+                            data-bs-toggle="tooltip" type="button">
+                        Custom Tooltip
+                    </button>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+
+{% endblock javascripts %}

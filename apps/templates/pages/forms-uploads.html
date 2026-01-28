@@ -1,0 +1,68 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Upload{% endblock %}
+
+{% block styles %}
+<link href="{{ config.ASSETS_ROOT }}/libs/uppy/uppy.min.css" rel="stylesheet" type="text/css"/>
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Uploads</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">Forms</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Uploads</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Custom File Upload</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="d-grid">
+                    <p class="text-muted">Upload your blog image here, Please click "Upload Image" Button.</p>
+                    <div class="preview-box d-block justify-content-center rounded border-dashed border-theme-color overflow-hidden p-3"></div>
+                    <input accept="image/*" hidden="" id="input-file" name="input-file" onchange="{handleChange()}"
+                           type="file"/>
+                    <label class="btn-upload btn btn-primary mt-3" for="input-file">Upload Image</label>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Uppy File Upload</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div id="drag-drop-area"></div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/libs/uppy/uppy.legacy.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/js/pages/file-upload.init.js"></script>
+
+{% endblock javascripts %}

@@ -1,0 +1,36 @@
+{% extends "layouts/base.html" %}
+
+{% block html_attribute %}{% endblock %}
+
+{% block title %}{% endblock %}
+
+{% block styles %}{% endblock styles %}
+
+{% block content %}
+
+{% include "partials/topbar.html" %}
+
+{% include "partials/startbar.html" %}
+
+<div class="page-wrapper">
+
+    <div class="page-content">
+
+        <div class="container-fluid">
+
+            {% block page_content %}{% endblock %}
+
+        </div>
+
+        {% include "partials/endbar.html" %}
+
+        {% include "partials/footer.html" %}
+
+    </div>
+
+</div>
+
+
+{% endblock %}
+
+{% block javascripts %} {% endblock javascripts %}

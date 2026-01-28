@@ -1,0 +1,791 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Overview{% endblock %}
+
+{% block styles %}
+
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Overview</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">Projects</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Overview</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-3">
+        <div class="card report-card">
+            <div class="card-body">
+                <div class="row d-flex justify-content-center">
+                    <div class="col">
+                        <p class="text-dark mb-0 fw-semibold">Projects</p>
+                        <h3 class="my-2 fs-20">77</h3>
+                        <p class="mb-0 text-truncate text-muted"><i class="las la-check-circle text-success"></i> 26
+                            Project Complete</p>
+                    </div>
+                    <div class="col-auto align-self-center">
+                        <div class="flex-shrink-0 bg-primary-subtle text-primary thumb-md rounded-circle">
+                            <i class="iconoir-flower fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-3">
+        <div class="card report-card">
+            <div class="card-body">
+                <div class="row d-flex justify-content-center">
+                    <div class="col">
+                        <p class="text-dark mb-0 fw-semibold">Tasks</p>
+                        <h3 class="my-2 fs-20">41</h3>
+                        <p class="mb-0 text-truncate text-muted"><span class="badge bg-soft-success">Active</span>
+                            Weekly Avg.Tasks</p>
+                    </div>
+                    <div class="col-auto align-self-center">
+                        <div class="flex-shrink-0 bg-info-subtle text-info thumb-md rounded-circle">
+                            <i class="iconoir-clipboard-check fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-3">
+        <div class="card report-card">
+            <div class="card-body">
+                <div class="row d-flex justify-content-center">
+                    <div class="col">
+                        <p class="text-dark mb-0 fw-semibold">Total Hours</p>
+                        <h3 class="my-2 fs-20">810:30</h3>
+                        <p class="mb-0 text-truncate text-muted">01:33 / 9:30 Duration</p>
+                    </div>
+                    <div class="col-auto align-self-center">
+                        <div class="flex-shrink-0 bg-pink-subtle text-pink thumb-md rounded-circle">
+                            <i class="iconoir-clock fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-3">
+        <div class="card report-card">
+            <div class="card-body">
+                <div class="row d-flex justify-content-center">
+                    <div class="col">
+                        <p class="text-dark mb-0 fw-semibold">Budget</p>
+                        <h3 class="my-2 fs-20">$25000</h3>
+                        <p class="mb-0 text-truncate text-muted"><span class="text-dark">$14000</span> Total used
+                            budgets</p>
+                    </div>
+                    <div class="col-auto align-self-center">
+                        <div class="flex-shrink-0 bg-warning-subtle text-warning thumb-md rounded-circle">
+                            <i class="iconoir-dollar-circle fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Tasks Performance</h4>
+                    </div><!--end col-->
+                    <div class="col-auto">
+                        <div class="dropdown">
+                            <a aria-expanded="false" aria-haspopup="true"
+                               class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                                <i class="fa-solid fa-ellipsis text-muted"></i>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end">
+                                <a class="dropdown-item" href="#">Purchases</a>
+                                <a class="dropdown-item" href="#">Emails</a>
+                            </div>
+                        </div>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="text-center">
+                    <div class="apex-charts" id="task_status"></div>
+                    <h6 class="text-primary bg-soft-primary rounded p-3 mb-0">
+                        <i class="align-self-center icon-xs me-1" data-feather="calendar"></i>
+                        01 January 2024 to 31 June 2025
+                    </h6>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Overview</h4>
+                    </div><!--end col-->
+                    <div class="col-auto">
+                        <div class="dropdown">
+                            <a aria-expanded="false" aria-haspopup="true"
+                               class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                                <i class="fa-solid fa-ellipsis text-muted"></i>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end">
+                                <a class="dropdown-item" href="#">Purchases</a>
+                                <a class="dropdown-item" href="#">Emails</a>
+                            </div>
+                        </div>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="text-center">
+                    <div class="apex-charts" id="overview"></div>
+                    <h6 class="text-primary bg-soft-primary rounded p-3 mb-0">
+                        <i class="align-self-center icon-xs me-1" data-feather="calendar"></i>
+                        01 January 2024 to 01 January 2025
+                    </h6>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="position-absolute top-0 start-0 translate-middle"><i class="fas fa-circle text-success"></i>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <img alt="" class="thumb-lg rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/logos/lang-logo/chatgpt.png"/>
+                            </div>
+                            <div class="flex-grow-1 ms-2 text-truncate">
+                                <h4 class="m-0 fw-semibold text-dark fs-16">Payment App</h4>
+                                <p class="text-muted mb-0 fs-13"><span class="text-dark">Client : </span>Kevin J. Heal
+                                </p>
+                            </div><!--end media-body-->
+                        </div>
+                    </div><!--end col-->
+                    <div class="col-md-6 text-lg-end">
+                        <h6 class="fw-semibold m-0">Start : <span class="text-muted fw-normal"> 02 June 2020</span></h6>
+                        <h6 class="fw-semibold mb-0 mt-2">Deadline : <span
+                                class="text-muted fw-normal"> 31 Oct 2020</span></h6>
+                    </div><!--end col-->
+                </div><!--end row-->
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between">
+                        <h6 class="fw-semibold m-0 align-self-center">All Hours : <span class="text-muted fw-normal"> 530 / 281:30</span>
+                        </h6>
+                        <h6 class="fw-semibold">Today : <span class="text-muted fw-normal"> 2:45</span><span
+                                class="badge bg-soft-pink fw-semibold ms-2"><i class="far fa-fw fa-clock"></i> 35 days left</span>
+                        </h6>
+                    </div>
+                    <p class="text-muted mb-1">There are many variations of passages of Lorem Ipsum available,
+                        but the majority have suffered alteration in some form.
+                    </p>
+                    <p class="text-muted text-end mb-1">34% Complete</p>
+                    <div class="progress mb-3" style="height: 3px;">
+                        <div aria-valuemax="100" aria-valuemin="0" aria-valuenow="34" class="progress-bar bg-primary"
+                             role="progressbar" style="width: 34%;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <div class="img-group d-flex justify-content-center">
+                            <a class="user-avatar position-relative d-inline-block" href="#">
+                                <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-1.jpg"/>
+                            </a>
+                            <a class="user-avatar position-relative d-inline-block ms-n2" href="#">
+                                <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-4.jpg"/>
+                            </a>
+                            <a class="user-avatar position-relative d-inline-block ms-n2" href="#">
+                                <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-6.jpg"/>
+                            </a>
+                            <a class="user-avatar position-relative d-inline-block ms-1" href="">
+                                <span class="thumb-md shadow-sm justify-content-center d-flex align-items-center bg-light rounded-circle fw-semibold fs-6">+6</span>
+                            </a>
+                        </div>
+                        <ul class="list-inline mb-0 align-self-center">
+                            <li class="list-item d-inline-block me-2">
+                                <a class="" href="#">
+                                    <i class="fa-solid fa-list-ul text-success fs-15"></i>
+                                    <span class="text-muted fw-bold">34/100</span>
+                                </a>
+                            </li>
+                            <li class="list-item d-inline-block">
+                                <a class="" href="#">
+                                    <i class="fa-regular fa-message text-primary fs-15"></i>
+                                    <span class="text-muted fw-bold">3</span>
+                                </a>
+                            </li>
+                            <li class="list-item d-inline-block">
+                                <a class="ms-2" href="#">
+                                    <i class="fa-solid fa-pencil text-muted fs-18"></i>
+                                </a>
+                            </li>
+                            <li class="list-item d-inline-block">
+                                <a class="" href="#">
+                                    <i class="fa-regular fa-trash-can text-muted fs-18"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div><!--end task-box-->
+                <hr class="hr-dashed"/>
+                <div class="row mt-3">
+                    <div class="col-lg">
+                        <div class="d-flex">
+                            <i class="iconoir-headset align-self-center text-secondary fs-24"></i>
+                            <div class="d-block align-self-center ms-2">
+                                <h6 class="m-0">Last Meeting</h6>
+                                <p class="mb-0 text-muted">28 Oct 2020 / 10:30AM - 12:30PM</p>
+                            </div>
+                        </div>
+                    </div><!--end col-->
+                    <div class="col-lg-auto">
+                        <div class="d-flex">
+                            <i class="iconoir-headset align-self-center text-secondary fs-24"></i>
+                            <div class="d-block align-self-center ms-2">
+                                <h6 class="m-0">Next Meeting</h6>
+                                <p class="mb-0 text-muted">06 Nov 2020 / 10:30AM - 12:30PM</p>
+                            </div>
+                        </div>
+                    </div><!--end col-->
+                </div><!--end row-->
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div><!--end col-->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="position-absolute top-0 start-0 translate-middle"><i class="fas fa-circle text-success"></i>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <img alt="" class="thumb-lg rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/logos/lang-logo/nextjs.png"/>
+                            </div>
+                            <div class="flex-grow-1 ms-2 text-truncate">
+                                <h4 class="m-0 fw-semibold text-dark fs-16">Nextjs App</h4>
+                                <p class="text-muted mb-0 fs-13"><span class="text-dark">Client : </span>Kevin J. Heal
+                                </p>
+                            </div><!--end media-body-->
+                        </div>
+                    </div><!--end col-->
+                    <div class="col-md-6 text-lg-end">
+                        <h6 class="fw-semibold m-0">Start : <span class="text-muted fw-normal"> 02 June 2024</span></h6>
+                        <h6 class="fw-semibold mb-0 mt-2">Deadline : <span
+                                class="text-muted fw-normal"> 31 Oct 2025</span></h6>
+                    </div><!--end col-->
+                </div><!--end row-->
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between">
+                        <h6 class="fw-semibold m-0 align-self-center">All Hours : <span class="text-muted fw-normal"> 530 / 281:30</span>
+                        </h6>
+                        <h6 class="fw-semibold">Today : <span class="text-muted fw-normal"> 2:45</span><span
+                                class="badge bg-soft-pink fw-semibold ms-2"><i class="far fa-fw fa-clock"></i> 27 days left</span>
+                        </h6>
+                    </div>
+                    <p class="text-muted mb-1">There are many variations of passages of Lorem Ipsum available,
+                        but the majority have suffered alteration in some form.
+                    </p>
+                    <p class="text-muted text-end mb-1">15% Complete</p>
+                    <div class="progress mb-3" style="height: 3px;">
+                        <div aria-valuemax="100" aria-valuemin="0" aria-valuenow="15" class="progress-bar bg-primary"
+                             role="progressbar" style="width: 15%;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <div class="img-group d-flex justify-content-center">
+                            <a class="user-avatar position-relative d-inline-block" href="#">
+                                <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-2.jpg"/>
+                            </a>
+                            <a class="user-avatar position-relative d-inline-block ms-n2" href="#">
+                                <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-5.jpg"/>
+                            </a>
+                            <a class="user-avatar position-relative d-inline-block ms-n2" href="#">
+                                <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-7.jpg"/>
+                            </a>
+                            <a class="user-avatar position-relative d-inline-block ms-1" href="">
+                                <span class="thumb-md shadow-sm justify-content-center d-flex align-items-center bg-light rounded-circle fw-semibold fs-6">+6</span>
+                            </a>
+                        </div>
+                        <ul class="list-inline mb-0 align-self-center">
+                            <li class="list-item d-inline-block me-2">
+                                <a class="" href="#">
+                                    <i class="fa-solid fa-list-ul text-success fs-15"></i>
+                                    <span class="text-muted fw-bold">34/100</span>
+                                </a>
+                            </li>
+                            <li class="list-item d-inline-block">
+                                <a class="" href="#">
+                                    <i class="fa-regular fa-message text-primary fs-15"></i>
+                                    <span class="text-muted fw-bold">3</span>
+                                </a>
+                            </li>
+                            <li class="list-item d-inline-block">
+                                <a class="ms-2" href="#">
+                                    <i class="fa-solid fa-pencil text-muted fs-18"></i>
+                                </a>
+                            </li>
+                            <li class="list-item d-inline-block">
+                                <a class="" href="#">
+                                    <i class="fa-regular fa-trash-can text-muted fs-18"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div><!--end task-box-->
+                <hr class="hr-dashed"/>
+                <div class="row mt-3">
+                    <div class="col-lg">
+                        <div class="d-flex">
+                            <i class="iconoir-headset align-self-center text-secondary fs-24"></i>
+                            <div class="d-block align-self-center ms-2">
+                                <h6 class="m-0">Last Meeting</h6>
+                                <p class="mb-0 text-muted">28 Oct 2020 / 10:30AM - 12:30PM</p>
+                            </div>
+                        </div>
+                    </div><!--end col-->
+                    <div class="col-lg-auto">
+                        <div class="d-flex">
+                            <i class="iconoir-headset align-self-center text-secondary fs-24"></i>
+                            <div class="d-block align-self-center ms-2">
+                                <h6 class="m-0">Next Meeting</h6>
+                                <p class="mb-0 text-muted">06 Nov 2020 / 10:30AM - 12:30PM</p>
+                            </div>
+                        </div>
+                    </div><!--end col-->
+                </div><!--end row-->
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div><!--end col-->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="position-absolute top-0 start-0 translate-middle"><i class="fas fa-circle text-success"></i>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <img alt="" class="thumb-lg rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/logos/lang-logo/slack.png"/>
+                            </div>
+                            <div class="flex-grow-1 ms-2 text-truncate">
+                                <h4 class="m-0 fw-semibold text-dark fs-16">Slack App</h4>
+                                <p class="text-muted mb-0 fs-13"><span class="text-dark">Client : </span>Kevin J. Heal
+                                </p>
+                            </div><!--end media-body-->
+                        </div>
+                    </div><!--end col-->
+                    <div class="col-md-6 text-lg-end">
+                        <h6 class="fw-semibold m-0">Start : <span class="text-muted fw-normal"> 02 June 2024</span></h6>
+                        <h6 class="fw-semibold mb-0 mt-2">Deadline : <span
+                                class="text-muted fw-normal"> 31 Oct 2025</span></h6>
+                    </div><!--end col-->
+                </div><!--end row-->
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between">
+                        <h6 class="fw-semibold m-0 align-self-center">All Hours : <span class="text-muted fw-normal"> 530 / 281:30</span>
+                        </h6>
+                        <h6 class="fw-semibold">Today : <span class="text-muted fw-normal"> 2:45</span><span
+                                class="badge bg-soft-pink fw-semibold ms-2"><i class="far fa-fw fa-clock"></i> 14 days left</span>
+                        </h6>
+                    </div>
+                    <p class="text-muted mb-1">There are many variations of passages of Lorem Ipsum available,
+                        but the majority have suffered alteration in some form.
+                    </p>
+                    <p class="text-muted text-end mb-1">28% Complete</p>
+                    <div class="progress mb-3" style="height: 3px;">
+                        <div aria-valuemax="100" aria-valuemin="0" aria-valuenow="28" class="progress-bar bg-primary"
+                             role="progressbar" style="width: 28%;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <div class="img-group d-flex justify-content-center">
+                            <a class="user-avatar position-relative d-inline-block" href="#">
+                                <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-3.jpg"/>
+                            </a>
+                            <a class="user-avatar position-relative d-inline-block ms-n2" href="#">
+                                <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-6.jpg"/>
+                            </a>
+                            <a class="user-avatar position-relative d-inline-block ms-n2" href="#">
+                                <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-9.jpg"/>
+                            </a>
+                            <a class="user-avatar position-relative d-inline-block ms-1" href="">
+                                <span class="thumb-md shadow-sm justify-content-center d-flex align-items-center bg-light rounded-circle fw-semibold fs-6">+6</span>
+                            </a>
+                        </div>
+                        <ul class="list-inline mb-0 align-self-center">
+                            <li class="list-item d-inline-block me-2">
+                                <a class="" href="#">
+                                    <i class="fa-solid fa-list-ul text-success fs-15"></i>
+                                    <span class="text-muted fw-bold">34/100</span>
+                                </a>
+                            </li>
+                            <li class="list-item d-inline-block">
+                                <a class="" href="#">
+                                    <i class="fa-regular fa-message text-primary fs-15"></i>
+                                    <span class="text-muted fw-bold">3</span>
+                                </a>
+                            </li>
+                            <li class="list-item d-inline-block">
+                                <a class="ms-2" href="#">
+                                    <i class="fa-solid fa-pencil text-muted fs-18"></i>
+                                </a>
+                            </li>
+                            <li class="list-item d-inline-block">
+                                <a class="" href="#">
+                                    <i class="fa-regular fa-trash-can text-muted fs-18"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div><!--end task-box-->
+                <hr class="hr-dashed"/>
+                <div class="row mt-3">
+                    <div class="col-lg">
+                        <div class="d-flex">
+                            <i class="iconoir-headset align-self-center text-secondary fs-24"></i>
+                            <div class="d-block align-self-center ms-2">
+                                <h6 class="m-0">Last Meeting</h6>
+                                <p class="mb-0 text-muted">28 Oct 2020 / 10:30AM - 12:30PM</p>
+                            </div>
+                        </div>
+                    </div><!--end col-->
+                    <div class="col-lg-auto">
+                        <div class="d-flex">
+                            <i class="iconoir-headset align-self-center text-secondary fs-24"></i>
+                            <div class="d-block align-self-center ms-2">
+                                <h6 class="m-0">Next Meeting</h6>
+                                <p class="mb-0 text-muted">06 Nov 2020 / 10:30AM - 12:30PM</p>
+                            </div>
+                        </div>
+                    </div><!--end col-->
+                </div><!--end row-->
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Activity</h4>
+                    </div><!--end col-->
+                    <div class="col-auto">
+                        <div class="dropdown">
+                            <a aria-expanded="false" aria-haspopup="true"
+                               class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                                All<i class="las la-angle-down ms-1"></i>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end">
+                                <a class="dropdown-item" href="#">Purchases</a>
+                                <a class="dropdown-item" href="#">Emails</a>
+                            </div>
+                        </div>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="analytic-dash-activity" data-simplebar="" style="height:340px">
+                    <div class="activity">
+                        <div class="activity-info">
+                            <div class="icon-info-activity">
+                                <i class="las la-user-clock bg-primary-subtle text-primary"></i>
+                            </div>
+                            <div class="activity-info-text">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <p class="text-muted mb-0 fs-13 w-75"><span>Donald</span>
+                                        updated the status of <a href="">Refund #1234</a> to awaiting customer response
+                                    </p>
+                                    <small class="text-muted">10 Min ago</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="activity-info">
+                            <div class="icon-info-activity">
+                                <i class="las la-stream bg-primary-subtle text-primary"></i>
+                            </div>
+                            <div class="activity-info-text">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <p class="text-muted mb-0 fs-13 w-75"><span>Lucy Peterson</span>
+                                        was added to the group, group name is <a href="">Overtake</a>
+                                    </p>
+                                    <small class="text-muted">50 Min ago</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="activity-info">
+                            <div class="icon-info-activity">
+                                <img alt="" class="rounded-circle thumb-md"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-5.jpg"/>
+                            </div>
+                            <div class="activity-info-text">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <p class="text-muted mb-0 fs-13 w-75"><span>Joseph Rust</span>
+                                        opened new showcase <a href="">Mannat #112233</a> with theme market
+                                    </p>
+                                    <small class="text-muted">10 hours ago</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="activity-info">
+                            <div class="icon-info-activity">
+                                <i class="las la-business-time bg-primary-subtle text-primary"></i>
+                            </div>
+                            <div class="activity-info-text">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <p class="text-muted mb-0 fs-13 w-75"><span>Donald</span>
+                                        updated the status of <a href="">Refund #1234</a> to awaiting customer response
+                                    </p>
+                                    <small class="text-muted">Yesterday</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="activity-info">
+                            <div class="icon-info-activity">
+                                <i class="las la-exclamation-triangle bg-primary-subtle text-primary"></i>
+                            </div>
+                            <div class="activity-info-text">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <p class="text-muted mb-0 fs-13 w-75"><span>Lucy Peterson</span>
+                                        was added to the group, group name is <a href="">Overtake</a>
+                                    </p>
+                                    <small class="text-muted">14 Nov 2019</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="activity-info">
+                            <div class="icon-info-activity">
+                                <img alt="" class="rounded-circle thumb-md"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-4.jpg"/>
+                            </div>
+                            <div class="activity-info-text">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <p class="text-muted mb-0 fs-13 w-75"><span>Joseph Rust</span>
+                                        opened new showcase <a href="">Mannat #112233</a> with theme market
+                                    </p>
+                                    <small class="text-muted">15 Nov 2019</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div><!--end activity-->
+                </div><!--end analytics-dash-activity-->
+            </div> <!--end card-body-->
+        </div><!--end card-->
+    </div><!--end col-->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">All Projects</h4>
+                    </div><!--end col-->
+                    <div class="col-auto">
+                        <a class="text-primary" href="#">View All</a>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="thead-light">
+                        <tr>
+                            <th>Project Name</th>
+                            <th>Client Name</th>
+                            <th>Start Date</th>
+                            <th>Deadline</th>
+                            <th>Status</th>
+                            <th>Progress</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>Product Devlopment</td>
+                            <td class="d-flex">
+                                <img alt="" class="thumb-sm rounded me-2"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-2.jpg"/>
+                                Kevin J. Heal
+                            </td>
+                            <td>20/3/2020</td>
+                            <td>5/5/2020</td>
+                            <td><span class="badge badge-md badge-boxed bg-soft-success">Active</span></td>
+                            <td>
+                                <small class="float-end ms-2 pt-1 fs-10">92%</small>
+                                <div class="progress mt-2" style="height:3px;">
+                                    <div aria-valuemax="100" aria-valuemin="0" aria-valuenow="92"
+                                         class="progress-bar bg-success" role="progressbar" style="width: 92%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>New Office Building</td>
+                            <td class="d-flex">
+                                <img alt="" class="thumb-sm rounded me-2"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-3.jpg"/>
+                                Frank M. Lyons
+                            </td>
+                            <td>11/6/2020</td>
+                            <td>15/7/2020</td>
+                            <td><span class="badge badge-md badge-boxed bg-soft-warning">Panding</span></td>
+                            <td>
+                                <small class="float-end ms-2 pt-1 fs-10">0%</small>
+                                <div class="progress mt-2" style="height:3px;">
+                                    <div aria-valuemax="100" aria-valuemin="0" aria-valuenow="0"
+                                         class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Website &amp; Blog</td>
+                            <td class="d-flex">
+                                <img alt="" class="thumb-sm rounded me-2"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-4.jpg"/>
+                                Hyman M. Cross
+                            </td>
+                            <td>21/6/2020</td>
+                            <td>3/7/2020</td>
+                            <td><span class="badge badge-md badge-boxed bg-soft-warning">Panding</span></td>
+                            <td>
+                                <small class="float-end ms-2 pt-1 fs-10">0%</small>
+                                <div class="progress mt-2" style="height:3px;">
+                                    <div aria-valuemax="100" aria-valuemin="0" aria-valuenow="0"
+                                         class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Market Research</td>
+                            <td class="d-flex">
+                                <img alt="" class="thumb-sm rounded me-2"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-5.jpg"/>
+                                Angelo E. Butler
+                            </td>
+                            <td>30/4/2020</td>
+                            <td>1/6/2020</td>
+                            <td><span class="badge badge-md badge-boxed bg-soft-success">Active</span></td>
+                            <td>
+                                <small class="float-end ms-2 pt-1 fs-10">78%</small>
+                                <div class="progress mt-2" style="height:3px;">
+                                    <div aria-valuemax="100" aria-valuemin="0" aria-valuenow="78"
+                                         class="progress-bar bg-success" role="progressbar" style="width: 78%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Export Marketing</td>
+                            <td class="d-flex">
+                                <img alt="" class="thumb-sm rounded me-2"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-6.jpg"/>
+                                Robert C. Golding
+                            </td>
+                            <td>20/3/2020</td>
+                            <td>5/5/2020</td>
+                            <td><span class="badge badge-md badge-boxed bg-soft-success">Active</span></td>
+                            <td>
+                                <small class="float-end ms-2 pt-1 fs-10">45%</small>
+                                <div class="progress mt-2" style="height:3px;">
+                                    <div aria-valuemax="100" aria-valuemin="0" aria-valuenow="45"
+                                         class="progress-bar bg-success" role="progressbar" style="width: 45%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>New Office Building</td>
+                            <td class="d-flex">
+                                <img alt="" class="thumb-sm rounded me-2"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-3.jpg"/>
+                                Frank M. Lyons
+                            </td>
+                            <td>11/6/2020</td>
+                            <td>15/7/2020</td>
+                            <td><span class="badge badge-md badge-boxed bg-soft-warning">Panding</span></td>
+                            <td>
+                                <small class="float-end ms-2 pt-1 fs-10">0%</small>
+                                <div class="progress mt-2" style="height:3px;">
+                                    <div aria-valuemax="100" aria-valuemin="0" aria-valuenow="0"
+                                         class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Website &amp; Blog</td>
+                            <td class="d-flex">
+                                <img alt="" class="thumb-sm rounded me-2"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-4.jpg"/>
+                                Hyman M. Cross
+                            </td>
+                            <td>21/6/2020</td>
+                            <td>3/7/2020</td>
+                            <td><span class="badge badge-md badge-boxed bg-soft-warning">Panding</span></td>
+                            <td>
+                                <small class="float-end ms-2 pt-1 fs-10">0%</small>
+                                <div class="progress mt-2" style="height:3px;">
+                                    <div aria-valuemax="100" aria-valuemin="0" aria-valuenow="0"
+                                         class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Website &amp; Blog</td>
+                            <td class="d-flex">
+                                <img alt="" class="thumb-sm rounded me-2"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-8.jpg"/>
+                                Phillip T. Morse
+                            </td>
+                            <td>8/4/2020</td>
+                            <td>2/6/2020</td>
+                            <td><span class="badge badge-md badge-boxed bg-soft-danger">Complete</span></td>
+                            <td>
+                                <small class="float-end ms-2 pt-1 fs-10">100%</small>
+                                <div class="progress mt-2" style="height:3px;">
+                                    <div aria-valuemax="100" aria-valuemin="0" aria-valuenow="100"
+                                         class="progress-bar bg-pink" role="progressbar" style="width: 100%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div><!--end table-responsive-->
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div><!--end col-->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/libs/apexcharts/apexcharts.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/js/pages/projects_overview.init.js"></script>
+
+{% endblock javascripts %}

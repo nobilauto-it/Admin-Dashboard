@@ -1,0 +1,130 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Calendar{% endblock %}
+
+{% block styles %}
+
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Calendar</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">Apps</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Calendar</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <h5 class="m-0 fs-16">Schedules</h5>
+                        <p class="text-muted mb-0 mt-1"><i class="fas fa-star text-primary"></i> Create unlimited
+                            schedules for your bisuness</p>
+                    </div>
+                    <div class="col-auto align-self-center">
+                        <a class="btn btn-sm btn-soft-primary" data-bs-target="#addtask" data-bs-toggle="modal" href="">
+                            <i class="fa-solid fa-plus me-1"></i> Add New </a>
+                    </div>
+                </div>
+            </div><!-- end card-body -->
+        </div><!-- end card -->
+        <div class="card">
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item align-items-center d-flex justify-content-between align-items-start">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <img alt="..." class="me-3 thumb-md align-self-center rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/logos/lang-logo/nextjs.png"/>
+                            </div>
+                            <div class="flex-grow-1 ms-0 text-truncate">
+                                <h5 class="m-0 fs-13">Meeting with UI/UX Designers</h5>
+                                <p class="text-muted mb-0">Today 07:30 AM</p>
+                            </div><!--end media-body-->
+                        </div>
+                        <span class="badge text-bg-primary rounded">Upcoming</span>
+                    </li>
+                    <li class="list-group-item align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <img alt="..." class="me-3 thumb-md align-self-center rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-5.jpg"/>
+                            </div>
+                            <div class="flex-grow-1 ms-0 text-truncate">
+                                <h5 class="m-0 font-13">Lunch with my friend</h5>
+                                <p class="text-muted mb-0">Today 12:30 PM</p>
+                            </div><!--end media-body-->
+                        </div>
+                    </li>
+                    <li class="list-group-item align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <img alt="..." class="me-3 thumb-md align-self-center rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/logos/lang-logo/symfony.png"/>
+                            </div>
+                            <div class="flex-grow-1 ms-0 text-truncate">
+                                <h5 class="m-0 fs-13">Call for payment Project ID : #254136</h5>
+                                <p class="text-muted mb-0">Tomorrow 10:30 AM</p>
+                            </div><!--end media-body-->
+                        </div>
+                    </li>
+                    <li class="list-group-item align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <img alt="..." class="me-3 thumb-md align-self-center rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/users/avatar-4.jpg"/>
+                            </div>
+                            <div class="flex-grow-1 ms-2 text-truncate">
+                                <h5 class="m-0 fs-13">Picnic with my Family</h5>
+                                <p class="text-muted mb-0">01 June 2019 - 09:30 AM</p>
+                            </div><!--end media-body-->
+                        </div>
+                    </li>
+                    <li class="list-group-item align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <img alt="..." class="me-3 thumb-md align-self-center rounded-circle"
+                                     src="{{ config.ASSETS_ROOT }}/images/logos/lang-logo/vue.png"/>
+                            </div>
+                            <div class="flex-grow-1 ms-2 text-truncate">
+                                <h5 class="m-0 fs-13">Meeting with Developers</h5>
+                                <p class="text-muted mb-0">04 June 2019 - 07:30 AM</p>
+                            </div><!--end media-body-->
+                        </div>
+                    </li>
+                </ul>
+            </div><!-- end card-body -->
+        </div><!-- end card -->
+        <div class="bg-primary-subtle p-2 border-dashed border-primary rounded mt-3 d-block">
+            <img alt="" class="d-inline-block me-1" height="30" src="{{ config.ASSETS_ROOT }}/images/extra/party.gif"/>
+            <span class="text-primary fw-semibold">Karen Savage's</span><span class="text-primary fw-normal"> Project complated.</span>
+        </div>
+    </div> <!-- end col -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <div id="calendar"></div>
+                <div style="clear:both"></div>
+            </div><!-- end card-body -->
+        </div><!-- end card -->
+    </div> <!-- end col -->
+</div> <!-- end row -->
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/libs/fullcalendar/index.global.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/js/pages/calendar.init.js"></script>
+
+{% endblock javascripts %}

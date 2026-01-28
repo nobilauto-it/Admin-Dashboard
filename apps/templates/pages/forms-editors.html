@@ -1,0 +1,52 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Editors{% endblock %}
+
+{% block styles %}
+<link href="{{ config.ASSETS_ROOT }}/libs/quill/quill.snow.css" rel="stylesheet"/>
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Editors</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">Forms</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Editors</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Quill Editor</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div id="editor">
+                    <p>Hello World!</p>
+                    <p>Some initial <strong>bold</strong> text</p>
+                    <p><br/></p>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/libs/quill/quill.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/js/pages/form-editor.init.js"></script>
+
+{% endblock javascripts %}

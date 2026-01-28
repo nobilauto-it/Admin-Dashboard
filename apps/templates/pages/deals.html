@@ -1,0 +1,968 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Deals{% endblock %}
+
+{% block styles %}
+<style>
+    .table-scroll {
+        max-height: 520px;
+        overflow: auto;
+        border: 1px solid #eef1f5;
+        border-radius: 6px;
+    }
+    .loader-overlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.7);
+        z-index: 2;
+    }
+    .badge-endpoint {
+        font-size: 11px;
+        background: #f4f6fb;
+        color: #64748b;
+        border: 1px dashed #e0e7ff;
+    }
+    .field-list-modal {
+        max-height: 420px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 10px;
+    }
+    .component-dropzone {
+        min-height: 120px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        background: #f8fafc;
+        cursor: grab;
+    }
+    .component-dropzone.dragover {
+        border-color: #6366f1;
+        background: #eef2ff;
+        color: #4338ca;
+    }
+    .layout-grid {
+        display: grid;
+        gap: 12px;
+    }
+    .drop-slot {
+        min-height: 200px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 6px;
+        position: relative;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .drop-slot.dragover {
+        border-color: #6366f1;
+        background: #eef2ff;
+    }
+    .drop-slot .component-card {
+        height: 100%;
+    }
+    .trash-bin {
+        position: absolute;
+        right: 12px;
+        bottom: 12px;
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        background: #f1f5f9;
+        border: 2px dashed #cbd5e1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #475569;
+        cursor: grab;
+        opacity: 0.8;
+        transition: all 0.15s ease;
+        z-index: 4;
+    }
+    .trash-bin.dragover {
+        border-color: #ef4444;
+        background: #fee2e2;
+        color: #b91c1c;
+        opacity: 1;
+    }
+</style>
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Deals</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Deals</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-12">
+        <div class="card position-relative">
+            <div class="card-header">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-4">
+                        <label class="form-label mb-1">Сущность</label>
+                        <select id="entitySelect" class="form-select">
+                            <optgroup label="Сделки">
+                                <option value="deal" data-entity-key="" data-category-id="">Все сделки</option>
+                            </optgroup>
+                            <optgroup label="Воронки сделок">
+                                <option value="deal_category" data-category-id="2">Покупатели авто</option>
+                                <option value="deal_category" data-category-id="12">Сервис</option>
+                                <option value="deal_category" data-category-id="8">HR кандидаты</option>
+                                <option value="deal_category" data-category-id="16">HR тек. сотрудники</option>
+                                <option value="deal_category" data-category-id="20">Сделки - прокат</option>
+                                <option value="deal_category" data-category-id="22">Chirie - solicitări prelucrate</option>
+                                <option value="deal_category" data-category-id="0">После визита</option>
+                                <option value="deal_category" data-category-id="25">Vânzări realizare</option>
+                                <option value="deal_category" data-category-id="30">Vânzări auto</option>
+                                <option value="deal_category" data-category-id="31">Atragere auto</option>
+                            </optgroup>
+                            <optgroup label="Контакты/Лиды">
+                                <option value="contact" data-entity-key="">Контакты</option>
+                                <option value="lead" data-entity-key="">Лиды</option>
+                            </optgroup>
+                            <optgroup label="Смарт-процессы" id="smartProcessesGroup">
+                                <option value="smart_process" data-entity-key="sp:1114">Смарт-процесс 1114</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <span class="badge badge-endpoint" id="fieldsEndpointBadge">fields: —</span>
+                            <span class="badge badge-endpoint" id="dataEndpointBadge">data: —</span>
+                            <div class="ms-auto d-flex gap-2">
+                                <div class="btn-group">
+                                    <button class="btn btn-outline-info btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                                        Компонент
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="#" data-comp="bar">📊 График</a></li>
+                                        <li><a class="dropdown-item" href="#" data-comp="donut">🍩 Пончик</a></li>
+                                    </ul>
+                                </div>
+                                <button class="btn btn-outline-secondary btn-sm" id="openFieldsModal">Поля</button>
+                                <button class="btn btn-primary btn-sm" id="applySelection">Применить</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-2 g-2 align-items-center">
+                    <div class="col-md-6 d-flex gap-2">
+                        <input id="fieldsSearch" type="text" class="form-control form-control-sm" placeholder="Поиск по полям" disabled>
+                        <button class="btn btn-outline-primary btn-sm" id="selectAllFields" disabled>Все</button>
+                        <button class="btn btn-outline-secondary btn-sm" id="clearAllFields" disabled>Снять</button>
+                    </div>
+                    <div class="col-md-3 d-flex gap-2 align-items-center">
+                        <label class="mb-0 small text-muted" for="perPageSelect">На странице</label>
+                        <select id="perPageSelect" class="form-select form-select-sm" style="width: 90px;">
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex justify-content-end align-items-center gap-2">
+                        <button class="btn btn-outline-secondary btn-sm" id="prevPage">‹</button>
+                        <span class="small text-muted" id="pageInfo">0 / 0</span>
+                        <button class="btn btn-outline-secondary btn-sm" id="nextPage">›</button>
+                        <span class="small text-muted" id="rowsCount">0 записей</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body position-relative">
+                <div class="trash-bin" id="trashBin" title="Перетащите сюда, чтобы удалить">🗑️</div>
+                <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                    <label class="form-label mb-0 small">Сетки:</label>
+                    <select id="layoutRows" class="form-select form-select-sm" style="width:90px;">
+                        <option value="1" selected>1 ряд</option>
+                        <option value="2">2 ряда</option>
+                        <option value="3">3 ряда</option>
+                    </select>
+                    <select id="layoutCols" class="form-select form-select-sm" style="width:90px;">
+                        <option value="1">1 колонка</option>
+                        <option value="2" selected>2 колонки</option>
+                        <option value="3">3 колонки</option>
+                    </select>
+                    <small class="text-muted">Перетаскивайте карточки компонентов между ячейками</small>
+                </div>
+                <div class="layout-grid" id="layoutGrid">
+                    <!-- генерируются слоты -->
+                </div>
+                <template id="tmplGridComponent">
+                    <div class="component-card card h-100" data-comp="grid" draggable="true" style="cursor: grab;">
+                        <div class="table-scroll position-relative h-100">
+                            <div class="loader-overlay" id="loaderOverlay">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                            <table class="table mb-0 table-sm" id="dataTable">
+                                <thead class="table-light">
+                                    <tr id="dataHeader">
+                                        <th>Нет данных</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dataBody">
+                                    <tr><td>Выберите сущность и поля, затем нажмите «Применить».</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </template>
+                <template id="tmplChartComponent">
+                    <div class="component-card card h-100 border-dashed" data-comp="chart" draggable="true" style="cursor: grab;">
+                        <div class="card-body">
+                                <div class="d-flex align-items-center mb-2 gap-2 flex-wrap">
+                                    <strong class="me-auto">Визуал</strong>
+                                    <select id="chartTypeSelect" class="form-select form-select-sm" style="width:120px">
+                                        <option value="bar">График</option>
+                                        <option value="donut">Пончик</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-1 small">Сущность визуала</label>
+                                    <select id="chartEntitySelect" class="form-select form-select-sm">
+                                        <option value="deal" data-entity-key="">Сделки</option>
+                                        <option value="deal_category" data-category-id="2">Покупатели авто</option>
+                                        <option value="deal_category" data-category-id="12">Сервис</option>
+                                        <option value="deal_category" data-category-id="8">HR кандидаты</option>
+                                        <option value="deal_category" data-category-id="16">HR тек. сотрудники</option>
+                                        <option value="deal_category" data-category-id="20">Сделки - прокат</option>
+                                        <option value="deal_category" data-category-id="22">Chirie - solicitări prelucrate</option>
+                                        <option value="deal_category" data-category-id="0">После визита</option>
+                                        <option value="deal_category" data-category-id="25">Vânzări realizare</option>
+                                        <option value="deal_category" data-category-id="30">Vânzări auto</option>
+                                        <option value="deal_category" data-category-id="31">Atragere auto</option>
+                                        <option value="contact" data-entity-key="">Контакты</option>
+                                        <option value="lead" data-entity-key="">Лиды</option>
+                                        <option value="smart_process" data-entity-key="sp:1114">Смарт-процесс 1114</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-1 small">Поле для группировки</label>
+                                    <select id="chartFieldSelect" class="form-select form-select-sm">
+                                        <option value="">— выберите поле —</option>
+                                    </select>
+                                </div>
+                                <div class="d-flex gap-2 mb-3">
+                                    <button class="btn btn-primary btn-sm" id="chartApply">Обновить визуал</button>
+                                    <small class="text-muted">Использует данные выбранной сущности</small>
+                                </div>
+                                <div class="component-dropzone" id="chartDropzone" draggable="true">
+                                    Перетащи сюда компонент или просто выбери тип — он появится рядом с таблицей
+                                </div>
+                                <div class="mt-3" id="chartContainer" style="min-height:260px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<!-- Modal полей -->
+<div class="modal fade" id="fieldsModal" tabindex="-1" aria-labelledby="fieldsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fieldsModalLabel">Выбор полей</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <input id="fieldsSearchModal" type="text" class="form-control form-control-sm w-50" placeholder="Поиск по полям">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary btn-sm" id="modalSelectAll">Выбрать всё</button>
+                        <button class="btn btn-outline-secondary btn-sm" id="modalClearAll">Снять всё</button>
+                    </div>
+                </div>
+                <div id="fieldsContainer" class="field-list-modal small text-muted">
+                    Загрузка полей...
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveFields">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+const endpoints = {
+    deal: {
+        label: 'Сделки',
+        fields: '/api/data-explorer/fields?entity=deal',
+        data:   '/api/data-explorer/data?entity=deal&limit=1000'
+    },
+    contact: {
+        label: 'Контакты',
+        fields: '/api/data-explorer/fields?entity=contact',
+        data:   '/api/data-explorer/data?entity=contact&limit=1000'
+    },
+    lead: {
+        label: 'Лиды',
+        fields: '/api/data-explorer/fields?entity=lead',
+        data:   '/api/data-explorer/data?entity=lead&limit=1000'
+    },
+};
+
+let allFields = [];
+let processes = [];
+let selectedKeys = [];
+let currentEntityKey = '';
+let currentCategoryId = '';
+const dealCategories = {
+    '2': 'Покупатели авто',
+    '12': 'Сервис',
+    '8': 'HR кандидаты',
+    '16': 'HR тек. сотрудники',
+    '20': 'Сделки - прокат',
+    '22': 'Chirie - solicitări prelucrate',
+    '0': 'После визита',
+    '25': 'Vânzări realizare',
+    '30': 'Vânzări auto',
+    '31': 'Atragere auto'
+};
+// Кэш соответствия ID -> имя для ответственных (живёт в рамках страницы)
+const assignedNameCache = {};
+const STORAGE_ASSIGNED = 'deals_assigned_name_cache';
+function loadAssignedCache() {
+    try {
+        const raw = localStorage.getItem(STORAGE_ASSIGNED);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+            Object.keys(parsed).forEach(k => { assignedNameCache[k] = parsed[k]; });
+        }
+    } catch (e) {
+        console.warn('Failed to load assigned cache', e);
+    }
+}
+function saveAssignedCache() {
+    try {
+        localStorage.setItem(STORAGE_ASSIGNED, JSON.stringify(assignedNameCache));
+    } catch (e) {
+        console.warn('Failed to save assigned cache', e);
+    }
+}
+let rowsCache = [];
+let lastSelectedFields = [];
+let lastAssignedMap = {};
+let currentPage = 1;
+let perPage = 10;
+let chartType = 'bar';
+let chartInstance = null;
+let chartEntity = 'deal';
+let chartEntityKey = '';
+let chartCategoryId = '';
+let chartFieldsAll = [];
+let chartRowsCache = [];
+let gridComponent = null;
+let chartComponent = null;
+let layoutRowsCount = 1;
+let layoutColsCount = 2;
+
+async function fetchJson(url, timeout = 15000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+function normalizeField(field) {
+    return {
+        key: field.name || field.code || field.field || field.id || '',
+        label: field.title || field.caption || field.name || field.code || field.field || 'field',
+        tech: field.name || field.code || field.field || field.id || ''
+    };
+}
+
+function renderFields(fields) {
+    const cont = document.getElementById('fieldsContainer');
+    cont.innerHTML = '';
+    if (!fields.length) {
+        cont.textContent = 'Поля не найдены';
+        return;
+    }
+    fields.forEach((f, idx) => {
+        const id = `fld_${f.key}`;
+        const wrap = document.createElement('div');
+        wrap.className = 'form-check mb-1';
+        const defaultChecked = selectedKeys.length
+            ? selectedKeys.includes(f.key)
+            : (idx < 6 && f.label !== 'Дополнительная информация');
+        wrap.innerHTML = `
+            <input class="form-check-input entity-field" type="checkbox" value="${f.key}" id="${id}" ${defaultChecked ? 'checked' : ''}>
+            <label class="form-check-label" for="${id}">${f.label}${f.tech && f.tech !== f.label ? `<small class="text-muted ms-1">${f.tech}</small>` : ''}</label>
+        `;
+        cont.appendChild(wrap);
+    });
+}
+
+function buildHeader(selectedFields) {
+    const headerRow = document.getElementById('dataHeader');
+    headerRow.innerHTML = '';
+    if (!selectedFields.length) {
+        headerRow.innerHTML = '<th>Нет данных</th>';
+        return;
+    }
+    selectedFields.forEach(f => {
+        const th = document.createElement('th');
+        th.textContent = f.label;
+        headerRow.appendChild(th);
+    });
+}
+
+function buildBody(data, selectedFields, assignedNameMap = {}) {
+    const body = document.getElementById('dataBody');
+    body.innerHTML = '';
+    if (!data.length || !selectedFields.length) {
+        body.innerHTML = '<tr><td>Нет данных</td></tr>';
+        return;
+    }
+    data.forEach(row => {
+        const tr = document.createElement('tr');
+        selectedFields.forEach(f => {
+            const td = document.createElement('td');
+            const val = row[f.key];
+            let displayVal = (val === undefined || val === null) ? '' : val;
+            if (f.key === 'Воронка' || f.key === 'CATEGORY_ID') {
+                const mapped = dealCategories[String(displayVal)];
+                displayVal = mapped !== undefined ? mapped : displayVal;
+            }
+            if (typeof displayVal === 'string' && displayVal.length === 1 && (displayVal === 'Y' || displayVal === 'N')) {
+                const lowerKey = (f.key || '').toString().toLowerCase();
+                if (lowerKey.includes('закры') || lowerKey.includes('closed')) {
+                    displayVal = displayVal === 'Y' ? 'Da' : 'Nu';
+                }
+            }
+            if (
+                f.key === 'Ответственный' ||
+                f.key === 'ASSIGNED_BY_ID' ||
+                f.key === 'assigned_by_id' ||
+                (typeof f.label === 'string' && f.label.toLowerCase().includes('ответствен'))
+            ) {
+                const idVal = row['ASSIGNED_BY_ID'] ?? row['assigned_by_id'] ?? row['Ответственный'] ?? displayVal;
+                const byName = row['assigned_by_name'] || row['ASSIGNED_BY_NAME'] || assignedNameMap[String(idVal)] || assignedNameMap[String(displayVal)];
+                displayVal = byName ? byName : idVal;
+            }
+            if (f.key === 'assigned_by_name' || f.key === 'ASSIGNED_BY_NAME') {
+                const fallbackId = row['ASSIGNED_BY_ID'] || row['assigned_by_id'] || row['Ответственный'] || '';
+                const byName = row[f.key] || row['assigned_by_name'] || row['ASSIGNED_BY_NAME'] || assignedNameMap[String(fallbackId)];
+                displayVal = byName ? byName : fallbackId;
+            }
+            td.textContent = displayVal;
+            tr.appendChild(td);
+        });
+        body.appendChild(tr);
+    });
+}
+
+function updateBadges(entityKey) {
+    const f = document.getElementById('fieldsEndpointBadge');
+    const d = document.getElementById('dataEndpointBadge');
+    const ep = resolveEndpoints(entityKey, currentEntityKey, currentCategoryId);
+    if (ep) {
+        f.textContent = `fields: ${ep.fields}`;
+        d.textContent = `data: ${ep.data}`;
+    } else {
+        f.textContent = 'fields: —';
+        d.textContent = 'data: —';
+    }
+}
+
+function renderChart() {
+    if (!chartComponent || !chartComponent.isConnected) return;
+    const fieldKey = document.getElementById('chartFieldSelect').value;
+    if (!fieldKey) {
+        if (chartInstance) chartInstance.destroy();
+        document.getElementById('chartContainer').innerHTML = '<div class="text-muted small">Выберите поле для группировки</div>';
+        return;
+    }
+    // Считаем частоты
+    const sourceRows = chartRowsCache.length ? chartRowsCache : rowsCache;
+    const freq = {};
+    sourceRows.forEach(r => {
+        const v = r[fieldKey];
+        const key = (v === undefined || v === null || v === '') ? '(пусто)' : String(v);
+        freq[key] = (freq[key] || 0) + 1;
+    });
+    const categories = Object.keys(freq);
+    const data = categories.map(k => freq[k]);
+    const container = document.getElementById('chartContainer');
+    if (chartInstance) chartInstance.destroy();
+    const options = chartType === 'donut'
+        ? {
+            chart: { type: 'donut', height: 320, toolbar: { show: false } },
+            labels: categories,
+            series: data,
+            legend: { position: 'bottom' },
+            dataLabels: { enabled: true }
+        }
+        : {
+            chart: { type: 'bar', height: 320, toolbar: { show: false } },
+            series: [{ name: 'Кол-во', data }],
+            xaxis: { categories, labels: { rotate: -45 } },
+            dataLabels: { enabled: false }
+        };
+    chartInstance = new ApexCharts(container, options);
+    chartInstance.render();
+}
+
+function syncChartFieldsSelect() {
+    const sel = document.getElementById('chartFieldSelect');
+    sel.innerHTML = '<option value="">— выберите поле —</option>';
+    const sourceFields = chartFieldsAll.length ? chartFieldsAll : lastSelectedFields;
+    sourceFields.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f.key;
+        opt.textContent = f.label;
+        sel.appendChild(opt);
+    });
+    // авто-выбор первого поля
+    if (sourceFields.length) {
+        sel.value = sourceFields[0].key;
+    }
+}
+
+function buildLayoutSlots() {
+    const container = document.getElementById('layoutGrid');
+    container.innerHTML = '';
+    container.style.gridTemplateColumns = `repeat(${layoutColsCount}, 1fr)`;
+    const total = layoutRowsCount * layoutColsCount;
+    for (let i = 0; i < total; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'drop-slot';
+        slot.dataset.slot = String(i);
+        slot.addEventListener('dragover', (e) => {
+            if (e.dataTransfer.types.includes('text/plain')) {
+                e.preventDefault();
+                slot.classList.add('dragover');
+            }
+        });
+        slot.addEventListener('dragleave', () => slot.classList.remove('dragover'));
+        slot.addEventListener('drop', (e) => {
+            if (!e.dataTransfer.types.includes('text/plain')) return;
+            e.preventDefault();
+            slot.classList.remove('dragover');
+            const type = e.dataTransfer.getData('text/plain');
+            if (type === 'grid' && gridComponent) {
+                const current = gridComponent.parentElement;
+                if (current) current.innerHTML = '';
+                slot.innerHTML = '';
+                slot.appendChild(gridComponent);
+            } else if (type === 'chart' && chartComponent) {
+                const current = chartComponent.parentElement;
+                if (current) current.innerHTML = '';
+                slot.innerHTML = '';
+                slot.appendChild(chartComponent);
+            }
+        });
+        container.appendChild(slot);
+    }
+    // place components if exist
+    const slots = Array.from(container.querySelectorAll('.drop-slot'));
+    if (gridComponent && slots[0] && !slots[0].hasChildNodes()) {
+        slots[0].appendChild(gridComponent);
+    }
+    if (chartComponent) {
+        const target = slots.find(s => s !== slots[0] && !s.hasChildNodes()) || slots[0];
+        if (target) {
+            if (chartComponent.parentElement) chartComponent.parentElement.innerHTML = '';
+            target.appendChild(chartComponent);
+        }
+    }
+}
+
+function renderPage() {
+    const total = rowsCache.length;
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+    const start = (currentPage - 1) * perPage;
+    const slice = rowsCache.slice(start, start + perPage);
+    buildHeader(lastSelectedFields);
+    buildBody(slice, lastSelectedFields, lastAssignedMap);
+    document.getElementById('pageInfo').textContent = `${total === 0 ? 0 : currentPage} / ${total === 0 ? 0 : totalPages}`;
+    document.getElementById('rowsCount').textContent = `${total} записей`;
+}
+
+async function initFields() {
+    const selectEl = document.getElementById('entitySelect');
+    const entity = selectEl.value;
+    currentEntityKey = selectEl.options[selectEl.selectedIndex].dataset.entityKey || '';
+    currentCategoryId = selectEl.options[selectEl.selectedIndex].dataset.categoryId || '';
+    const ep = resolveEndpoints(entity, currentEntityKey, currentCategoryId);
+    updateBadges(entity);
+    const cont = document.getElementById('fieldsContainer');
+    cont.textContent = 'Загрузка полей...';
+    try {
+        const res = await fetchJson(ep.fields);
+        const rawFields = res.data || res.fields || res || [];
+        allFields = rawFields
+            .map(normalizeField)
+            .filter(f => f.key);
+        renderFields(allFields);
+        // включить управление поиском и кнопками
+        document.getElementById('fieldsSearch').disabled = false;
+        document.getElementById('selectAllFields').disabled = false;
+        document.getElementById('clearAllFields').disabled = false;
+    } catch (err) {
+        console.error(err);
+        cont.textContent = 'Ошибка загрузки полей';
+    }
+}
+
+async function loadAndRender() {
+    const loader = document.getElementById('loaderOverlay');
+    loader.style.display = 'flex';
+    const selectEl = document.getElementById('entitySelect');
+    const entity = selectEl.value;
+    currentEntityKey = selectEl.options[selectEl.selectedIndex].dataset.entityKey || '';
+    currentCategoryId = selectEl.options[selectEl.selectedIndex].dataset.categoryId || '';
+    const ep = resolveEndpoints(entity, currentEntityKey, currentCategoryId);
+    const fieldInputs = Array.from(document.querySelectorAll('.entity-field'));
+    selectedKeys = fieldInputs.filter(f => f.checked).map(f => f.value);
+    const selectedFields = selectedKeys.map((k) => {
+        const meta = allFields.find(f => f.key === k);
+        return { key: k, label: meta ? meta.label : k };
+    });
+
+    const rowsCount = document.getElementById('rowsCount');
+    rowsCount.textContent = 'Загрузка...';
+
+    try {
+        const dataUrl = ep.data;
+        const dataRes = await fetchJson(dataUrl);
+        let rows = dataRes.data || dataRes || [];
+        // Клиентский фильтр по воронке, если API не отфильтровало
+        if (entity === 'deal_category' && currentCategoryId !== '') {
+            rows = rows.filter(r => {
+                const catVal = r['CATEGORY_ID'] ?? r['Воронка'];
+                return String(catVal) === String(currentCategoryId);
+            });
+        }
+        // Построим карту assigned_by_id -> assigned_by_name из всех строк и обновим общий кэш
+        const assignedNameMap = {};
+        rows.forEach(r => {
+            const idCandidates = [
+                r['ASSIGNED_BY_ID'],
+                r['assigned_by_id'],
+                r['Ответственный']
+            ].filter(v => v !== undefined && v !== null && v !== '');
+            const nameVal = r['assigned_by_name'] ?? r['ASSIGNED_BY_NAME'];
+            if (nameVal && idCandidates.length) {
+                idCandidates.forEach(idVal => {
+                    const key = String(idVal);
+                    assignedNameMap[key] = nameVal;
+                    assignedNameCache[key] = nameVal;
+                });
+            }
+        });
+        // Дополняем map из кэша, чтобы показывать имя, если когда-то уже находили его ранее
+        Object.keys(assignedNameCache).forEach(id => {
+            if (!assignedNameMap[id]) assignedNameMap[id] = assignedNameCache[id];
+        });
+        saveAssignedCache();
+
+        // Сохраняем кеши для пагинации
+        rowsCache = rows;
+        lastSelectedFields = selectedFields;
+        lastAssignedMap = assignedNameMap;
+        currentPage = 1;
+        renderPage();
+        syncChartFieldsSelect();
+        renderChart();
+    } catch (err) {
+        console.error(err);
+        rowsCount.textContent = 'Ошибка загрузки';
+        document.getElementById('dataBody').innerHTML = `<tr><td>Ошибка: ${err.message}</td></tr>`;
+        document.getElementById('dataHeader').innerHTML = '<th>Ошибка</th>';
+    }
+    loader.style.display = 'none';
+}
+
+async function loadChartFields() {
+    const selectEl = document.getElementById('chartEntitySelect');
+    chartEntity = selectEl.value;
+    chartEntityKey = selectEl.options[selectEl.selectedIndex].dataset.entityKey || '';
+    chartCategoryId = selectEl.options[selectEl.selectedIndex].dataset.categoryId || '';
+    const ep = resolveEndpoints(chartEntity, chartEntityKey, chartCategoryId);
+    try {
+        const res = await fetchJson(ep.fields);
+        const rawFields = res.data || res.fields || res || [];
+        chartFieldsAll = rawFields
+            .map(normalizeField)
+            .filter(f => f.key);
+        syncChartFieldsSelect();
+    } catch (err) {
+        console.error('chart fields err', err);
+    }
+}
+
+async function loadChartData() {
+    const selectEl = document.getElementById('chartEntitySelect');
+    chartEntity = selectEl.value;
+    chartEntityKey = selectEl.options[selectEl.selectedIndex].dataset.entityKey || '';
+    chartCategoryId = selectEl.options[selectEl.selectedIndex].dataset.categoryId || '';
+    const ep = resolveEndpoints(chartEntity, chartEntityKey, chartCategoryId);
+    try {
+        const dataRes = await fetchJson(ep.data);
+        let rows = dataRes.data || dataRes || [];
+        if (chartEntity === 'deal_category' && chartCategoryId !== '') {
+            rows = rows.filter(r => {
+                const catVal = r['CATEGORY_ID'] ?? r['Воронка'];
+                return String(catVal) === String(chartCategoryId);
+            });
+        }
+        chartRowsCache = rows;
+        renderChart();
+    } catch (err) {
+        console.error('chart data err', err);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    loadAssignedCache();
+    // instantiate components from templates
+    const gridTpl = document.getElementById('tmplGridComponent');
+    const chartTpl = document.getElementById('tmplChartComponent');
+    gridComponent = gridTpl.content.firstElementChild.cloneNode(true);
+    chartComponent = chartTpl.content.firstElementChild.cloneNode(true);
+    // dragstart for components
+    gridComponent.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/plain', 'grid'));
+    chartComponent.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/plain', 'chart'));
+    buildLayoutSlots();
+
+    await initFields();
+    await loadAndRender();
+
+    document.getElementById('entitySelect').addEventListener('change', async () => {
+        selectedKeys = [];
+        await initFields();
+    });
+
+    document.getElementById('applySelection').addEventListener('click', async () => {
+        await loadAndRender();
+    });
+
+    // Пагинация
+    document.getElementById('perPageSelect').addEventListener('change', () => {
+        perPage = parseInt(document.getElementById('perPageSelect').value, 10) || 10;
+        currentPage = 1;
+        renderPage();
+    });
+    document.getElementById('prevPage').addEventListener('click', () => {
+        currentPage -= 1;
+        renderPage();
+    });
+    document.getElementById('nextPage').addEventListener('click', () => {
+        currentPage += 1;
+        renderPage();
+    });
+
+    // Добавление компонента (только устанавливаем тип и убеждаемся, что карточка на сетке)
+    document.querySelectorAll('.dropdown-menu [data-comp]').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            chartType = e.target.getAttribute('data-comp') === 'donut' ? 'donut' : 'bar';
+            document.getElementById('chartTypeSelect').value = chartType;
+            // гарантируем, что компонент на сетке
+            if (!chartComponent.isConnected) {
+                const container = document.getElementById('layoutGrid');
+                const emptySlot = Array.from(container.querySelectorAll('.drop-slot')).find(s => !s.hasChildNodes());
+                if (emptySlot) emptySlot.appendChild(chartComponent);
+            }
+            renderChart();
+        });
+    });
+
+    document.getElementById('chartTypeSelect').addEventListener('change', (e) => {
+        chartType = e.target.value === 'donut' ? 'donut' : 'bar';
+        renderChart();
+    });
+    document.getElementById('chartFieldSelect').addEventListener('change', () => {
+        renderChart();
+    });
+
+    // Управление сущностью визуала
+    document.getElementById('chartEntitySelect').addEventListener('change', async () => {
+        await loadChartFields();
+    });
+    document.getElementById('chartApply').addEventListener('click', async () => {
+        await loadChartData();
+    });
+
+    // Управление сеткой
+    document.getElementById('layoutRows').addEventListener('change', (e) => {
+        layoutRowsCount = parseInt(e.target.value, 10) || 1;
+        buildLayoutSlots();
+    });
+    document.getElementById('layoutCols').addEventListener('change', (e) => {
+        layoutColsCount = parseInt(e.target.value, 10) || 2;
+        buildLayoutSlots();
+    });
+
+    // Удаление компонента через "урну"
+    const trash = document.getElementById('trashBin');
+    trash.addEventListener('dragover', (e) => {
+        if (e.dataTransfer.types.includes('text/plain')) {
+            e.preventDefault();
+            trash.classList.add('dragover');
+        }
+    });
+    trash.addEventListener('dragleave', () => trash.classList.remove('dragover'));
+    trash.addEventListener('drop', (e) => {
+        const type = e.dataTransfer.getData('text/plain');
+        if (!type) return;
+        e.preventDefault();
+        trash.classList.remove('dragover');
+        if (type === 'chart' && chartComponent && chartComponent.parentElement) {
+            chartComponent.parentElement.innerHTML = '';
+            if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+        }
+        if (type === 'grid' && gridComponent && gridComponent.parentElement) {
+            gridComponent.parentElement.innerHTML = '';
+        }
+    });
+
+    // Управление сущностью визуала
+    document.getElementById('chartEntitySelect').addEventListener('change', async () => {
+        await loadChartFields();
+    });
+    document.getElementById('chartApply').addEventListener('click', async () => {
+        await loadChartData();
+    });
+
+    // Поиск по полям (inline)
+    document.getElementById('fieldsSearch').addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase();
+        const filtered = allFields.filter(f => f.label.toLowerCase().includes(q) || f.key.toLowerCase().includes(q));
+        renderFields(filtered);
+    });
+
+    // Выбрать всё
+    document.getElementById('selectAllFields').addEventListener('click', () => {
+        document.querySelectorAll('.entity-field').forEach(ch => ch.checked = true);
+    });
+
+    // Снять всё
+    document.getElementById('clearAllFields').addEventListener('click', () => {
+        document.querySelectorAll('.entity-field').forEach(ch => ch.checked = false);
+    });
+
+    // Модал выбора полей
+    const fieldsModal = new bootstrap.Modal(document.getElementById('fieldsModal'));
+    document.getElementById('openFieldsModal').addEventListener('click', () => {
+        document.getElementById('fieldsSearchModal').value = '';
+        renderFields(allFields);
+        fieldsModal.show();
+    });
+
+    document.getElementById('fieldsSearchModal').addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase();
+        const filtered = allFields.filter(f => f.label.toLowerCase().includes(q) || f.key.toLowerCase().includes(q));
+        renderFields(filtered);
+    });
+
+    const selectAll = () => document.querySelectorAll('.entity-field').forEach(ch => ch.checked = true);
+    const clearAll = () => document.querySelectorAll('.entity-field').forEach(ch => ch.checked = false);
+    document.getElementById('modalSelectAll').addEventListener('click', selectAll);
+    document.getElementById('modalClearAll').addEventListener('click', clearAll);
+
+    document.getElementById('saveFields').addEventListener('click', () => {
+        const fieldInputs = Array.from(document.querySelectorAll('.entity-field'));
+        selectedKeys = fieldInputs.filter(f => f.checked).map(f => f.value);
+        fieldsModal.hide();
+    });
+
+    const addDefaultSmart = (group) => {
+        const opt = document.createElement('option');
+        opt.value = 'smart_process';
+        opt.dataset.entityKey = 'sp:1114';
+        opt.textContent = 'Смарт-процесс 1114';
+        group.appendChild(opt);
+    };
+
+    // Подтянуть список смарт-процессов
+    try {
+        const res = await fetchJson('/api/data-explorer/processes');
+        const list = (res && res.entities)
+            ? (res.entities || []).filter(e => e.type === 'smart_process')
+            : (res.data || res || []);
+        processes = list;
+        const group = document.getElementById('smartProcessesGroup');
+        group.innerHTML = '';
+        list.forEach(p => {
+            const val = p.entity_key || p.code || p.id || '';
+            const name = p.name || p.title || p.caption || val || 'Смарт-процесс';
+            if (!val) return;
+            const opt = document.createElement('option');
+            opt.value = 'smart_process';
+            opt.dataset.entityKey = val.startsWith('sp:') ? val : `sp:${val}`;
+            opt.textContent = name;
+            group.appendChild(opt);
+        });
+        // если пусто, вернуть дефолтный 1114
+        if (!group.children.length) {
+            addDefaultSmart(group);
+        }
+    } catch (err) {
+        console.error('Ошибка загрузки процессов', err);
+        const group = document.getElementById('smartProcessesGroup');
+        if (!group.children.length) {
+            addDefaultSmart(group);
+        }
+    }
+});
+
+function resolveEndpoints(entity, entityKey='', categoryId='') {
+    // сделки по воронке
+    if (entity === 'deal_category' && categoryId !== '') {
+        const encodedCat = encodeURIComponent(categoryId);
+        return {
+            label: `Сделки (воронка ${categoryId})`,
+            fields: endpoints.deal.fields,
+            data: `/api/data-explorer/data?entity=deal&category_id=${encodedCat}&limit=1000`
+        };
+    }
+    // базовые
+    if (endpoints[entity]) return endpoints[entity];
+    // смарт-процессы
+    if (entity === 'smart_process' && entityKey) {
+        const encoded = encodeURIComponent(entityKey);
+        return {
+            label: `Смарт ${entityKey}`,
+            fields: `/api/data-explorer/fields?entity=smart_process&entity_key=${encoded}`,
+            data: `/api/data-explorer/data?entity=smart_process&entity_key=${encoded}&limit=1000`
+        };
+    }
+    return endpoints['deal'];
+}
+</script>
+{% endblock javascripts %}
+

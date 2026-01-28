@@ -1,0 +1,511 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Products{% endblock %}
+
+{% block styles %}
+<link href="{{ config.ASSETS_ROOT }}/libs/simple-datatables/style.css" rel="stylesheet" type="text/css"/>
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Products</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">Ecommerce</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Products</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Products</h4>
+                    </div><!--end col-->
+                    <div class="col-auto">
+                        <form class="row g-2">
+                            <div class="col-auto">
+                                <a aria-expanded="false" aria-haspopup="false"
+                                   class="btn bg-primary-subtle text-primary dropdown-toggle d-flex align-items-center arrow-none"
+                                   data-bs-auto-close="outside" data-bs-toggle="dropdown" href="#" role="button">
+                                    <i class="iconoir-filter-alt me-1"></i> Filter
+                                </a>
+                                <div class="dropdown-menu dropdown-menu-start">
+                                    <div class="p-2">
+                                        <div class="form-check mb-2">
+                                            <input checked="" class="form-check-input" id="filter-all" type="checkbox"/>
+                                            <label class="form-check-label" for="filter-all">
+                                                All
+                                            </label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input checked="" class="form-check-input" id="filter-one" type="checkbox"/>
+                                            <label class="form-check-label" for="filter-one">
+                                                Fashion
+                                            </label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input checked="" class="form-check-input" id="filter-two" type="checkbox"/>
+                                            <label class="form-check-label" for="filter-two">
+                                                Plants
+                                            </label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input checked="" class="form-check-input" id="filter-three"
+                                                   type="checkbox"/>
+                                            <label class="form-check-label" for="filter-three">
+                                                Toys
+                                            </label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input checked="" class="form-check-input" id="filter-four"
+                                                   type="checkbox"/>
+                                            <label class="form-check-label" for="filter-four">
+                                                Gadgets
+                                            </label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input checked="" class="form-check-input" id="filter-five"
+                                                   type="checkbox"/>
+                                            <label class="form-check-label" for="filter-five">
+                                                Food
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input checked="" class="form-check-input" id="filter-six" type="checkbox"/>
+                                            <label class="form-check-label" for="filter-six">
+                                                Drinks
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div><!--end col-->
+                            <div class="col-auto">
+                                <button class="btn btn-primary" data-bs-target="#addBoard" data-bs-toggle="modal"
+                                        type="button"><i class="fa-solid fa-plus me-1"></i> Add Product
+                                </button>
+                            </div><!--end col-->
+                        </form>
+                    </div><!--end col-->
+                </div><!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table mb-0 checkbox-all" id="datatable_1">
+                        <thead class="table-light">
+                        <tr>
+                            <th style="width: 16px;">
+                                <div class="form-check mb-0 ms-n1">
+                                    <input class="form-check-input" id="select-all" name="select-all" type="checkbox"/>
+                                </div>
+                            </th>
+                            <th class="ps-0">Product Name</th>
+                            <th>Category</th>
+                            <th>Pics</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td style="width: 16px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" id="customCheck1" name="check" type="checkbox"/>
+                                </div>
+                            </td>
+                            <td class="ps-0">
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/04.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <a class="d-inline-block align-middle mb-0 product-name"
+                                       href="/ecommerce-order-details">Apple Watch</a>
+                                    <br/>
+                                    <span class="text-muted font-13">Size-05 (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td>Sports</td>
+                            <td>32</td>
+                            <td>$39</td>
+                            <td><span class="badge bg-success-subtle text-success"><i class="fas fa-check me-1"></i> Published</span>
+                            </td>
+                            <td>
+                                <span>14 Jan 2024, 10:30am</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="#"><i class="las la-pen text-secondary fs-18"></i></a>
+                                <a href="#"><i class="las la-trash-alt text-secondary fs-18"></i></a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 16px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" id="customCheck2" name="check" type="checkbox"/>
+                                </div>
+                            </td>
+                            <td class="ps-0">
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/01.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <a class="d-inline-block align-middle mb-0 product-name"
+                                       href="/ecommerce-order-details">Morden Chair</a>
+                                    <br/>
+                                    <span class="text-muted font-13">Size-Mediam (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td>Interior</td>
+                            <td>10</td>
+                            <td>$99</td>
+                            <td><span class="badge bg-success-subtle text-success"><i class="fas fa-check me-1"></i> Published</span>
+                            </td>
+                            <td>
+                                <span>18 Jan 2024, 12:10am</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="#"><i class="las la-pen text-secondary fs-18"></i></a>
+                                <a href="#"><i class="las la-trash-alt text-secondary fs-18"></i></a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 16px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" id="customCheck3" name="check" type="checkbox"/>
+                                </div>
+                            </td>
+                            <td class="ps-0">
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/05.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <a class="d-inline-block align-middle mb-0 product-name"
+                                       href="/ecommerce-order-details">Reebok Shoes</a>
+                                    <br/>
+                                    <span class="text-muted font-13">size-08 (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td>Footwear</td>
+                            <td>24</td>
+                            <td>$49</td>
+                            <td><span class="badge bg-danger-subtle text-danger"><i class="fas fa-xmark me-1"></i> Inactive</span>
+                            </td>
+                            <td>
+                                <span>24 Jan 2024, 09:10pm</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="#"><i class="las la-pen text-secondary fs-18"></i></a>
+                                <a href="#"><i class="las la-trash-alt text-secondary fs-18"></i></a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 16px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" id="customCheck4" name="check" type="checkbox"/>
+                                </div>
+                            </td>
+                            <td class="ps-0">
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/06.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <a class="d-inline-block align-middle mb-0 product-name"
+                                       href="/ecommerce-order-details">Cosco Vollyboll</a>
+                                    <br/>
+                                    <span class="text-muted font-13">size-04 (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td>Sports</td>
+                            <td>8</td>
+                            <td>$49</td>
+                            <td><span class="badge bg-success-subtle text-success"><i class="fas fa-check me-1"></i> Published</span>
+                            </td>
+                            <td>
+                                <span>08 Feb 2024, 03:30pm</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="#"><i class="las la-pen text-secondary fs-18"></i></a>
+                                <a href="#"><i class="las la-trash-alt text-secondary fs-18"></i></a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 16px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" id="customCheck5" name="check" type="checkbox"/>
+                                </div>
+                            </td>
+                            <td class="ps-0">
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/04.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <a class="d-inline-block align-middle mb-0 product-name"
+                                       href="/ecommerce-order-details">Royal Purse</a>
+                                    <br/>
+                                    <span class="text-muted font-13">Pure Lether 100%</span>
+                                </p>
+                            </td>
+                            <td>Life Style</td>
+                            <td>52</td>
+                            <td>$89</td>
+                            <td><span class="badge bg-success-subtle text-success"><i class="fas fa-check me-1"></i> Published</span>
+                            </td>
+                            <td>
+                                <span>20 Feb 2024, 11:30am</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="#"><i class="las la-pen text-secondary fs-18"></i></a>
+                                <a href="#"><i class="las la-trash-alt text-secondary fs-18"></i></a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 16px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" id="customCheck6" name="check" type="checkbox"/>
+                                </div>
+                            </td>
+                            <td class="ps-0">
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/03.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <a class="d-inline-block align-middle mb-0 product-name"
+                                       href="/ecommerce-order-details">New Morden Chair</a>
+                                    <br/>
+                                    <span class="text-muted font-13">size-05 (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td>Interior</td>
+                            <td>6</td>
+                            <td>$20</td>
+                            <td><span class="badge bg-secondary-subtle text-secondary"><i
+                                    class="fas fa-box-archive me-1"></i> Draft</span></td>
+                            <td>
+                                <span>14 Jan 2024, 10:30am</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="#"><i class="las la-pen text-secondary fs-18"></i></a>
+                                <a href="#"><i class="las la-trash-alt text-secondary fs-18"></i></a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 16px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" id="customCheck7" name="check" type="checkbox"/>
+                                </div>
+                            </td>
+                            <td class="ps-0">
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/02.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <a class="d-inline-block align-middle mb-0 product-name"
+                                       href="/ecommerce-order-details">Important Chair</a>
+                                    <br/>
+                                    <span class="text-muted font-13">size-05 (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td>Interior</td>
+                            <td>32</td>
+                            <td>$39</td>
+                            <td><span class="badge bg-success-subtle text-success"><i class="fas fa-check me-1"></i> Published</span>
+                            </td>
+                            <td>
+                                <span>02 Mar 2024, 10:30am</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="#"><i class="las la-pen text-secondary fs-18"></i></a>
+                                <a href="#"><i class="las la-trash-alt text-secondary fs-18"></i></a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 16px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" id="customCheck8" name="check" type="checkbox"/>
+                                </div>
+                            </td>
+                            <td class="ps-0">
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/02.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <a class="d-inline-block align-middle mb-0 product-name"
+                                       href="/ecommerce-order-details">Nivya Footboll</a>
+                                    <br/>
+                                    <span class="text-muted font-13">Size-05 (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td>Sports</td>
+                            <td>32</td>
+                            <td>$39</td>
+                            <td><span class="badge bg-danger-subtle text-danger"><i class="fas fa-xmark me-1"></i> Inactive</span>
+                            </td>
+                            <td>
+                                <span>11 Mar 2024, 05:30am</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="#"><i class="las la-pen text-secondary fs-18"></i></a>
+                                <a href="#"><i class="las la-trash-alt text-secondary fs-18"></i></a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 16px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" id="customCheck9" name="check" type="checkbox"/>
+                                </div>
+                            </td>
+                            <td class="ps-0">
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/01.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <a class="d-inline-block align-middle mb-0 product-name"
+                                       href="/ecommerce-order-details">Green Morden Chair</a>
+                                    <br/>
+                                    <span class="text-muted font-13">Size-Mediam (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td>Interior</td>
+                            <td>10</td>
+                            <td>$99</td>
+                            <td><span class="badge bg-success-subtle text-success"><i class="fas fa-check me-1"></i> Published</span>
+                            </td>
+                            <td>
+                                <span>28 Mar 2024, 08:45am</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="#"><i class="las la-pen text-secondary fs-18"></i></a>
+                                <a href="#"><i class="las la-trash-alt text-secondary fs-18"></i></a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 16px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" id="customCheck10" name="check" type="checkbox"/>
+                                </div>
+                            </td>
+                            <td class="ps-0">
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/01.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <a class="d-inline-block align-middle mb-0 product-name"
+                                       href="/ecommerce-order-details">Bata Shoes</a>
+                                    <br/>
+                                    <span class="text-muted font-13">size-08 (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td>Footwear</td>
+                            <td>24</td>
+                            <td>$49</td>
+                            <td><span class="badge bg-secondary-subtle text-secondary"><i
+                                    class="fas fa-box-archive me-1"></i> Draft</span></td>
+                            <td>
+                                <span>05 Apr 2024, 12:30am</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="#"><i class="las la-pen text-secondary fs-18"></i></a>
+                                <a href="#"><i class="las la-trash-alt text-secondary fs-18"></i></a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 16px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" id="customCheck11" name="check" type="checkbox"/>
+                                </div>
+                            </td>
+                            <td class="ps-0">
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/06.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <a class="d-inline-block align-middle mb-0 product-name"
+                                       href="/ecommerce-order-details">Cosco Vollyboll</a>
+                                    <br/>
+                                    <span class="text-muted font-13">size-04 (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td>Sports</td>
+                            <td>8</td>
+                            <td>$49</td>
+                            <td><span class="badge bg-success-subtle text-success"><i class="fas fa-check me-1"></i> Published</span>
+                            </td>
+                            <td>
+                                <span>10 Apr 2024, 10:30am</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="#"><i class="las la-pen text-secondary fs-18"></i></a>
+                                <a href="#"><i class="las la-trash-alt text-secondary fs-18"></i></a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 16px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" id="customCheck12" name="check" type="checkbox"/>
+                                </div>
+                            </td>
+                            <td class="ps-0">
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/04.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <a class="d-inline-block align-middle mb-0 product-name"
+                                       href="/ecommerce-order-details">Royal Purse</a>
+                                    <br/>
+                                    <span class="text-muted font-13">Pure Lether 100%</span>
+                                </p>
+                            </td>
+                            <td>Life Style</td>
+                            <td>52</td>
+                            <td>$89</td>
+                            <td><span class="badge bg-success-subtle text-success"><i class="fas fa-check me-1"></i> Published</span>
+                            </td>
+                            <td>
+                                <span>20 Apr 2024, 10:30am</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="#"><i class="las la-pen text-secondary fs-18"></i></a>
+                                <a href="#"><i class="las la-trash-alt text-secondary fs-18"></i></a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 16px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" id="customCheck13" name="check" type="checkbox"/>
+                                </div>
+                            </td>
+                            <td class="ps-0">
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/03.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <a class="d-inline-block align-middle mb-0 product-name"
+                                       href="/ecommerce-order-details">New Morden Chair</a>
+                                    <br/>
+                                    <span class="text-muted font-13">size-05 (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td>Interior</td>
+                            <td>6</td>
+                            <td>$20</td>
+                            <td><span class="badge bg-success-subtle text-success"><i class="fas fa-check me-1"></i> Published</span>
+                            </td>
+                            <td>
+                                <span>08 May 2024, 01:30am</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="#"><i class="las la-pen text-secondary fs-18"></i></a>
+                                <a href="#"><i class="las la-trash-alt text-secondary fs-18"></i></a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div> <!-- end col -->
+</div> <!-- end row -->
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/libs/simple-datatables/umd/simple-datatables.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/js/pages/datatable.init.js"></script>
+
+{% endblock javascripts %}

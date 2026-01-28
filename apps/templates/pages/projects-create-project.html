@@ -1,0 +1,182 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Create new{% endblock %}
+
+{% block styles %}
+
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Create New</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">Projects</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Create</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="row g-0 h-100">
+                        <div class="col-lg-7 border-end">
+                            <form class="p-4 pt-3">
+                                <div class="form-group mb-2 mb-lg-1">
+                                    <label class="form-label" for="projectName">Project Name :</label>
+                                    <input aria-describedby="emailHelp" class="form-control" id="projectName"
+                                           placeholder="Enter project name" type="text"/>
+                                </div><!--end form-group-->
+                                <div class="form-group">
+                                    <div class="row">
+                                        <div class="col-lg-3 col-6 mb-2 mb-lg-1">
+                                            <label class="form-label mt-2" for="pro-start-date">Start Date</label>
+                                            <input class="form-control" id="pro-start-date" name="startdate"
+                                                   placeholder="Enter start date" type="text"/>
+                                        </div><!--end col-->
+                                        <div class="col-lg-3 col-6 mb-2 mb-lg-1">
+                                            <label class="form-label mt-2" for="pro-end-date">End Date</label>
+                                            <input class="form-control" id="pro-end-date" name="enddate"
+                                                   placeholder="Enter end date" type="text"/>
+                                        </div><!--end col-->
+                                        <div class="col-lg-3 col-6 mb-2 mb-lg-1">
+                                            <label class="form-label mt-2" for="pro-rate">Rate</label>
+                                            <input class="form-control" id="pro-rate" placeholder="Enter rate"
+                                                   type="text"/>
+                                        </div><!--end col-->
+                                        <div class="col-lg-3 col-6 mb-2 mb-lg-1">
+                                            <label class="form-label mt-2" for="pro-price-type">Price Type</label>
+                                            <select class="form-select">
+                                                <option>Hourly</option>
+                                                <option>Daily</option>
+                                                <option>Fix</option>
+                                            </select>
+                                        </div><!--end col-->
+                                    </div><!--end row-->
+                                </div><!--end form-group-->
+                                <div class="form-group">
+                                    <div class="row">
+                                        <div class="col-lg-6 mb-2 mb-lg-1">
+                                            <label class="form-label mt-2">Required</label>
+                                            <select class="form-select">
+                                                <option>--Select--</option>
+                                                <option>UI/UX Design</option>
+                                                <option>Payment System</option>
+                                                <option>Android 10</option>
+                                            </select>
+                                        </div><!--end col-->
+                                        <div class="col-lg-3 col-6">
+                                            <label class="form-label mt-2">Invoice Time</label>
+                                            <select class="form-select">
+                                                <option>30 Day</option>
+                                                <option>3 Month</option>
+                                                <option>1 Year</option>
+                                            </select>
+                                        </div><!--end col-->
+                                        <div class="col-lg-3 col-6">
+                                            <label class="form-label mt-2">Priority</label>
+                                            <select class="form-select">
+                                                <option>-- select --</option>
+                                                <option>High</option>
+                                                <option>Medium</option>
+                                                <option>Low</option>
+                                            </select>
+                                        </div><!--end col-->
+                                    </div><!--end row-->
+                                </div><!--end form-group-->
+                                <div class="form-group mb-3">
+                                    <label class="form-label mt-2" for="pro-message">Message</label>
+                                    <textarea class="form-control" id="pro-message" placeholder="writing here.."
+                                              rows="5"></textarea>
+                                </div><!--end form-group-->
+                                <button class="btn btn-primary" type="submit">Create project</button>
+                                <button class="btn btn-danger" type="button">Cancel</button>
+                            </form> <!--end form-->
+                        </div><!--end col-->
+                        <div class="col-lg-5 align-self-center">
+                            <form class="p-4">
+                                <div class="form-group">
+                                    <div class="d-flex align-items-center">
+                                        <img alt="" class="thumb-xxl rounded me-3"
+                                             src="{{ config.ASSETS_ROOT }}/images/logos/lang-logo/nextjs.png"/>
+                                        <div class="flex-grow-1 text-truncate">
+                                            <label class="btn btn-primary text-light">
+                                                Change Avatar <input hidden="" type="file"/>
+                                            </label>
+                                        </div><!--end media body-->
+                                    </div>
+                                </div><!--end form-group-->
+                                <h5 class="fw-normal my-3 lh-lg">There are many variations of passages of Lorem Ipsum
+                                    available, but the majority have suffered alteration in some form, by injected
+                                    humour, or randomised.</h5>
+                                <div class="form-group">
+                                    <label class="form-label" for="team-leader">Project team leaders</label>
+                                    <div class="img-group d-flex justify-content-start">
+                                        <a class="user-avatar position-relative d-inline-block" href="#">
+                                            <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                                 src="{{ config.ASSETS_ROOT }}/images/users/avatar-1.jpg"/>
+                                        </a>
+                                        <a class="user-avatar position-relative d-inline-block ms-n2" href="#">
+                                            <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                                 src="{{ config.ASSETS_ROOT }}/images/users/avatar-2.jpg"/>
+                                        </a>
+                                        <a class="user-avatar position-relative d-inline-block ms-n2" href="#">
+                                            <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                                 src="{{ config.ASSETS_ROOT }}/images/users/avatar-4.jpg"/>
+                                        </a>
+                                        <a class="user-avatar position-relative d-inline-block ms-n2" href="#">
+                                            <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                                 src="{{ config.ASSETS_ROOT }}/images/users/avatar-5.jpg"/>
+                                        </a>
+                                        <a class="user-avatar position-relative d-inline-block ms-n2" href="#">
+                                            <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                                 src="{{ config.ASSETS_ROOT }}/images/users/avatar-4.jpg"/>
+                                        </a>
+                                        <a class="user-avatar position-relative d-inline-block ms-n2" href="#">
+                                            <img alt="avatar" class="thumb-md shadow-sm rounded-circle"
+                                                 src="{{ config.ASSETS_ROOT }}/images/users/avatar-6.jpg"/>
+                                        </a>
+                                        <a class="user-avatar position-relative d-inline-block ms-1" href="">
+                                            <span class="thumb-md shadow-sm justify-content-center d-flex align-items-center bg-info-subtle rounded-circle fw-semibold fs-6">+32</span>
+                                        </a>
+                                    </div>
+                                    <input id="add-member" multiple="" name="files[]" style="display: none;"
+                                           type="file"/>
+                                </div><!--end form-group-->
+                                <div class="p-3 border-info border-dashed bg-info-subtle mt-3 rounded">
+                                    <div class="row d-flex justify-content-center">
+                                        <div class="col">
+                                            <div class="">
+                                                <a class="fw-bold me-1 text-info" href="#">You've almost reached your
+                                                    goal</a> 75% of your goals are completed just complate 25% of
+                                                remaining goals to achieve your target.
+                                            </div>
+                                        </div><!--end col-->
+                                        <div class="col-auto align-self-center">
+                                            <span class="badge rounded text-info bg-transparent border border-info mb-2 p-1">Last Create Project</span>
+                                            <p class="text-dark fw-semibold fs-13">15 Dec 2024, AM-10:15</p>
+                                        </div><!--end col-->
+                                    </div><!--end row-->
+                                </div>
+                            </form>
+                        </div><!--end col-->
+                    </div><!--end row-->
+                </div>
+            </div>
+        </div> <!-- end col -->
+    </div> <!-- end row -->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+
+{% endblock javascripts %}

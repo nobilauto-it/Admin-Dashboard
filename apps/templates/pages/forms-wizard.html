@@ -1,0 +1,346 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Wizard{% endblock %}
+
+{% block styles %}
+
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Wizard</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">Forms</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Wizard</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Custom Steps Wizard</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <form action="" id="custom-step" method="post">
+                    <nav>
+                        <div class="nav nav-tabs" id="nav-tab">
+                            <a class="nav-link py-2 active" data-bs-toggle="tab" href="#step1" id="step1-tab">Seller
+                                Details</a>
+                            <a class="nav-link py-2" data-bs-toggle="tab" href="#step2" id="step2-tab">Company
+                                Document</a>
+                            <a class="nav-link py-2" data-bs-toggle="tab" href="#step3" id="step3-tab">Bank Details</a>
+                            <a class="nav-link py-2" data-bs-toggle="tab" href="#step4" id="step4-tab">Confirm
+                                Detail</a>
+                        </div>
+                    </nav>
+                    <div class="tab-content" id="nav-tabContent">
+                        <div class="tab-pane active" id="step1">
+                            <h4 class="card-title my-4 fs-15">Seller Details</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtFirstNameBilling">Contact
+                                            Person</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtFirstNameBilling"
+                                                   name="txtFirstNameBilling" type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtLastNameBilling">Mobile
+                                            No.</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtLastNameBilling"
+                                                   name="txtLastNameBilling" type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                            </div><!--end row-->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtCompanyBilling">Landline
+                                            No.</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtCompanyBilling" name="txtCompanyBilling"
+                                                   type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtEmailAddressBilling">Email
+                                            Address</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtEmailAddressBilling"
+                                                   name="txtEmailAddressBilling" type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                            </div><!--end row-->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtAddress1Billing">Address
+                                            1</label>
+                                        <div class="col-lg-9">
+                                            <textarea class="form-control" id="txtAddress1Billing"
+                                                      name="txtAddress1Billing" rows="4"></textarea>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtAddress2Billing">Warehouse
+                                            Address</label>
+                                        <div class="col-lg-9">
+                                            <textarea class="form-control" id="txtAddress2Billing"
+                                                      name="txtAddress2Billing" rows="4"></textarea>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                            </div><!--end row-->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtCityBilling">Company
+                                            Type</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtCityBilling" name="txtCityBilling"
+                                                   type="text"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtStateProvinceBilling">Live
+                                            Market A/C</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtStateProvinceBilling"
+                                                   name="txtStateProvinceBilling" type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                            </div><!--end row-->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtTelephoneBilling">Product
+                                            Category</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtTelephoneBilling"
+                                                   name="txtTelephoneBilling" type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtFaxBilling">Product Sub
+                                            Category</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtFaxBilling" name="txtFaxBilling"
+                                                   type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                            </div><!--end row-->
+                            <div class="mt-2">
+                                <button class="btn btn-primary float-end" id="step1Next" type="button">Next</button>
+                            </div>
+                        </div>
+                        <div class="tab-pane" id="step2">
+                            <h4 class="card-title my-4 fs-15">Company Document</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtFirstNameShipping">PAN
+                                            Card</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtFirstNameShipping"
+                                                   name="txtFirstNameShipping" type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtLastNameShipping">VAT/TIN
+                                            No.</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtLastNameShipping"
+                                                   name="txtLastNameShipping" type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                            </div><!--end row-->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtCompanyShipping">CST
+                                            No.</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtCompanyShipping"
+                                                   name="txtCompanyShipping" type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtEmailAddressShipping">Service
+                                            Tax No.</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtEmailAddressShipping"
+                                                   name="txtEmailAddressShipping" type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                            </div><!--end row-->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtCityShipping">Company
+                                            UIN</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtCityShipping" name="txtCityShipping"
+                                                   type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtStateProvinceShipping">Declaration</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtStateProvinceShipping"
+                                                   name="txtStateProvinceShipping" type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                            </div><!--end row-->
+                            <div>
+                                <button class="btn btn-secondary float-start mt-2" id="step2Prev" type="button">
+                                    Previous
+                                </button>
+                                <button class="btn btn-primary float-end mt-2" id="step2Next" type="button">Next
+                                </button>
+                            </div>
+                        </div>
+                        <div class="tab-pane" id="step3">
+                            <h4 class="card-title my-4 fs-15">Bank Details</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtNameCard">Name on
+                                            Card</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtNameCard" name="txtNameCard"
+                                                   type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="ddlCreditCardType">Credit
+                                            Card Type</label>
+                                        <div class="col-lg-9">
+                                            <select class="form-select" id="ddlCreditCardType" name="ddlCreditCardType">
+                                                <option value="">--Please Select--</option>
+                                                <option value="AE">American Express</option>
+                                                <option value="VI">Visa</option>
+                                                <option value="MC">MasterCard</option>
+                                                <option value="DI">Discover</option>
+                                            </select>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                            </div><!--end row-->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtCreditCardNumber">Credit
+                                            Card Number</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtCreditCardNumber"
+                                                   name="txtCreditCardNumber" type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtCardVerificationNumber">Card
+                                            Verification Number</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtCardVerificationNumber"
+                                                   name="txtCardVerificationNumber" type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                            </div><!--end row-->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group row mb-2">
+                                        <label class="col-lg-3 col-form-label text-end" for="txtExpirationDate">Expiration
+                                            Date</label>
+                                        <div class="col-lg-9">
+                                            <input class="form-control" id="txtExpirationDate" name="txtExpirationDate"
+                                                   type="text"/>
+                                        </div>
+                                    </div><!--end form-group-->
+                                </div><!--end col-->
+                            </div><!--end row-->
+                            <div>
+                                <button class="btn btn-secondary float-start mt-2" id="step3Prev" type="button">
+                                    Previous
+                                </button>
+                                <button class="btn btn-primary float-end mt-2" id="step3Next" type="button">Next
+                                </button>
+                            </div>
+                        </div>
+                        <div class="tab-pane" id="step4">
+                            <h4 class="card-title my-4 fs-15">Confirm Detail</h4>
+                            <div class="form-check my-4 text-center">
+                                <img alt="" class="mb-3" height="60"
+                                     src="{{ config.ASSETS_ROOT }}/images/extra/task.png"/>
+                                <h4 class="mb-1 fs-16">You are all set!</h4>
+                                <p class="text-muted">Now you can access your account anytime anywhere</p>
+                                <div>
+                                    <input class="form-check-input float-none" id="flexCheckDefault" type="checkbox"
+                                           value=""/>
+                                    <label class="form-check-label" for="flexCheckDefault">
+                                        I agree with the Terms and Conditions.
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn btn-secondary float-start mt-2" id="step4Prev" type="button">
+                                    Previous
+                                </button>
+                                <button class="btn btn-danger float-end mt-2" id="step4Finish" type="button">Finish
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form><!--end form-->
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/js/pages/form-wizard.js"></script>
+
+{% endblock javascripts %}

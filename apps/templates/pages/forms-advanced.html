@@ -1,0 +1,197 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Advanced{% endblock %}
+
+{% block styles %}
+<link href="{{ config.ASSETS_ROOT }}/libs/mobius1-selectr/selectr.min.css" rel="stylesheet" type="text/css"/>
+<link href="{{ config.ASSETS_ROOT }}/libs/huebee/huebee.min.css" rel="stylesheet" type="text/css"/>
+<link href="{{ config.ASSETS_ROOT }}/libs/vanillajs-datepicker/css/datepicker.min.css" rel="stylesheet"
+      type="text/css"/>
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Advanced</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">Forms</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Advanced</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Selectr Componentse</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <label class="mb-2">Default Select</label>
+                        <select id="default">
+                            <option value="value-1">Value 1</option>
+                            <option value="value-2">Value 2</option>
+                            <option value="value-3">Value 3</option>
+                        </select>
+                    </div><!-- end col -->
+                    <div class="col-md-4">
+                        <label class="mb-2">Multi Select</label>
+                        <select id="multiSelect">
+                            <option value="value-1">Value 1</option>
+                            <option value="value-2">Value 2</option>
+                            <option value="value-3">Value 3</option>
+                        </select>
+                    </div> <!-- end col -->
+                    <div class="col-md-4">
+                        <label class="mb-2">Taggable Select</label>
+                        <select id="taggableSelect">
+                            <option value="value-1">Value 1</option>
+                            <option value="value-2">Value 2</option>
+                            <option value="value-3">Value 3</option>
+                        </select>
+                    </div> <!-- end col -->
+                </div><!-- end row -->
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Huebee Color</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <input class="form-control color-input" value="#22c55e"/>
+                    </div><!-- end col -->
+                    <div class="col-md-4">
+                        <input class="form-control" data-huebee="" value="#fac146"/>
+                    </div> <!-- end col -->
+                    <div class="col-md-4">
+                        <input class="form-control" data-huebee='{ "setBGColor": true, "saturations": 2 }'
+                               value="#f7f8f9"/>
+                    </div> <!-- end col -->
+                </div><!-- end row -->
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Custom Touch Spin</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="input-group qty-icons w-50">
+                    <button class="btn btn-primary"
+                            onclick="this.parentNode.querySelector('input[type=number]').stepDown()">-
+                    </button>
+                    <input class="form-control" min="0" name="quantity" style="pointer-events: none;" type="number"
+                           value="0"/>
+                    <button class="btn btn-primary"
+                            onclick="this.parentNode.querySelector('input[type=number]').stepUp()">+
+                    </button>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Vanilla JS Datepicker</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <label class="mb-2">Default Datepicker</label>
+                        <input class="form-control mb-3" name="foo" type="text"/>
+                        <label class="mb-2">Date Range Picker</label>
+                        <div class="input-group" id="DateRange">
+                            <input aria-label="StartDate" class="form-control" placeholder="Start" type="text"/>
+                            <span class="input-group-text">to</span>
+                            <input aria-label="EndDate" class="form-control rounded-end" placeholder="End" type="text"/>
+                        </div>
+                    </div><!-- end col -->
+                    <div class="col-md-6">
+                        <label class="my-2">Inline Datepicker</label>
+                        <div id="inline_calendar"></div>
+                    </div> <!-- end col -->
+                </div><!-- end row -->
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Mask</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="mb-2">
+                    <label class="mb-2">RegExp (Russian postal code) <span class="desc ms-2 font-11 text-muted">/^[1-6]\d{0,5}$/</span></label>
+                    <input class="form-control" id="regexp-mask" type="text" value=""/>
+                </div>
+                <div class="mb-2">
+                    <label class="mb-2">Type here against mask <span class="desc ms-2 font-11 text-muted">+{7}(000)000-00-00</span></label>
+                    <input class="form-control" id="start-phone-mask" type="text" value=""/>
+                    <div class="desc font-11 text-muted">unmasked: <span id="start-phone-unmasked"></span><span
+                            class="example__complete" id="start-phone-complete"></span></div>
+                </div>
+                <div class="mb-2">
+                    <label class="mb-2">Mask in overwrite and autofix modes</label>
+                    <input class="form-control" id="date-overwrite-mask" type="text" value=""/>
+                </div>
+                <div class="mb-2">
+                    <label class="mb-2">Type to uppercase</label>
+                    <input class="form-control" id="uppercase-mask" type="text" value=""/>
+                </div>
+                <div>
+                    <label class="mb-2">Date and time</label>
+                    <input class="form-control" id="moment-mask" type="text" value=""/>
+                    <div class="desc font-11 text-muted">date: <span id="moment-value"></span></div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/libs/mobius1-selectr/selectr.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/libs/huebee/huebee.pkgd.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/libs/vanillajs-datepicker/js/datepicker-full.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/js/moment.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/libs/imask/imask.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/js/pages/forms-advanced.js"></script>
+
+{% endblock javascripts %}

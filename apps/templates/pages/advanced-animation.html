@@ -1,0 +1,269 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Animation{% endblock %}
+
+{% block styles %}
+<link href="{{ config.ASSETS_ROOT }}/libs/magic.css/magic.min.css" rel="stylesheet"/>
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Animation</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">Advanced UI</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Animation</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Masic Animation</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="text-center">
+                    <div class="position-relative d-inline-block mx-auto">
+                        <div id="animate-me">
+                            <div class="shadow-sm p-4 d-inline-block rounded-circle">
+                                <img alt="" class="center-block thumb-xl"
+                                     src="{{ config.ASSETS_ROOT }}/images/logo-sm.png"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-5">
+                    <div class="row">
+                        <div class="col-lg-6 mx-auto text-center button-list container-magic-bottom container text-center"
+                             id="content">
+                            <div data-simplebar="" style="height: 450px;">
+                                <h5 class="my-3 fs-15">Magic Effects</h5>
+                                <button class="btn btn-outline-secondary btn-sm mb-1" data-test="vanishIn"
+                                        type="button">Masic
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="twisterInDown" type="button">TwisterInDown
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="twisterInUp" type="button">TwisterInUp
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1" data-test="swap"
+                                        type="button">Swap
+                                </button>
+                                <h5 class="my-3 fs-15">Bling</h5>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1" data-test="puffIn"
+                                        type="button">PuffIn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1" data-test="puffOut"
+                                        type="button">PuffOut
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1" data-test="vanishIn"
+                                        type="button">VanishIn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="vanishOut" type="button">VanishOut
+                                </button>
+                                <h5 class="my-3 fs-15">Static Effects</h5>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="openDownLeft" type="button">OpenDownLeft
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="openDownRight" type="button">OpenDownRight
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="openUpLeft" type="button">OpenUpLeft
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="openUpRight" type="button">OpenUpRight
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="openDownLeftReturn" type="button">OpenDownLeftReturn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="openDownRightReturn" type="button">OpenDownRightReturn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="openUpLeftReturn" type="button">OpenUpLeftReturn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="openUpRightReturn" type="button">OpenUpRightReturn
+                                </button>
+                                <h5 class="my-3 fs-15">Static Effects Out</h5>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="openDownLeftOut" type="button">OpenDownLeftOut
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="openDownRightOut" type="button">OpenDownRightOut
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="openUpLeftOut" type="button">OpenUpLeftOut
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="openUpRightOut" type="button">OpenUpRightOut
+                                </button>
+                                <h5 class="my-3 fs-15">Perspective</h5>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="perspectiveDown" type="button">PerspectiveDown
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="perspectiveUp" type="button">PerspectiveUp
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="perspectiveLeft" type="button">PerspectiveLeft
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="perspectiveRight" type="button">PerspectiveRight
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="perspectiveDownReturn" type="button">PerspectiveDownReturn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="perspectiveUpReturn" type="button">PerspectiveUpReturn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="perspectiveLeftReturn" type="button">PerspectiveLeftReturn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="perspectiveRightReturn" type="button">PerspectiveRightReturn
+                                </button>
+                                <h5 class="my-3 fs-15">Rotate</h5>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="rotateDown" type="button">RotateDown
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1" data-test="rotateUp"
+                                        type="button">RotateUp
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="rotateLeft" type="button">RotateLeft
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="rotateRight" type="button">RotateRight
+                                </button>
+                                <h5 class="my-3 fs-15">Slide</h5>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="slideDown" type="button">SlideDown
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1" data-test="slideUp"
+                                        type="button">SlideUp
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="slideLeft" type="button">SlideLeft
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="slideRight" type="button">SlideRight
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="slideDownReturn" type="button">SlideDownReturn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="slideUpReturn" type="button">SlideUpReturn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="slideLeftReturn" type="button">SlideLeftReturn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="slideRightReturn" type="button">SlideRightReturn
+                                </button>
+                                <h5 class="my-3 fs-15">Math</h5>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1" data-test="swashOut"
+                                        type="button">SwashOut
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1" data-test="swashIn"
+                                        type="button">SwashIn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="foolishIn" type="button">FoolishIn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1" data-test="holeOut"
+                                        type="button">HoleOut
+                                </button>
+                                <h5 class="my-3 fs-15">Tin</h5>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="tinRightOut" type="button">TinRightOut
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="tinLeftOut" type="button">TinLeftOut
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1" data-test="tinUpOut"
+                                        type="button">TinUpOut
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="tinDownOut" type="button">TinDownOut
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="tinRightIn" type="button">TinRightIn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="tinLeftIn" type="button">TinLeftIn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1" data-test="tinUpIn"
+                                        type="button">TinUpIn
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="tinDownIn" type="button">TinDownIn
+                                </button>
+                                <h5 class="my-3 fs-15">Bomb</h5>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="bombRightOut" type="button">BombRightOut
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="bombLeftOut" type="button">BombLeftOut
+                                </button>
+                                <h5 class="my-3 fs-15">Boing</h5>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="boingInUp" type="button">BoingInUp
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="boingOutDown" type="button">BoingOutDown
+                                </button>
+                                <h5 class="my-3 fs-15">On The Space</h5>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="spaceOutUp" type="button">SpaceOutUp
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="spaceOutRight" type="button">SpaceOutRight
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="spaceOutDown" type="button">SpaceOutDown
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="spaceOutLeft" type="button">SpaceOutLeft
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="spaceInUp" type="button">SpaceInUp
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="spaceInRight" type="button">SpaceInRight
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="spaceInDown" type="button">SpaceInDown
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm btn-animation mb-1"
+                                        data-test="spaceInLeft" type="button">SpaceInLeft
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/js/pages/animation.init.js"></script>
+
+{% endblock javascripts %}

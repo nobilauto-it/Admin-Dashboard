@@ -1,0 +1,82 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Deals{% endblock %}
+
+{% block styles %}
+<link href="{{ config.ASSETS_ROOT }}/libs/simple-datatables/style.css" rel="stylesheet" type="text/css"/>
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Deals</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Deals</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Deals List</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table datatable" id="datatable_deals">
+                        <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Stage</th>
+                            <th>Begin Date</th>
+                            <th>Close Date</th>
+                            <th>Amount</th>
+                            <th>Automobile</th>
+                            <th>Assigned By</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for deal in deals %}
+                        <tr>
+                            <td>{{ deal.deal_id }}</td>
+                            <td>{{ deal.title }}</td>
+                            <td>{{ deal.stage_id }}</td>
+                            <td>{{ deal.begindate }}</td>
+                            <td>{{ deal.closedate }}</td>
+                            <td>{{ "{:,.2f}".format(deal.suma_contract) if deal.suma_contract else "0.00" }}</td>
+                            <td>{{ deal.automobil }}</td>
+                            <td>{{ deal.assigned_by_id }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/libs/simple-datatables/umd/simple-datatables.js"></script>
+<script>
+try{
+ new simpleDatatables.DataTable("#datatable_deals", {
+    searchable: true,
+    fixedHeight: false,
+  })
+} catch (err) {}
+</script>
+{% endblock javascripts %}
+

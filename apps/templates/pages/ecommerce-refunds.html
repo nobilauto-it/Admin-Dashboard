@@ -1,0 +1,189 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Refunds{% endblock %}
+
+{% block styles %}
+
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Refunds</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">Ecommerce</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Refunds</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Refund Request</h4>
+                        <p class="mb-0 text-muted mt-1">Orders #234755</p>
+                    </div><!--end col-->
+                    <div class="col-auto">
+                        <a class="text-secondary" href="/ecommerce-order-details"><i
+                                class="fa-solid fa-circle-info me-1"></i> Order Detail</a>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th>Items</th>
+                            <th class="text-end">Price</th>
+                            <th class="text-end">Quantity</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/03.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <span class="d-block align-middle mb-0 product-name text-body">Royal Purse</span>
+                                    <span class="text-muted font-13">Pure Lether 100%</span>
+                                </p>
+                            </td>
+                            <td class="text-end">$80</td>
+                            <td class="text-end">3</td>
+                            <td class="text-end">$240</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/04.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <span class="d-block align-middle mb-0 product-name text-body">Apple Watch</span>
+                                    <span class="text-muted font-13">Size-05 (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td class="text-end">$100</td>
+                            <td class="text-end">1</td>
+                            <td class="text-end">$100</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/06.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <span class="d-block align-middle mb-0 product-name text-body">Cosco Vollyboll</span>
+                                    <span class="text-muted font-13">size-04 (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td class="text-end">$20</td>
+                            <td class="text-end">4</td>
+                            <td class="text-end">$80</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/05.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <span class="d-block align-middle mb-0 product-name text-body">Reebok Shoes</span>
+                                    <span class="text-muted font-13">size-08 (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td class="text-end">$50</td>
+                            <td class="text-end">10</td>
+                            <td class="text-end">$500</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <img alt="" class="rounded me-1" height="40"
+                                     src="{{ config.ASSETS_ROOT }}/images/products/01.png"/>
+                                <p class="d-inline-block align-middle mb-0">
+                                    <span class="d-block align-middle mb-0 product-name text-body">Morden Chair</span>
+                                    <span class="text-muted font-13">Size-Mediam (Model 2021)</span>
+                                </p>
+                            </td>
+                            <td class="text-end">$70</td>
+                            <td class="text-end">2</td>
+                            <td class="text-end">$140</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div><!--card-body-->
+        </div><!--end card-->
+    </div> <!-- end col -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Order Summary</h4>
+                    </div><!--end col-->
+                    <div class="col-auto">
+                        <span class="badge rounded text-success bg-success-subtle fs-12 p-1">Payment Completed</span>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div>
+                    <div class="d-flex justify-content-between">
+                        <p class="text-body fw-semibold">Items subtotal :</p>
+                        <p class="text-body-emphasis fw-semibold">$1060</p>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <p class="text-body fw-semibold">Discount :</p>
+                        <p class="text-danger fw-semibold">-$80</p>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <p class="text-body fw-semibold">Tax :</p>
+                        <p class="text-body-emphasis fw-semibold">$180.70</p>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <p class="text-body fw-semibold">Subtotal :</p>
+                        <p class="text-body-emphasis fw-semibold">$1160.70</p>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <p class="text-body fw-semibold mb-0">Shipping Cost :</p>
+                        <p class="text-body-emphasis fw-semibold mb-0">$20</p>
+                    </div>
+                </div>
+                <hr class="hr-dashed"/>
+                <div class="d-flex justify-content-between">
+                    <h4 class="mb-0">Total :</h4>
+                    <h4 class="mb-0">$1180.70</h4>
+                </div>
+            </div><!--card-body-->
+        </div><!--end card-->
+        <div class="card">
+            <div class="card-body">
+                <form>
+                    <div class="form-groupmb-3">
+                        <label class="form-label" for="Amount">Amount</label>
+                        <input class="form-control" id="Amount" placeholder="Amount" type="text"/>
+                    </div><!--end form-group-->
+                    <div class="form-group mb-3">
+                        <label class="form-label mt-2" for="customer-message">Message</label>
+                        <textarea class="form-control" id="customer-message" placeholder="writing here.."
+                                  rows="3"></textarea>
+                    </div><!--end form-group-->
+                    <button class="btn btn-primary" type="submit">Refund</button>
+                    <button class="btn btn-danger" type="button">Decline</button>
+                </form><!--end form-->
+            </div><!--card-body-->
+        </div><!--end card-->
+    </div> <!-- end col -->
+</div> <!-- end row -->
+{% endblock %}
+
+{% block javascripts %}
+
+{% endblock javascripts %}

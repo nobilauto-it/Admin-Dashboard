@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-startbar="light" data-bs-theme="light" {% block html_attribute %}{% endblock %}>
+
+<head>
+
+    <meta charset="utf-8" />
+    <title>{% block title %}{% endblock %} | Dastone - Admin & Dashboard Template</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta content="Premium Multipurpose Admin & Dashboard Template" name="description" />
+    <meta content="" name="author" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- App favicon -->
+    <link rel="shortcut icon" href="{{ config.ASSETS_ROOT }}/images/favicon.ico">
+
+
+
+    {% block styles %}{% endblock styles %}
+
+    <!-- Vendor css -->
+    <link href="{{ config.ASSETS_ROOT }}/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+
+    <!-- Icons css (iconoir support) -->
+    <link href="{{ config.ASSETS_ROOT }}/css/icons.css" rel="stylesheet" type="text/css" />
+    
+    <!-- App css -->
+    <link href="{{ config.ASSETS_ROOT }}/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
+
+</head>
+
+<body {% block body_attribute %}{% endblock %}>
+
+    {% block content %}{% endblock %}
+
+    {% include 'partials/vendorjs.html' %}
+
+    <!-- Specific Page JS goes HERE  -->
+    {% block javascripts %}{% endblock javascripts %}
+
+</body>
+
+</html>

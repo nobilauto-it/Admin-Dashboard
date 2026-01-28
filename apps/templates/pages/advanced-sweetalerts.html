@@ -1,0 +1,288 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Sweetalerts{% endblock %}
+
+{% block styles %}
+<link href="{{ config.ASSETS_ROOT }}/libs/sweetalert2/sweetalert2.min.css" rel="stylesheet" type="text/css"/>
+<link href="{{ config.ASSETS_ROOT }}/libs/animate.css/animate.min.css" rel="stylesheet" type="text/css"/>
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Sweetalerts</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">Advanced UI</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Sweetalerts</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Trigger Modal And Trigger Toast</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <button class="btn btn-primary btn-sm" data-swal-template="#my-template"
+                        onclick="executeExample('TriggerModalToast')" type="button">Trigger modal
+                </button>
+                <button class="btn btn-primary btn-sm" data-swal-toast-template="#my-template"
+                        onclick="executeExample('TriggerModalToast')" type="button">Trigger toast
+                </button>
+                <template id="my-template">
+                    <swal-title>
+                        Save changes to "Untitled 1" before closing?
+                    </swal-title>
+                    <swal-icon color="red" type="warning"></swal-icon>
+                    <swal-button type="confirm">
+                        Save As
+                    </swal-button>
+                    <swal-button type="cancel">
+                        Cancel
+                    </swal-button>
+                    <swal-button type="deny">
+                        Close without Saving
+                    </swal-button>
+                    <swal-param name="allowEscapeKey" value="false"></swal-param>
+                    <swal-param name="customClass" value='{ "popup": "my-popup" }'></swal-param>
+                </template>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Icons</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <button class="btn btn-success btn-sm" onclick="executeExample('success')" type="button">Success
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="executeExample('error')" type="button">Error</button>
+                <button class="btn btn-warning btn-sm" onclick="executeExample('warning')" type="button">Warning
+                </button>
+                <button class="btn btn-info btn-sm" onclick="executeExample('info')" type="button">Info</button>
+                <button class="btn btn-secondary btn-sm" onclick="executeExample('question')" type="button">Question
+                </button>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Examples</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <tbody>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-pink"></i>A basic message
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('basicMessage')">
+                                    Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-success"></i>A title with a
+                                text under
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('titleText')">
+                                    Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-warning"></i>A modal with a
+                                title, an error icon, a text, and a footer
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('errorType')"
+                                        type="button">Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-dark"></i>Custom HTML
+                                description and buttons with ARIA labels
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('customHtml')"
+                                        type="button">Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-pink"></i>A dialog with
+                                three buttons
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('threeButtons')"
+                                        type="button">Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-info"></i>A custom
+                                positioned dialog
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('customPosition')"
+                                        type="button">Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-primary"></i>Custom
+                                animation with Animation
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('customAnimation')"
+                                        type="button">Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-secondary"></i>A confirm
+                                dialog, with a function attached to the "Confirm"-button...
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('warningConfirm')"
+                                        type="button">Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-danger"></i>... and by
+                                passing a parameter, you can execute something else for "Cancel".
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('handleDismiss')"
+                                        type="button">Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-purple"></i>A message with a
+                                custom image
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('customImage')"
+                                        type="button">Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-success"></i>A message with
+                                custom width, padding, background and animated Nyan Cat
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('customWidth')"
+                                        type="button">Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-warning"></i>A message with
+                                auto close timer
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('timer')" type="button">
+                                    Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-info"></i>Right-to-left
+                                support for Arabic, Persian, Hebrew, and other RTL languages
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('rtl')" type="button">
+                                    Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-pink"></i>AJAX request
+                                example
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('ajaxRequest')"
+                                        type="button">Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-warning"></i>Mixin example
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('mixin')" type="button">
+                                    Click me
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="border-0">
+                            <td class="border-0"><i class="mdi mdi-circle-outline me-1 text-warning"></i>Declarative
+                                template example
+                            </td>
+                            <td class="border-0">
+                                <button class="btn btn-primary btn-sm" onclick="executeExample('declarativeTemplate')"
+                                        type="button">Click me
+                                </button>
+                            </td>
+                            <template id="my-template">
+                                <swal-title>
+                                    Save changes to "Untitled 1" before closing?
+                                </swal-title>
+                                <swal-icon color="red" type="warning"></swal-icon>
+                                <swal-button type="confirm">
+                                    Save As
+                                </swal-button>
+                                <swal-button type="cancel">
+                                    Cancel
+                                </swal-button>
+                                <swal-button type="deny">
+                                    Close without Saving
+                                </swal-button>
+                                <swal-param name="allowEscapeKey" value="false"></swal-param>
+                                <swal-param name="customClass" value='{ "popup": "my-popup" }'></swal-param>
+                            </template>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div><!--table responsive-->
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/libs/sweetalert2/sweetalert2.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/js/pages/sweet-alert.init.js"></script>
+
+{% endblock javascripts %}

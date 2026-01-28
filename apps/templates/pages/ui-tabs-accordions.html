@@ -1,0 +1,493 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Accordions{% endblock %}
+
+{% block styles %}
+
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Tab &amp; Accordion</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">UI Kit</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Tab &amp; Accordion</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Tabs</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item">
+                        <a aria-selected="true" class="nav-link active" data-bs-toggle="tab" href="#home" role="tab">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a aria-selected="false" class="nav-link" data-bs-toggle="tab" href="#profile" role="tab">Profile</a>
+                    </li>
+                    <li class="nav-item">
+                        <a aria-selected="false" class="nav-link" data-bs-toggle="tab" href="#settings" role="tab">Settings</a>
+                    </li>
+                </ul>
+                <!-- Tab panes -->
+                <div class="tab-content">
+                    <div class="tab-pane p-3 active" id="home" role="tabpanel">
+                        <p class="mb-0 text-muted">
+                            Raw denim you probably haven't heard of them jean shorts Austin.
+                        </p>
+                    </div>
+                    <div class="tab-pane p-3" id="profile" role="tabpanel">
+                        <p class="mb-0 text-muted">
+                            Food truck fixie locavore, accusamus mcsweeney's
+                            single-origin coffee squid.
+                        </p>
+                    </div>
+                    <div class="tab-pane p-3" id="settings" role="tabpanel">
+                        <p class="text-muted mb-0">
+                            Trust fund seitan letterpress, keytar raw denim keffiyeh etsy.
+                        </p>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Pills</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <!-- Nav tabs -->
+                <ul class="nav nav-pills nav-justified" role="tablist">
+                    <li class="nav-item waves-effect waves-light">
+                        <a aria-selected="true" class="nav-link active" data-bs-toggle="tab" href="#home-1" role="tab">Home</a>
+                    </li>
+                    <li class="nav-item waves-effect waves-light">
+                        <a aria-selected="false" class="nav-link" data-bs-toggle="tab" href="#profile-1" role="tab">Profile</a>
+                    </li>
+                    <li class="nav-item waves-effect waves-light">
+                        <a aria-selected="false" class="nav-link" data-bs-toggle="tab" href="#settings-1" role="tab">Settings</a>
+                    </li>
+                </ul>
+                <!-- Tab panes -->
+                <div class="tab-content">
+                    <div class="tab-pane p-3 active" id="home-1" role="tabpanel">
+                        <p class="text-muted mb-0">
+                            Raw denim you probably haven't heard of them jean shorts Austin.
+                        </p>
+                    </div>
+                    <div class="tab-pane p-3" id="profile-1" role="tabpanel">
+                        <p class="text-muted mb-0">
+                            Food truck fixie locavore, accusamus mcsweeney's
+                            single-origin coffee squid.
+                        </p>
+                    </div>
+                    <div class="tab-pane p-3" id="settings-1" role="tabpanel">
+                        <p class="text-muted mb-0">
+                            Trust fund seitan letterpress, keytar raw denim keffiyeh etsy.
+                        </p>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Vertical Pills</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-sm-3">
+                        <div aria-orientation="vertical" class="nav flex-column nav-pills text-center" id="v-pills-tab"
+                             role="tablist">
+                            <a aria-controls="v-pills-home" aria-selected="true"
+                               class="nav-link waves-effect waves-light active" data-bs-toggle="pill"
+                               href="#v-pills-home" id="v-pills-home-tab" role="tab">Home</a>
+                            <a aria-controls="v-pills-profile" aria-selected="false"
+                               class="nav-link waves-effect waves-light" data-bs-toggle="pill" href="#v-pills-profile"
+                               id="v-pills-profile-tab" role="tab">Profile</a>
+                            <a aria-controls="v-pills-settings" aria-selected="false"
+                               class="nav-link waves-effect waves-light" data-bs-toggle="pill" href="#v-pills-settings"
+                               id="v-pills-settings-tab" role="tab">Settings</a>
+                        </div>
+                    </div><!--end col-->
+                    <div class="col-sm-9">
+                        <div class="tab-content mo-mt-2" id="v-pills-tabContent">
+                            <div aria-labelledby="v-pills-home-tab" class="tab-pane fade active show" id="v-pills-home"
+                                 role="tabpanel">
+                                <p class="text-muted mb-0">
+                                    Trust fund seitan letterpress, keytar raw denim keffiyeh etsy
+                                    art party before they sold out master cleanse gluten-free squid
+                                    scenester freegan cosby sweater.
+                                </p>
+                            </div>
+                            <div aria-labelledby="v-pills-profile-tab" class="tab-pane fade" id="v-pills-profile"
+                                 role="tabpanel">
+                                <p class="text-muted mb-0">
+                                    Food truck fixie locavore, accusamus mcsweeney's marfa nulla single-origin
+                                    coffee squid. Exercitation +1 labore velit, blog sartorial PBR leggings next
+                                    level wes anderson.
+                                </p>
+                            </div>
+                            <div aria-labelledby="v-pills-settings-tab" class="tab-pane fade" id="v-pills-settings"
+                                 role="tabpanel">
+                                <p class="text-muted mb-0">Exercitation commodo enim craft beer mlkshk +1 labore velit,
+                                    blog sartorial PBR leggings next
+                                    level wes anderson artisan four loko farm-to-table craft beer twee. Qui photo
+                                    booth letterpress.
+                                </p>
+                            </div>
+                        </div>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Custom Tabs</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <!-- Nav tabs -->
+                <div class="nav-tabs-custom text-center">
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link text-center active" data-bs-toggle="tab" href="#cu_home" role="tab"><i
+                                    class="la la-home d-block"></i>Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-center" data-bs-toggle="tab" href="#cu_profile" role="tab"><i
+                                    class="la la-calendar d-block"></i>Events</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-center" data-bs-toggle="tab" href="#cu_settings" role="tab"><i
+                                    class="la la-cog d-block"></i>Setings</a>
+                        </li>
+                    </ul>
+                </div>
+                <!-- Tab panes -->
+                <div class="tab-content">
+                    <div class="tab-pane active p-3" id="cu_home" role="tabpanel">
+                        <p class="mb-0 text-muted">
+                            Raw denim you probably haven't heard of them jean shorts Austin.
+                        </p>
+                    </div>
+                    <div class="tab-pane p-3" id="cu_profile" role="tabpanel">
+                        <p class="mb-0 text-muted">
+                            Food truck fixie locavore, accusamus mcsweeney's marfa nulla.
+                        </p>
+                    </div>
+                    <div class="tab-pane p-3" id="cu_settings" role="tabpanel">
+                        <p class="text-muted mb-0">
+                            Trust fund seitan letterpress, keytar raw denim keffiyeh etsy.
+                        </p>
+                    </div>
+                </div> <!--end tab-content-->
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Collapse</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <p class="">
+                    <a aria-controls="collapseExample" aria-expanded="true" class="btn btn-primary mb-2 mb-lg-0"
+                       data-bs-toggle="collapse" href="#collapseExample">
+                        Link with href
+                    </a>
+                    <button aria-controls="collapseExample" aria-expanded="true" class="btn btn-secondary"
+                            data-bs-target="#collapseExample" data-bs-toggle="collapse" type="button">
+                        Button with data-target
+                    </button>
+                </p>
+                <div class="collapse show" id="collapseExample">
+                    <div class="mb-0 card-body border-dashed border-theme-color rounded">
+                        <p class="mb-0 text-muted">Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus
+                            terry richardson ad squid. Nihil anim keffiyeh helvetica, craft beer labore wes anderson
+                            cred nesciunt sapiente ea proident.</p>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Flush Examplee</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="accordion accordion-flush" id="accordionFlushExample">
+                    <div class="accordion-item">
+                        <h5 class="accordion-header m-0" id="flush-headingOne">
+                            <button aria-controls="flush-collapseOne" aria-expanded="false"
+                                    class="accordion-button collapsed fw-semibold" data-bs-target="#flush-collapseOne"
+                                    data-bs-toggle="collapse" type="button">
+                                Accordion Item #1
+                            </button>
+                        </h5>
+                        <div aria-labelledby="flush-headingOne" class="accordion-collapse collapse"
+                             data-bs-parent="#accordionFlushExample" id="flush-collapseOne">
+                            <div class="accordion-body">
+                                Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad
+                                squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck
+                                quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon
+                                tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda
+                                shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred
+                                nesciunt sapiente ea proident. Ad vegan excepteur butcher vice
+                                lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you
+                                probably haven't heard of them accusamus labore sustainable VHS.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h5 class="accordion-header m-0" id="flush-headingTwo">
+                            <button aria-controls="flush-collapseTwo" aria-expanded="false"
+                                    class="accordion-button collapsed fw-semibold" data-bs-target="#flush-collapseTwo"
+                                    data-bs-toggle="collapse" type="button">
+                                Accordion Item #2
+                            </button>
+                        </h5>
+                        <div aria-labelledby="flush-headingTwo" class="accordion-collapse collapse"
+                             data-bs-parent="#accordionFlushExample" id="flush-collapseTwo">
+                            <div class="accordion-body">
+                                Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad
+                                squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck
+                                quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon
+                                tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda
+                                shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred
+                                nesciunt sapiente ea proident. Ad vegan excepteur butcher vice
+                                lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you
+                                probably haven't heard of them accusamus labore sustainable VHS.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h5 class="accordion-header m-0" id="flush-headingThree">
+                            <button aria-controls="flush-collapseThree" aria-expanded="false"
+                                    class="accordion-button collapsed fw-semibold" data-bs-target="#flush-collapseThree"
+                                    data-bs-toggle="collapse" type="button">
+                                Accordion Item #3
+                            </button>
+                        </h5>
+                        <div aria-labelledby="flush-headingThree" class="accordion-collapse collapse"
+                             data-bs-parent="#accordionFlushExample" id="flush-collapseThree">
+                            <div class="accordion-body">
+                                Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad
+                                squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck
+                                quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon
+                                tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda
+                                shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred
+                                nesciunt sapiente ea proident. Ad vegan excepteur butcher vice
+                                lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you
+                                probably haven't heard of them accusamus labore sustainable VHS.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Accordion Example</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="accordion" id="accordionExample">
+                    <div class="accordion-item">
+                        <h5 class="accordion-header m-0" id="headingOne">
+                            <button aria-controls="collapseOne" aria-expanded="true"
+                                    class="accordion-button fw-semibold" data-bs-target="#collapseOne"
+                                    data-bs-toggle="collapse" type="button">
+                                Accordion Item #1
+                            </button>
+                        </h5>
+                        <div aria-labelledby="headingOne" class="accordion-collapse collapse show"
+                             data-bs-parent="#accordionExample" id="collapseOne">
+                            <div class="accordion-body">
+                                <strong>This is the first item's accordion body.</strong> It is hidden by default, until
+                                the collapse plugin adds the appropriate classes that we use to style each element.
+                                These classes control the overall appearance, as
+                                well as the showing and hiding via CSS transitions. You can modify any of this with
+                                custom CSS or overriding our default variables. It's also worth noting that just about
+                                any HTML can go within the
+                                <code>.accordion-body</code>, though the transition does limit overflow.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h5 class="accordion-header m-0" id="headingTwo">
+                            <button aria-controls="collapseTwo" aria-expanded="false"
+                                    class="accordion-button collapsed fw-semibold" data-bs-target="#collapseTwo"
+                                    data-bs-toggle="collapse" type="button">
+                                Accordion Item #2
+                            </button>
+                        </h5>
+                        <div aria-labelledby="headingTwo" class="accordion-collapse collapse"
+                             data-bs-parent="#accordionExample" id="collapseTwo">
+                            <div class="accordion-body">
+                                <strong>This is the second item's accordion body.</strong> It is hidden by default,
+                                until the collapse plugin adds the appropriate classes that we use to style each
+                                element. These classes control the overall appearance, as
+                                well as the showing and hiding via CSS transitions. You can modify any of this with
+                                custom CSS or overriding our default variables. It's also worth noting that just about
+                                any HTML can go within the
+                                <code>.accordion-body</code>, though the transition does limit overflow.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h5 class="accordion-header m-0" id="headingThree">
+                            <button aria-controls="collapseThree" aria-expanded="false"
+                                    class="accordion-button collapsed fw-semibold" data-bs-target="#collapseThree"
+                                    data-bs-toggle="collapse" type="button">
+                                Accordion Item #3
+                            </button>
+                        </h5>
+                        <div aria-labelledby="headingThree" class="accordion-collapse collapse"
+                             data-bs-parent="#accordionExample" id="collapseThree">
+                            <div class="accordion-body">
+                                <strong>This is the third item's accordion body.</strong> It is hidden by default, until
+                                the collapse plugin adds the appropriate classes that we use to style each element.
+                                These classes control the overall appearance, as
+                                well as the showing and hiding via CSS transitions. You can modify any of this with
+                                custom CSS or overriding our default variables. It's also worth noting that just about
+                                any HTML can go within the
+                                <code>.accordion-body</code>, though the transition does limit overflow.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Always open</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="accordion" id="accordionPanelsStayOpenExample">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button aria-controls="panelsStayOpen-collapseOne" aria-expanded="true"
+                                    class="accordion-button fw-semibold" data-bs-target="#panelsStayOpen-collapseOne"
+                                    data-bs-toggle="collapse" type="button">
+                                Accordion Item #1
+                            </button>
+                        </h2>
+                        <div class="accordion-collapse collapse show" id="panelsStayOpen-collapseOne">
+                            <div class="accordion-body">
+                                <strong>This is the first item's accordion body.</strong> It is shown by default, until
+                                the collapse plugin adds the appropriate classes that we use to style each element.
+                                These classes control the overall appearance, as well as the showing and hiding via CSS
+                                transitions. You can modify any of this with custom CSS or overriding our default
+                                variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>,
+                                though the transition does limit overflow.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button aria-controls="panelsStayOpen-collapseTwo" aria-expanded="false"
+                                    class="accordion-button fw-semibold collapsed"
+                                    data-bs-target="#panelsStayOpen-collapseTwo" data-bs-toggle="collapse"
+                                    type="button">
+                                Accordion Item #2
+                            </button>
+                        </h2>
+                        <div class="accordion-collapse collapse" id="panelsStayOpen-collapseTwo">
+                            <div class="accordion-body">
+                                <strong>This is the second item's accordion body.</strong> It is hidden by default,
+                                until the collapse plugin adds the appropriate classes that we use to style each
+                                element. These classes control the overall appearance, as well as the showing and hiding
+                                via CSS transitions. You can modify any of this with custom CSS or overriding our
+                                default variables. It's also worth noting that just about any HTML can go within the
+                                <code>.accordion-body</code>, though the transition does limit overflow.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button aria-controls="panelsStayOpen-collapseThree" aria-expanded="false"
+                                    class="accordion-button fw-semibold collapsed"
+                                    data-bs-target="#panelsStayOpen-collapseThree" data-bs-toggle="collapse"
+                                    type="button">
+                                Accordion Item #3
+                            </button>
+                        </h2>
+                        <div class="accordion-collapse collapse" id="panelsStayOpen-collapseThree">
+                            <div class="accordion-body">
+                                <strong>This is the third item's accordion body.</strong> It is hidden by default, until
+                                the collapse plugin adds the appropriate classes that we use to style each element.
+                                These classes control the overall appearance, as well as the showing and hiding via CSS
+                                transitions. You can modify any of this with custom CSS or overriding our default
+                                variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>,
+                                though the transition does limit overflow.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+
+{% endblock javascripts %}

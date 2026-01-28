@@ -1,0 +1,195 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Offcanvas{% endblock %}
+
+{% block styles %}
+
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Offcanvas</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">UI Kit</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Offcanvas</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Live demo</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <a aria-controls="offcanvasExample" class="btn btn-outline-primary" data-bs-toggle="offcanvas"
+                   href="#offcanvasExample" role="button">
+                    Link with href
+                </a>
+                <button aria-controls="offcanvasExample" class="btn btn-outline-primary"
+                        data-bs-target="#offcanvasExample" data-bs-toggle="offcanvas" type="button">
+                    Button with data-bs-target
+                </button>
+                <div aria-labelledby="offcanvasExampleLabel" class="offcanvas offcanvas-start" id="offcanvasExample"
+                     tabindex="-1">
+                    <div class="offcanvas-header">
+                        <h5 class="offcanvas-title mt-0" id="offcanvasExampleLabel">Offcanvas</h5>
+                        <button aria-label="Close" class="btn-close text-reset" data-bs-dismiss="offcanvas"
+                                type="button"></button>
+                    </div>
+                    <div class="offcanvas-body">
+                        <div>
+                            Some text as placeholder. In real life you can have the elements you have chosen. Like,
+                            text, images, lists, etc.
+                        </div>
+                        <div class="dropdown mt-3">
+                            <button class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown"
+                                    id="dropdownMenuButton" type="button">
+                                Dropdown button
+                            </button>
+                            <ul aria-labelledby="dropdownMenuButton" class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#">Action</a></li>
+                                <li><a class="dropdown-item" href="#">Another action</a></li>
+                                <li><a class="dropdown-item" href="#">Something else here</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Placement </h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <button aria-controls="offcanvasTop" class="btn btn-outline-primary" data-bs-target="#offcanvasTop"
+                        data-bs-toggle="offcanvas" type="button">Toggle top offcanvas
+                </button>
+                <div aria-labelledby="offcanvasTopLabel" class="offcanvas offcanvas-top" id="offcanvasTop"
+                     tabindex="-1">
+                    <div class="offcanvas-header">
+                        <h5 class="m-0" id="offcanvasTopLabel">Offcanvas top</h5>
+                        <button aria-label="Close" class="btn-close text-reset" data-bs-dismiss="offcanvas"
+                                type="button"></button>
+                    </div>
+                    <div class="offcanvas-body">
+                        ...
+                    </div>
+                </div>
+                <button aria-controls="offcanvasRight" class="btn btn-outline-primary" data-bs-target="#offcanvasRight"
+                        data-bs-toggle="offcanvas" type="button">Toggle right offcanvas
+                </button>
+                <div aria-labelledby="offcanvasRightLabel" class="offcanvas offcanvas-end" id="offcanvasRight"
+                     tabindex="-1">
+                    <div class="offcanvas-header">
+                        <h5 class="m-0" id="offcanvasRightLabel">Offcanvas right</h5>
+                        <button aria-label="Close" class="btn-close text-reset" data-bs-dismiss="offcanvas"
+                                type="button"></button>
+                    </div>
+                    <div class="offcanvas-body">
+                        ...
+                    </div>
+                </div>
+                <button aria-controls="offcanvasBottom" class="btn btn-outline-primary"
+                        data-bs-target="#offcanvasBottom" data-bs-toggle="offcanvas" type="button">Toggle bottom
+                    offcanvas
+                </button>
+                <div aria-labelledby="offcanvasBottomLabel" class="offcanvas offcanvas-bottom" id="offcanvasBottom"
+                     tabindex="-1">
+                    <div class="offcanvas-header">
+                        <h5 class="offcanvas-title m-0" id="offcanvasBottomLabel">Offcanvas bottom</h5>
+                        <button aria-label="Close" class="btn-close text-reset" data-bs-dismiss="offcanvas"
+                                type="button"></button>
+                    </div>
+                    <div class="offcanvas-body small">
+                        ...
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<div class="row">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Backdrop</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <button aria-controls="offcanvasScrolling" class="btn btn-outline-primary"
+                        data-bs-target="#offcanvasScrolling" data-bs-toggle="offcanvas" type="button">Enable body
+                    scrolling
+                </button>
+                <button aria-controls="offcanvasWithBackdrop" class="btn btn-outline-primary"
+                        data-bs-target="#offcanvasWithBackdrop" data-bs-toggle="offcanvas" type="button">Enable backdrop
+                    (default)
+                </button>
+                <button aria-controls="offcanvasWithBothOptions" class="btn btn-outline-primary"
+                        data-bs-target="#offcanvasWithBothOptions" data-bs-toggle="offcanvas" type="button">Enable both
+                    scrolling &amp; backdrop
+                </button>
+                <div aria-labelledby="offcanvasScrollingLabel" class="offcanvas offcanvas-start"
+                     data-bs-backdrop="false" data-bs-scroll="true" id="offcanvasScrolling" tabindex="-1">
+                    <div class="offcanvas-header">
+                        <h5 class="offcanvas-title mt-0" id="offcanvasScrollingLabel">Colored with scrolling</h5>
+                        <button aria-label="Close" class="btn-close text-reset" data-bs-dismiss="offcanvas"
+                                type="button"></button>
+                    </div>
+                    <div class="offcanvas-body">
+                        <p>Try scrolling the rest of the page to see this option in action.</p>
+                    </div>
+                </div>
+                <div aria-labelledby="offcanvasWithBackdropLabel" class="offcanvas offcanvas-start"
+                     id="offcanvasWithBackdrop" tabindex="-1">
+                    <div class="offcanvas-header">
+                        <h5 class="offcanvas-title mt-0" id="offcanvasWithBackdropLabel">Offcanvas with backdrop</h5>
+                        <button aria-label="Close" class="btn-close text-reset" data-bs-dismiss="offcanvas"
+                                type="button"></button>
+                    </div>
+                    <div class="offcanvas-body">
+                        <p>.....</p>
+                    </div>
+                </div>
+                <div aria-labelledby="offcanvasWithBothOptionsLabel" class="offcanvas offcanvas-start"
+                     data-bs-scroll="true" id="offcanvasWithBothOptions" tabindex="-1">
+                    <div class="offcanvas-header">
+                        <h5 class="offcanvas-title mt-0" id="offcanvasWithBothOptionsLabel">Backdroped with
+                            scrolling</h5>
+                        <button aria-label="Close" class="btn-close text-reset" data-bs-dismiss="offcanvas"
+                                type="button"></button>
+                    </div>
+                    <div class="offcanvas-body">
+                        <p>Try scrolling the rest of the page to see this option in action.</p>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+
+{% endblock javascripts %}

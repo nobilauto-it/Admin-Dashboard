@@ -1,0 +1,219 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Justgage{% endblock %}
+
+{% block styles %}
+
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Justgage</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">Charts</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Justgage</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Defaults</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <p class="text-muted mb-3"></p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="gauge" id="gg1"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="gauge" data-value="25" id="gg2"></div>
+                    </div>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Counter</h4>
+                    </div><!--end col-->
+                    <div class="col-auto">
+                        <button class="btn btn-outline-light btn-sm" id="Counter_2_refresh" type="button">Random
+                            Refresh
+                        </button>
+                    </div> <!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="gauge mt-2" id="Counter_2"></div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Animation Events</h4>
+                    </div><!--end col-->
+                    <div class="col-auto">
+                        <button class="btn btn-outline-light btn-sm" id="Animation_Events_refresh" type="button">Random
+                            Refresh
+                        </button>
+                    </div> <!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="gauge mt-3" id="Animation_Events"></div>
+                <p class="text-muted">After every animation end, function will log it below.</p>
+                <p id="log"></p>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Text Avatars Square</h4>
+                    </div><!--end col-->
+                    <div class="col-auto">
+                        <button class="btn btn-outline-light btn-sm" id="Counter_refresh" type="button">Random Refresh
+                        </button>
+                    </div> <!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="gauge mt-3" id="Counter"></div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Icon Avatars Circle</h4>
+                    </div><!--end col-->
+                    <div class="col-auto">
+                        <button class="btn btn-outline-light btn-sm" id="Custom_wether_refresh" type="button">Random
+                            Refresh
+                        </button>
+                    </div> <!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="gauge mt-3" id="Custom_wether"></div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Icon Avatars Square</h4>
+                    </div><!--end col-->
+                    <div class="col-auto">
+                        <button class="btn btn-outline-light btn-sm" id="font_option_refresh" type="button">Random
+                            Refresh
+                        </button>
+                    </div> <!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="gauge mt-3" id="font_option"></div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Justgage Half Size</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="size-3">
+                            <div class="gauge" id="jg1"></div>
+                        </div>
+                    </div><!--end col-->
+                    <div class="col-md-4">
+                        <div class="size-2">
+                            <div class="gauge" id="jg2"></div>
+                        </div>
+                    </div><!--end col-->
+                    <div class="col-md-4">
+                        <div class="size-1">
+                            <div class="gauge" id="jg3"></div>
+                        </div>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Justgage Full Size</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="size-1">
+                            <div class="gauge" id="jg4"></div>
+                        </div>
+                    </div><!--end col-->
+                    <div class="col-md-4">
+                        <div class="size-2">
+                            <div class="gauge" id="jg5"></div>
+                        </div>
+                    </div><!--end col-->
+                    <div class="col-md-4">
+                        <div class="size-3">
+                            <div class="gauge" id="jg6"></div>
+                        </div>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/libs/raphael/raphael.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/libs/justgage/justgage.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/js/pages/justgage.init.js"></script>
+
+{% endblock javascripts %}

@@ -1,0 +1,102 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Clipboard{% endblock %}
+
+{% block styles %}
+
+{% endblock styles %}
+
+{% block page_content %}
+<div class="row">
+    <div class="col-sm-12">
+        <div class="page-title-box d-md-flex justify-content-md-between align-items-center">
+            <h4 class="page-title">Clipboard</h4>
+            <div class="">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#">Dastone</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item"><a href="#">Advanced UI</a>
+                    </li><!--end nav-item-->
+                    <li class="breadcrumb-item active">Clipboard</li>
+                </ol>
+            </div>
+        </div><!--end page-title-box-->
+    </div><!--end col-->
+</div><!--end row-->
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Clipboard Examples</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <div class="input-group">
+                    <input aria-describedby="button-addon2" aria-label="Recipient's username" class="form-control"
+                           id="clipboardInput" type="text" value="Welcome to Dastone!"/>
+                    <button class="btn btn-secondary" data-clipboard-action="copy"
+                            data-clipboard-target="#clipboardInput" id="button-addon2" type="button"><i
+                            class="far fa-copy me-2"></i>Copy
+                    </button>
+                    <button class="btn btn-primary" data-clipboard-action="cut" data-clipboard-target="#clipboardInput"
+                            id="button-addon3" type="button"><i class="fas fa-cut me-2"></i>Cut
+                    </button>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Paragraph Examples</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <p class="border rounded p-3" id="clipboardParagraph">Contrary to popular belief, Lorem Ipsum is not
+                    simply random text.
+                    It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old.
+                    Richard McClintock,
+                    a Latin professor at Hampden-Sydney College in Virginia, looked
+                </p>
+                <div class="mt-3">
+                    <button class="btn btn-secondary btn-clipboard" data-clipboard-action="copy"
+                            data-clipboard-target="#clipboardParagraph" type="button"><i class="far fa-copy me-2"></i>Copy
+                    </button>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+    <div class="col-md-6 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h4 class="card-title">Textarea Examples</h4>
+                    </div><!--end col-->
+                </div> <!--end row-->
+            </div><!--end card-header-->
+            <div class="card-body">
+                <textarea class="form-control" id="clipboardTextarea" rows="3">Welcome to Dastone !</textarea>
+                <div class="mt-3">
+                    <button class="btn btn-secondary btn-clipboard" data-clipboard-action="copy"
+                            data-clipboard-target="#clipboardTextarea" type="button"><i class="far fa-copy me-2"></i>Copy
+                    </button>
+                    <button class="btn btn-primary btn-clipboard" data-clipboard-action="cut"
+                            data-clipboard-target="#clipboardTextarea" type="button"><i class="fas fa-cut me-2"></i>Cut
+                    </button>
+                </div>
+            </div><!--end card-body-->
+        </div><!--end card-->
+    </div> <!--end col-->
+</div><!--end row-->
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ config.ASSETS_ROOT }}/libs/clipboard/clipboard.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/js/pages/clipboard.init.js"></script>
+
+{% endblock javascripts %}

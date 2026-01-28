@@ -1,0 +1,1074 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}Test{% endblock %}
+
+{% block styles %}
+<style>
+    .layout-controls {
+        gap: 10px;
+    }
+    .layout-grid {
+        display: grid;
+        gap: 12px;
+        min-height: 200px;
+    }
+    .drop-slot {
+        min-height: 220px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 6px;
+        position: relative;
+        transition: background 0.15s ease, border-color 0.15s ease;
+        display: flex;
+    }
+    .drop-slot.dragover {
+        border-color: #6366f1;
+        background: #eef2ff;
+    }
+    .component-card {
+        width: 100%;
+        cursor: grab;
+    }
+    .component-card:active {
+        cursor: grabbing;
+    }
+    .ghost-slot {
+        border: 2px dashed #94a3b8;
+        border-radius: 10px;
+        min-height: 50px;
+    }
+    /* Keep startbar visible above modal backdrops on generated pages */
+    .startbar {
+        z-index: 1060;
+    }
+    .startbar-overlay {
+        z-index: 1059;
+    }
+    .modal-backdrop {
+        z-index: 1050;
+    }
+    .modal {
+        z-index: 1055;
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
+                    <div>
+                        <h4 class="card-title mb-0">Test</h4>
+                        <p class="text-muted mb-0">Настраиваемая сетка 1–3 рядов и 1–3 колонок. Перетаскивайте компоненты.</p>
+                    </div>
+                    <div class="d-flex flex-wrap layout-controls">
+                        <div class="input-group input-group-sm" style="width: 160px;">
+                            <label class="input-group-text" for="gridRows">Ряды</label>
+                            <select class="form-select" id="gridRows">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                            </select>
+                        </div>
+                        <div class="input-group input-group-sm" style="width: 160px;">
+                            <label class="input-group-text" for="gridCols">Колонки</label>
+                            <select class="form-select" id="gridCols">
+                                <option value="1">1</option>
+                                <option value="2" selected>2</option>
+                                <option value="3">3</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm" id="clearGridBtn">Очистить сетку</button>
+                        <div class="btn-group">
+                            <button class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                Добавить компонент
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" data-component="table" href="#">Таблица</a></li>
+                                <li><a class="dropdown-item" data-component="chart" href="#">График</a></li>
+                                <li><a class="dropdown-item" data-component="donut" href="#">Диаграмма</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="layoutGrid" class="layout-grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="componentsPool" class="d-none"></div>
+<template id="componentTemplate">
+    <div class="card component-card" draggable="true">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0 component-title"></h5>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-component">Удалить</button>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-light mb-0">Содержимое компонента.</div>
+        </div>
+    </div>
+</template>
+
+<template id="chartComponentTemplate">
+    <div class="card component-card" draggable="true" data-type="chart">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">График</h5>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary chart-settings-btn">Настройки</button>
+                <button type="button" class="btn btn-sm btn-outline-danger remove-component">Удалить</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="chart-settings d-flex flex-wrap gap-2 mb-2">
+                <div class="d-flex flex-column" style="min-width: 180px;">
+                    <label class="form-label mb-1 small">Сущность X</label>
+                    <select class="form-select form-select-sm chart-entity-x"></select>
+                </div>
+                <div class="d-flex flex-column" style="min-width: 180px;">
+                    <label class="form-label mb-1 small">Поле X</label>
+                    <select class="form-select form-select-sm chart-field-x">
+                        <option value="">— выберите поле —</option>
+                    </select>
+                </div>
+                <div class="d-flex flex-column" style="min-width: 180px;">
+                    <label class="form-label mb-1 small">Сущность Y</label>
+                    <select class="form-select form-select-sm chart-entity-y"></select>
+                </div>
+                <div class="d-flex flex-column" style="min-width: 180px;">
+                    <label class="form-label mb-1 small">Поле Y (числ.)</label>
+                    <select class="form-select form-select-sm chart-field-y">
+                        <option value="">— выберите поле —</option>
+                    </select>
+                </div>
+                <div class="d-flex flex-column" style="min-width: 140px;">
+                    <label class="form-label mb-1 small">Тип</label>
+                    <select class="form-select form-select-sm chart-type">
+                        <option value="bar">Bar</option>
+                        <option value="line">Line</option>
+                        <option value="area">Area</option>
+                        <option value="donut">Donut</option>
+                    </select>
+                </div>
+                <div class="d-flex align-items-end">
+                    <button type="button" class="btn btn-sm btn-primary chart-apply">Применить</button>
+                </div>
+            </div>
+            <div class="chart-container" style="min-height:320px;"></div>
+        </div>
+    </div>
+</template>
+
+<template id="tableComponentTemplate">
+    <div class="card component-card" draggable="true" data-type="table">
+        <div class="card-header">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5">
+                    <label class="form-label mb-1">Сущность</label>
+                    <select class="form-select entity-select">
+                        <optgroup label="Сделки">
+                            <option value="deal" data-entity-key="" data-category-id="">Все сделки</option>
+                        </optgroup>
+                        <optgroup label="Воронки сделок">
+                            <option value="deal_category" data-category-id="2">Покупатели авто</option>
+                            <option value="deal_category" data-category-id="12">Сервис</option>
+                            <option value="deal_category" data-category-id="8">HR кандидаты</option>
+                            <option value="deal_category" data-category-id="16">HR тек. сотрудники</option>
+                            <option value="deal_category" data-category-id="20">Сделки - прокат</option>
+                            <option value="deal_category" data-category-id="22">Chirie - solicitări prelucrate</option>
+                            <option value="deal_category" data-category-id="0">После визита</option>
+                            <option value="deal_category" data-category-id="25">Vânzări realizare</option>
+                            <option value="deal_category" data-category-id="30">Vânzări auto</option>
+                            <option value="deal_category" data-category-id="31">Atragere auto</option>
+                        </optgroup>
+                        <optgroup label="Контакты/Лиды">
+                            <option value="contact" data-entity-key="">Контакты</option>
+                            <option value="lead" data-entity-key="">Лиды</option>
+                        </optgroup>
+                        <optgroup label="Смарт-процессы" class="sp-group">
+                            <option value="smart_process" data-entity-key="sp:1114">Смарт-процесс 1114</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="col-md-7 d-flex justify-content-end gap-2 flex-wrap">
+                    <button type="button" class="btn btn-outline-secondary btn-sm btn-fields">Поля</button>
+                    <button type="button" class="btn btn-primary btn-sm btn-apply">Применить</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-component">Удалить</button>
+                </div>
+            </div>
+            <div class="row mt-2 g-2 align-items-center">
+                <div class="col-md-6 d-flex gap-2">
+                    <input type="text" class="form-control form-control-sm fields-search-inline" placeholder="Поиск по полям" disabled>
+                    <button class="btn btn-outline-primary btn-sm btn-inline-all" disabled>Все</button>
+                    <button class="btn btn-outline-secondary btn-sm btn-inline-clear" disabled>Снять</button>
+                </div>
+                <div class="col-md-3 d-flex gap-2 align-items-center">
+                    <label class="mb-0 small text-muted">На странице</label>
+                    <select class="form-select form-select-sm page-size-select" style="width: 90px;">
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex justify-content-end align-items-center gap-2">
+                    <button class="btn btn-outline-secondary btn-sm btn-prev">‹</button>
+                    <span class="small text-muted pagination-info">0 / 0</span>
+                    <button class="btn btn-outline-secondary btn-sm btn-next">›</button>
+                    <span class="small text-muted rows-count">Всего: 0</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="position-relative table-wrapper">
+                <div class="loader-overlay d-flex" style="display:none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <div class="table-responsive table-scroll">
+                    <table class="table mb-2">
+                        <thead>
+                            <tr class="data-header"></tr>
+                        </thead>
+                        <tbody class="data-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="fieldsModalTemplate">
+    <div class="modal fade" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Выбор полей</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex gap-2 mb-2">
+                        <input type="text" class="form-control form-control-sm fields-search" placeholder="Поиск по полям">
+                        <button class="btn btn-sm btn-outline-secondary btn-select-all" type="button">Выбрать все</button>
+                        <button class="btn btn-sm btn-outline-secondary btn-clear-all" type="button">Снять все</button>
+                    </div>
+                    <div class="field-list-modal field-list"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary btn-save-fields">Применить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const gridEl = document.getElementById('layoutGrid');
+    const rowsSelect = document.getElementById('gridRows');
+    const colsSelect = document.getElementById('gridCols');
+    const clearBtn = document.getElementById('clearGridBtn');
+    const pool = document.getElementById('componentsPool');
+    const template = document.getElementById('componentTemplate');
+    const tableTemplate = document.getElementById('tableComponentTemplate');
+    const chartTemplate = document.getElementById('chartComponentTemplate');
+    const fieldsModalTemplate = document.getElementById('fieldsModalTemplate');
+
+    let componentCounter = 0;
+    let layout = []; // {slot: index, id, type}
+    let processesCache = [];
+    const fieldsCache = {};
+    let assignedNameCache = {};
+    const chartStates = {}; // per chart id
+
+    // Общий нормализатор полей для таблицы и графиков
+    function normalizeField(f) {
+        const key = f?.key || f?.FIELD || f?.Field || f?.name;
+        const label = f?.title || f?.caption || f?.name || key || '';
+        if (!key) return null;
+        const isAdditionalInfo = (label || '').toLowerCase().includes('доп') && (label || '').toLowerCase().includes('инф');
+        return { key, label, defaultChecked: !isAdditionalInfo, hint: key !== label ? key : '' };
+    }
+
+    // Шаблонные поля для графиков/таблицы, если API недоступен
+    const fallbackFields = [
+        { key: 'ID', label: 'ID' },
+        { key: 'NAME', label: 'Название' },
+        { key: 'IS_MANUAL_OPPORTUNITY', label: 'IS_MANUAL_OPPORTUNITY' },
+        { key: 'LAST_ACTIVITY_BY', label: 'LAST_ACTIVITY_BY' },
+        { key: 'LAST_ACTIVITY_TIME', label: 'LAST_ACTIVITY_TIME' },
+        { key: 'LAST_COMMUNICATION_TIME', label: 'LAST_COMMUNICATION_TIME' },
+        { key: 'MOVED_BY_ID', label: 'MOVED_BY_ID' },
+        { key: 'MOVED_TIME', label: 'MOVED_TIME' },
+        { key: 'STOCK_AUTO', label: 'STOCK_AUTO' },
+    ].map(normalizeField).filter(Boolean);
+
+    // Опции сущностей (общие для таблицы и графиков) — формируем динамически после загрузки процессов
+    let baseEntityOptions = '';
+    const chartEntitySelects = () => Array.from(document.querySelectorAll('.chart-entity-x, .chart-entity-y'));
+
+    function buildEntityOptions(processesList) {
+        const procOptions = (processesList || []).map(p => {
+            const val = 'smart_process';
+            const key = p.entity_key || p.EntityKey || '';
+            const title = p.title || p.name || p.EntityName || key || 'Smart Process';
+            return `<option value="${val}" data-entity-key="${key}">${title}</option>`;
+        }).join('');
+        return `
+            <optgroup label="Сделки">
+                <option value="deal" data-entity-key="" data-category-id="">Все сделки</option>
+            </optgroup>
+            <optgroup label="Воронки сделок">
+                <option value="deal_category" data-category-id="2">Покупатели авто</option>
+                <option value="deal_category" data-category-id="12">Сервис</option>
+                <option value="deal_category" data-category-id="8">HR кандидаты</option>
+                <option value="deal_category" data-category-id="16">HR тек. сотрудники</option>
+                <option value="deal_category" data-category-id="20">Сделки - прокат</option>
+                <option value="deal_category" data-category-id="22">Chirie - solicitări prelucrate</option>
+                <option value="deal_category" data-category-id="0">После визита</option>
+                <option value="deal_category" data-category-id="25">Vânzări realizare</option>
+                <option value="deal_category" data-category-id="30">Vânzări auto</option>
+                <option value="deal_category" data-category-id="31">Atragere auto</option>
+            </optgroup>
+            <optgroup label="Контакты/Лиды">
+                <option value="contact" data-entity-key="">Контакты</option>
+                <option value="lead" data-entity-key="">Лиды</option>
+            </optgroup>
+            <optgroup label="Смарт-процессы" class="sp-group">
+                ${procOptions || `<option value="smart_process" data-entity-key="sp:1114">Смарт-процесс 1114</option>`}
+            </optgroup>
+        `;
+    }
+    async function loadProcessesOnce() {
+        if (processesCache.length) return processesCache;
+        try {
+            const resp = await fetch('/api/data-explorer/processes');
+            const data = await resp.json();
+            if (resp.ok && data && Array.isArray(data)) {
+                processesCache = data;
+            }
+        } catch (e) {
+            console.error(e);
+        }
+        // после загрузки процессов обновим опции сущностей
+        baseEntityOptions = buildEntityOptions(processesCache);
+        // обновить select таблицы
+        const tableEntitySelect = document.getElementById('entitySelect');
+        if (tableEntitySelect) {
+            tableEntitySelect.innerHTML = baseEntityOptions;
+        }
+        // обновить все графики
+        chartEntitySelects().forEach(sel => {
+            const current = sel.value;
+            sel.innerHTML = baseEntityOptions;
+            if (current) sel.value = current;
+        });
+        return processesCache;
+    }
+
+    function slotCount() {
+        return (parseInt(rowsSelect.value, 10) || 1) * (parseInt(colsSelect.value, 10) || 1);
+    }
+
+    function rebuildGrid() {
+        const rows = parseInt(rowsSelect.value, 10) || 1;
+        const cols = parseInt(colsSelect.value, 10) || 1;
+        gridEl.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+        gridEl.innerHTML = '';
+
+        // trim layout if slots decreased
+        layout = layout.filter(item => item.slot < rows * cols);
+
+        for (let i = 0; i < rows * cols; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'drop-slot';
+            slot.dataset.slot = i;
+            slot.addEventListener('dragover', onDragOver);
+            slot.addEventListener('dragleave', onDragLeave);
+            slot.addEventListener('drop', onDrop);
+
+            const existing = layout.find(l => l.slot === i);
+            if (existing) {
+                const card = document.getElementById(existing.id);
+                if (card) slot.appendChild(card);
+            }
+
+            gridEl.appendChild(slot);
+        }
+    }
+
+    function createComponent(type) {
+        componentCounter += 1;
+        const id = `cmp-${componentCounter}`;
+        let card;
+        if (type === 'table') {
+            const clone = tableTemplate.content.cloneNode(true);
+            card = clone.querySelector('.component-card');
+            setupTableComponent(card, id);
+        } else if (type === 'chart') {
+            const clone = chartTemplate.content.cloneNode(true);
+            card = clone.querySelector('.component-card');
+            setupChartComponent(card, id);
+        } else {
+            const clone = template.content.cloneNode(true);
+            card = clone.querySelector('.component-card');
+            const title = clone.querySelector('.component-title');
+            title.textContent = type === 'chart' ? 'График' : 'Диаграмма';
+            const removeBtn = clone.querySelector('.remove-component');
+            removeBtn.addEventListener('click', () => removeComponent(id));
+        }
+
+        card.id = id;
+        card.dataset.type = type;
+        card.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', id);
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        pool.appendChild(card);
+        placeFirstFree(id, type);
+    }
+
+    function placeFirstFree(id, type) {
+        const slots = Array.from(gridEl.querySelectorAll('.drop-slot'));
+        const empty = slots.find(s => !s.querySelector('.component-card'));
+        if (!empty) {
+            alert('Нет свободных слотов. Увеличьте сетку или удалите компонент.');
+            const card = document.getElementById(id);
+            if (card) card.remove();
+            return;
+        }
+        empty.appendChild(document.getElementById(id));
+        layout.push({ slot: parseInt(empty.dataset.slot, 10), id, type });
+    }
+
+    function removeComponent(id) {
+        layout = layout.filter(l => l.id !== id);
+        const card = document.getElementById(id);
+        if (card) card.remove();
+        // leave empty slot as is
+    }
+
+    function onDragOver(e) {
+        e.preventDefault();
+        e.currentTarget.classList.add('dragover');
+    }
+    function onDragLeave(e) {
+        e.currentTarget.classList.remove('dragover');
+    }
+    function onDrop(e) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('dragover');
+        const id = e.dataTransfer.getData('text/plain');
+        const card = document.getElementById(id);
+        if (!card) return;
+
+        // remove existing card in this slot? we only allow if empty
+        if (e.currentTarget.querySelector('.component-card')) {
+            alert('Слот занят. Очистите или выберите другой.');
+            return;
+        }
+
+        // remove old slot assignment
+        const oldSlot = card.parentElement?.dataset?.slot;
+        if (oldSlot !== undefined) {
+            layout = layout.filter(l => !(l.id === id));
+        }
+
+        e.currentTarget.appendChild(card);
+        layout.push({ slot: parseInt(e.currentTarget.dataset.slot, 10), id, type: card.dataset.type });
+    }
+
+    rowsSelect.addEventListener('change', rebuildGrid);
+    colsSelect.addEventListener('change', rebuildGrid);
+    clearBtn.addEventListener('click', () => {
+        layout = [];
+        gridEl.querySelectorAll('.component-card').forEach(c => c.remove());
+        rebuildGrid();
+    });
+
+    document.querySelectorAll('[data-component]').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
+            createComponent(el.dataset.component);
+        });
+    });
+
+    rebuildGrid();
+
+    // -------------- Table component logic --------------
+    function setupTableComponent(card, id) {
+        const entitySelect = card.querySelector('.entity-select');
+        const pageSizeSelect = card.querySelector('.page-size-select');
+        const rowsCount = card.querySelector('.rows-count');
+        const tableHead = card.querySelector('.data-header');
+        const tableBody = card.querySelector('.data-body');
+        const loader = card.querySelector('.loader-overlay');
+        const btnPrev = card.querySelector('.btn-prev');
+        const btnNext = card.querySelector('.btn-next');
+        const paginationInfo = card.querySelector('.pagination-info');
+        const btnFields = card.querySelector('.btn-fields');
+        const btnApply = card.querySelector('.btn-apply');
+        const inlineSearch = card.querySelector('.fields-search-inline');
+        const inlineAll = card.querySelector('.btn-inline-all');
+        const inlineClear = card.querySelector('.btn-inline-clear');
+        const removeBtn = card.querySelector('.remove-component');
+
+        const modalNode = fieldsModalTemplate.content.cloneNode(true).firstElementChild;
+        const modal = new bootstrap.Modal(modalNode);
+        const fieldList = modalNode.querySelector('.field-list');
+        const searchInput = modalNode.querySelector('.fields-search');
+        const btnSelectAll = modalNode.querySelector('.btn-select-all');
+        const btnClearAll = modalNode.querySelector('.btn-clear-all');
+        const btnSaveFields = modalNode.querySelector('.btn-save-fields');
+        document.body.appendChild(modalNode);
+
+        let state = {
+            entity: entitySelect.value,
+            entityKey: entitySelect.selectedOptions[0]?.dataset.entityKey || '',
+            categoryId: entitySelect.selectedOptions[0]?.dataset.categoryId || '',
+            fields: [],
+            selectedFieldKeys: [],
+            data: [],
+            page: 1,
+            pageSize: parseInt(pageSizeSelect.value, 10) || 10
+        };
+
+        if (removeBtn) {
+            removeBtn.addEventListener('click', () => removeComponent(id));
+        }
+
+        // populate smart processes
+        loadProcessesOnce().then(processes => {
+            const spGroup = card.querySelector('.sp-group');
+            if (!spGroup) return;
+            spGroup.innerHTML = '';
+            if (Array.isArray(processes) && processes.length) {
+                processes.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = 'smart_process';
+                    opt.dataset.entityKey = p.entity_key || p.EntityKey || '';
+                    opt.textContent = p.title || p.name || p.EntityName || p.entity_key || 'Smart Process';
+                    spGroup.appendChild(opt);
+                });
+            } else {
+                const opt = document.createElement('option');
+                opt.value = 'smart_process';
+                opt.dataset.entityKey = 'sp:1114';
+                opt.textContent = 'Smart Process 1114';
+                spGroup.appendChild(opt);
+            }
+        });
+
+        function setInlineEnabled(enabled) {
+            if (inlineSearch) inlineSearch.disabled = !enabled;
+            if (inlineAll) inlineAll.disabled = !enabled;
+            if (inlineClear) inlineClear.disabled = !enabled;
+        }
+
+        function loadAssignedCache() {
+            try {
+                const stored = localStorage.getItem('tableAssignedNameCache');
+                if (stored) assignedNameCache = JSON.parse(stored);
+            } catch (_) {}
+        }
+        function saveAssignedCache() {
+            try {
+                localStorage.setItem('tableAssignedNameCache', JSON.stringify(assignedNameCache));
+            } catch (_) {}
+        }
+        loadAssignedCache();
+
+        async function loadFields() {
+            const cacheKey = `${state.entity}:${state.entityKey}`;
+            if (fieldsCache[cacheKey]) {
+                state.fields = fieldsCache[cacheKey];
+                renderFieldList();
+                setInlineEnabled(true);
+                return;
+            }
+            if (fieldList) {
+                fieldList.innerHTML = '<div class="text-muted small">Загрузка полей...</div>';
+            }
+            try {
+                const params = new URLSearchParams();
+                params.set('entity', state.entity);
+                if (state.entity === 'smart_process' && state.entityKey) params.set('entity_key', state.entityKey);
+                let arr = [];
+                let ok = false;
+                try {
+                    const resp = await fetch(`/api/data-explorer/fields?${params.toString()}`);
+                    const data = await resp.json();
+                    arr = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+                    ok = resp.ok;
+                } catch (err) {
+                    console.error('proxy fields error', err);
+                }
+                if (!ok || !arr.length) {
+                    const direct = new URL('http://194.33.40.197:7070/api/entity-fields/');
+                    const entityType = state.entity === 'deal_category' ? 'deal' : state.entity;
+                    direct.searchParams.set('type', entityType);
+                    if (state.entity === 'smart_process' && state.entityKey) direct.searchParams.set('entity_key', state.entityKey);
+                    const dResp = await fetch(direct.toString());
+                    const dData = await dResp.json();
+                    arr = Array.isArray(dData?.data) ? dData.data : (Array.isArray(dData) ? dData : []);
+                }
+                const normalized = arr.map(normalizeField).filter(Boolean);
+                fieldsCache[cacheKey] = normalized;
+                state.fields = normalized;
+                renderFieldList();
+                setInlineEnabled(true);
+            } catch (e) {
+                console.error(e);
+                state.fields = [];
+                if (fieldList) {
+                    fieldList.innerHTML = `<div class="text-danger small">Не удалось загрузить поля: ${e.message || e}</div>`;
+                }
+                renderFieldList();
+                setInlineEnabled(false);
+            }
+        }
+
+        function renderFieldList() {
+            fieldList.innerHTML = '';
+            const query = (searchInput.value || '').toLowerCase();
+            state.fields
+                .filter(f => f.label.toLowerCase().includes(query) || f.key.toLowerCase().includes(query))
+                .forEach(f => {
+                    const div = document.createElement('div');
+                    div.className = 'form-check';
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.className = 'form-check-input';
+                    input.value = f.key;
+                    input.id = `${id}-fld-${f.key}`;
+                    input.checked = state.selectedFieldKeys.length
+                        ? state.selectedFieldKeys.includes(f.key)
+                        : f.defaultChecked !== false;
+                    const label = document.createElement('label');
+                    label.className = 'form-check-label';
+                    label.htmlFor = input.id;
+                    label.textContent = f.label;
+                    if (f.hint) {
+                        const small = document.createElement('small');
+                        small.className = 'text-muted ms-1';
+                        small.textContent = `(${f.hint})`;
+                        label.appendChild(small);
+                    }
+                    div.appendChild(input);
+                    div.appendChild(label);
+                    fieldList.appendChild(div);
+                });
+        }
+
+    async function loadData() {
+        if (loader) {
+            loader.style.display = 'flex';
+            const spinner = loader.querySelector('.spinner-border');
+            if (spinner) spinner.style.display = 'inline-block';
+        }
+        rowsCount.textContent = 'Загрузка...';
+            const params = new URLSearchParams();
+            params.set('entity', state.entity);
+            params.set('limit', '1000');
+            params.set('offset', '0');
+            if (state.entity === 'smart_process' && state.entityKey) params.set('entity_key', state.entityKey);
+            if (state.entity === 'deal_category' && state.categoryId) {
+                params.set('category_id', state.categoryId);
+            }
+            try {
+                const resp = await fetch(`/api/data-explorer/data?${params.toString()}`);
+                if (!resp.ok) throw new Error(`data ${resp.status}`);
+                const data = await resp.json();
+                const items = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+                state.data = items || [];
+            // Если поля не загрузились, попробуем вывести таблицу по ключам данных
+            if (!state.fields.length && state.data.length) {
+                const sample = state.data.find(r => r && typeof r === 'object') || {};
+                const derived = Object.keys(sample || {}).map(k => {
+                    const label = k;
+                    const isAdditionalInfo = label.toLowerCase().includes('доп') && label.toLowerCase().includes('инф');
+                    return { key: k, label, defaultChecked: !isAdditionalInfo, hint: '' };
+                });
+                state.fields = derived;
+                renderFieldList();
+                setInlineEnabled(true);
+            }
+                buildAssignedCache(items);
+                rowsCount.textContent = `Всего: ${state.data.length}`;
+                state.page = 1;
+                renderTable();
+            if (loader) loader.style.display = 'none';
+            } catch (e) {
+                console.error(e);
+            rowsCount.textContent = 'Ошибка';
+            paginationInfo.textContent = 'Стр. 0 / 0';
+            tableHead.innerHTML = '<th>Ошибка</th>';
+            tableBody.innerHTML = `<tr><td>${e.message}</td></tr>`;
+            if (loader) loader.style.display = 'none';
+            } finally {
+                if (loader) loader.style.display = 'none';
+            }
+        }
+
+        function buildAssignedCache(items) {
+            items.forEach(r => {
+                const idVal = r.ASSIGNED_BY_ID ?? r.assigned_by_id ?? r.Ответственный;
+                const nameVal = r.assigned_by_name ?? r.ASSIGNED_BY_NAME;
+                if (idVal && nameVal) {
+                    assignedNameCache[String(idVal)] = nameVal;
+                }
+            });
+            saveAssignedCache();
+        }
+
+        function renderTable() {
+            const selected = state.selectedFieldKeys.length
+                ? state.fields.filter(f => state.selectedFieldKeys.includes(f.key))
+                : state.fields.filter(f => f.defaultChecked !== false);
+            if (!selected.length) {
+                tableHead.innerHTML = '<th>Нет полей</th>';
+                tableBody.innerHTML = '<tr><td>Выберите поля</td></tr>';
+                paginationInfo.textContent = 'Стр. 0 / 0';
+                rowsCount.textContent = 'Всего: 0';
+                if (loader) loader.style.display = 'none';
+                return;
+            }
+            tableHead.innerHTML = '';
+            selected.forEach(f => {
+                const th = document.createElement('th');
+                th.textContent = f.label;
+                tableHead.appendChild(th);
+            });
+            const start = (state.page - 1) * state.pageSize;
+            const end = start + state.pageSize;
+            const pageData = state.data.slice(start, end);
+            tableBody.innerHTML = '';
+            pageData.forEach(row => {
+                const tr = document.createElement('tr');
+                selected.forEach(f => {
+                    const td = document.createElement('td');
+                    let val = row[f.key];
+                    if (f.key === 'Воронка' || f.key === 'CATEGORY_ID') {
+                        const map = {
+                            '2': 'Покупатели авто',
+                            '12': 'Сервис',
+                            '8': 'HR кандидаты',
+                            '16': 'HR тек. сотрудники',
+                            '20': 'Сделки - прокат',
+                            '22': 'Chirie - solicitări prelucrate',
+                            '0': 'После визита',
+                            '25': 'Vânzări realizare',
+                            '30': 'Vânzări auto',
+                            '31': 'Atragere auto'
+                        };
+                        val = map[String(val)] ?? val;
+                    }
+                    if (typeof val === 'string' && val.length === 1 && (val === 'Y' || val === 'N')) {
+                        const lk = f.key.toLowerCase();
+                        if (lk.includes('закры') || lk.includes('closed')) {
+                            val = val === 'Y' ? 'Da' : 'Nu';
+                        }
+                    }
+                    if (
+                        f.key === 'Ответственный' ||
+                        f.key === 'ASSIGNED_BY_ID' ||
+                        f.key === 'assigned_by_id' ||
+                        f.label.toLowerCase().includes('ответствен')
+                    ) {
+                        const idVal = row.ASSIGNED_BY_ID ?? row.assigned_by_id ?? row.Ответственный ?? val;
+                        const byName = row.assigned_by_name ?? row.ASSIGNED_BY_NAME ?? assignedNameCache[String(idVal)];
+                        val = byName || idVal || '';
+                    }
+                    if (f.key === 'assigned_by_name' || f.key === 'ASSIGNED_BY_NAME') {
+                        const fallbackId = row.ASSIGNED_BY_ID ?? row.assigned_by_id ?? row.Ответственный ?? '';
+                        const byName = row[f.key] ?? assignedNameCache[String(fallbackId)];
+                        val = byName || fallbackId || '';
+                    }
+                    td.textContent = val ?? '';
+                    tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+            });
+            const totalPages = Math.max(1, Math.ceil(state.data.length / state.pageSize));
+            paginationInfo.textContent = `Стр. ${state.page} / ${totalPages}`;
+            rowsCount.textContent = `Всего: ${state.data.length}`;
+            if (loader) loader.style.display = 'none';
+        }
+
+        entitySelect.addEventListener('change', () => {
+            state.entity = entitySelect.value;
+            state.entityKey = entitySelect.selectedOptions[0]?.dataset.entityKey || '';
+            state.categoryId = entitySelect.selectedOptions[0]?.dataset.categoryId || '';
+            state.selectedFieldKeys = [];
+            state.fields = [];
+            state.data = [];
+            state.page = 1;
+            setInlineEnabled(false);
+            tableHead.innerHTML = '<th>Нет данных</th>';
+            tableBody.innerHTML = '<tr><td>Выберите поля и нажмите «Применить»</td></tr>';
+            paginationInfo.textContent = 'Стр. 0 / 0';
+            rowsCount.textContent = 'Всего: 0';
+            loadFields();
+        });
+        pageSizeSelect.addEventListener('change', () => {
+            state.pageSize = parseInt(pageSizeSelect.value, 10) || 10;
+            state.page = 1;
+            renderTable();
+        });
+
+        if (inlineSearch) {
+            inlineSearch.addEventListener('input', () => {
+                searchInput.value = inlineSearch.value;
+                renderFieldList();
+            });
+        }
+        if (inlineAll) {
+            inlineAll.addEventListener('click', () => {
+                state.selectedFieldKeys = state.fields.map(f => f.key);
+                renderFieldList();
+                renderTable();
+            });
+        }
+        if (inlineClear) {
+            inlineClear.addEventListener('click', () => {
+                state.selectedFieldKeys = [];
+                renderFieldList();
+                renderTable();
+            });
+        }
+
+        btnFields.addEventListener('click', async () => {
+            if (!state.fields.length) {
+                await loadFields();
+            }
+            renderFieldList();
+            modal.show();
+        });
+
+        btnSelectAll.addEventListener('click', () => {
+            fieldList.querySelectorAll('input[type="checkbox"]').forEach(i => i.checked = true);
+        });
+        btnClearAll.addEventListener('click', () => {
+            fieldList.querySelectorAll('input[type="checkbox"]').forEach(i => i.checked = false);
+        });
+        searchInput.addEventListener('input', renderFieldList);
+        btnSaveFields.addEventListener('click', () => {
+            const checked = Array.from(fieldList.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
+            state.selectedFieldKeys = checked;
+            modal.hide();
+            renderTable();
+        });
+
+        btnApply.addEventListener('click', () => loadData());
+        btnPrev.addEventListener('click', () => {
+            if (state.page > 1) {
+                state.page -= 1;
+                renderTable();
+            }
+        });
+        btnNext.addEventListener('click', () => {
+            const totalPages = Math.max(1, Math.ceil(state.data.length / state.pageSize));
+            if (state.page < totalPages) {
+                state.page += 1;
+                renderTable();
+            }
+        });
+
+        // initial
+        loadFields().then(loadData);
+    }
+
+    // -------------- Chart component logic --------------
+    function setupChartComponent(card, id) {
+        const entityXSelect = card.querySelector('.chart-entity-x');
+        const fieldXSelect = card.querySelector('.chart-field-x');
+        const entityYSelect = card.querySelector('.chart-entity-y');
+        const fieldYSelect = card.querySelector('.chart-field-y');
+        const typeSelect = card.querySelector('.chart-type');
+        const applyBtn = card.querySelector('.chart-apply');
+        const removeBtn = card.querySelector('.remove-component');
+        const settingsBtn = card.querySelector('.chart-settings-btn');
+        const settingsBlock = card.querySelector('.chart-settings');
+        const container = card.querySelector('.chart-container');
+
+        if (entityXSelect) {
+            entityXSelect.innerHTML = baseEntityOptions || buildEntityOptions(processesCache);
+        }
+        if (entityYSelect) {
+            entityYSelect.innerHTML = baseEntityOptions || buildEntityOptions(processesCache);
+        }
+
+        chartStates[id] = {
+            entityX: entityXSelect?.value || 'deal',
+            entityKeyX: entityXSelect?.selectedOptions[0]?.dataset.entityKey || '',
+            categoryIdX: entityXSelect?.selectedOptions[0]?.dataset.categoryId || '',
+            entityY: entityYSelect?.value || 'deal',
+            entityKeyY: entityYSelect?.selectedOptions[0]?.dataset.entityKey || '',
+            categoryIdY: entityYSelect?.selectedOptions[0]?.dataset.categoryId || '',
+            fieldX: '',
+            fieldY: '',
+            chartType: 'bar',
+            chart: null,
+        };
+
+        const loadFieldsFor = async (axis) => {
+            const isX = axis === 'x';
+            const selEntity = isX ? entityXSelect : entityYSelect;
+            const selField = isX ? fieldXSelect : fieldYSelect;
+            if (!selEntity || !selField) return;
+            const entityRaw = selEntity.value || 'deal';
+            const entity = entityRaw === 'deal_category' ? 'deal' : entityRaw;
+            const entityKey = selEntity.selectedOptions[0]?.dataset.entityKey || '';
+            const categoryId = selEntity.selectedOptions[0]?.dataset.categoryId || '';
+            const cacheKey = `${entityRaw}:${entityKey}:${categoryId}`;
+            let fields = fieldsCache[cacheKey];
+            if (!fields || !fields.length) {
+                try {
+                    const params = new URLSearchParams();
+                    params.set('entity', entityRaw);
+                    if (entityRaw === 'smart_process' && entityKey) params.set('entity_key', entityKey);
+                    if (entityRaw === 'deal_category' && categoryId) params.set('category_id', categoryId);
+                    const resp = await fetch(`/api/data-explorer/fields?${params.toString()}`);
+                    if (!resp.ok) throw new Error(`fields ${resp.status}`);
+                    const data = await resp.json();
+                    const arr = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+                    fields = arr.map(normalizeField).filter(Boolean);
+                    if (!fields.length) {
+                        fields = fallbackFields;
+                    }
+                    fieldsCache[cacheKey] = fields;
+                } catch (e) {
+                    console.error('loadFieldsFor chart', e);
+                    fields = fallbackFields;
+                }
+            }
+            selField.innerHTML = '<option value="">— выберите поле —</option>';
+            fields.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.key;
+                opt.textContent = f.label;
+                selField.appendChild(opt);
+            });
+        };
+
+        const renderChart = async () => {
+            const state = chartStates[id];
+            if (!state) return;
+            if (state.entityX !== state.entityY) {
+                alert('Сейчас график использует одну сущность для обеих осей. Выберите одинаковую сущность.');
+                return;
+            }
+            const entityRaw = state.entityX || 'deal';
+            const entity = entityRaw === 'deal_category' ? 'deal' : entityRaw;
+            const entityKey = state.entityKeyX || '';
+            const categoryId = state.categoryIdX || '';
+            const params = new URLSearchParams();
+            params.set('entity', entity);
+            params.set('limit', '1000');
+            params.set('offset', '0');
+            if (entityRaw === 'smart_process' && entityKey) params.set('entity_key', entityKey);
+            if (entityRaw === 'deal_category' && categoryId) params.set('category_id', categoryId);
+            try {
+                const resp = await fetch(`/api/data-explorer/data?${params.toString()}`);
+                const data = await resp.json();
+                const items = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+                const categories = [];
+                const seriesData = [];
+                const keyX = state.fieldX;
+                const keyY = state.fieldY;
+                if (!keyX) {
+                    alert('Выберите поле для оси X');
+                    return;
+                }
+                // собираем агрегацию: если поле Y не выбрано или не числовое — считаем количество
+                const isNumeric = (v) => typeof v === 'number' || (!isNaN(parseFloat(v)) && isFinite(v));
+                const agg = {};
+                items.forEach(row => {
+                    const cat = row[keyX];
+                    let val;
+                    if (keyY && isNumeric(row[keyY])) {
+                        val = parseFloat(row[keyY]);
+                    } else {
+                        val = 1;
+                    }
+                    const key = cat !== undefined && cat !== null ? String(cat) : '—';
+                    agg[key] = (agg[key] || 0) + val;
+                });
+                Object.entries(agg).forEach(([k, v]) => {
+                    categories.push(k);
+                    seriesData.push(v);
+                });
+                const options = {
+                    chart: {
+                        type: state.chartType || 'bar',
+                        height: 320,
+                        toolbar: { show: false },
+                    },
+                    series: [{ name: keyY || 'Count', data: seriesData }],
+                    xaxis: { categories },
+                };
+                if (state.chart) {
+                    state.chart.updateOptions(options, true, true);
+                } else {
+                    state.chart = new ApexCharts(container, options);
+                    state.chart.render();
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Не удалось загрузить данные для графика');
+            }
+        };
+
+        if (removeBtn) {
+            removeBtn.addEventListener('click', () => {
+                if (chartStates[id]?.chart) {
+                    chartStates[id].chart.destroy();
+                }
+                delete chartStates[id];
+                removeComponent(id);
+            });
+        }
+        if (settingsBtn && settingsBlock) {
+            settingsBtn.addEventListener('click', () => {
+                settingsBlock.classList.toggle('d-none');
+            });
+        }
+        if (entityXSelect) entityXSelect.addEventListener('change', () => {
+            chartStates[id].entityX = entityXSelect.value;
+            chartStates[id].entityKeyX = entityXSelect.selectedOptions[0]?.dataset.entityKey || '';
+            chartStates[id].categoryIdX = entityXSelect.selectedOptions[0]?.dataset.categoryId || '';
+            loadFieldsFor('x');
+        });
+        if (entityYSelect) entityYSelect.addEventListener('change', () => {
+            chartStates[id].entityY = entityYSelect.value;
+            chartStates[id].entityKeyY = entityYSelect.selectedOptions[0]?.dataset.entityKey || '';
+            chartStates[id].categoryIdY = entityYSelect.selectedOptions[0]?.dataset.categoryId || '';
+            loadFieldsFor('y');
+        });
+        if (fieldXSelect) fieldXSelect.addEventListener('change', () => {
+            chartStates[id].fieldX = fieldXSelect.value;
+        });
+        if (fieldYSelect) fieldYSelect.addEventListener('change', () => {
+            chartStates[id].fieldY = fieldYSelect.value;
+        });
+        if (typeSelect) typeSelect.addEventListener('change', () => {
+            chartStates[id].chartType = typeSelect.value;
+        });
+        if (applyBtn) applyBtn.addEventListener('click', () => renderChart());
+
+        loadFieldsFor('x');
+        loadFieldsFor('y');
+    }
+});
+</script>
+{% endblock %}
