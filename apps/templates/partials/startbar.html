@@ -48,17 +48,15 @@
                     <li class="menu-label mt-2">
                         <span>Navigation</span>
                     </li>
-
                     <li class="menu-label mt-2">
                         <span>Custom Pages</span>
                     </li>
-                    <li class="nav-item" id="customPagesPlaceholder">
+                    <li class="nav-item d-none" id="customPagesPlaceholder" aria-hidden="true">
                         <a class="nav-link text-muted" href="javascript:void(0);">
                             <i class="iconoir-info-empty menu-icon"></i>
                             <span>Пока нет страниц</span>
                         </a>
                     </li>
-
                     <li class="nav-item">
                         <a class="nav-link" href="/deals">
                             <i class="iconoir-hand-card menu-icon"></i> 
@@ -66,13 +64,9 @@
                         </a>
                     </li><!--end nav-item-->
 
-                    <li class="nav-item">
-                        <a class="nav-link" href="/data-explorer">
-                            <i class="iconoir-stats-up-square menu-icon"></i> 
-                            <span>Data Explorer</span>
-                        </a>
-                    </li><!--end nav-item-->
-
+                    <li class="menu-label mt-2">
+                        <span>Templates</span>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#sidebarDashboards" data-bs-toggle="collapse" role="button"
                             aria-expanded="false" aria-controls="sidebarDashboards"> 
@@ -662,9 +656,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!navList) return;
             // remove old custom entries
             navList.querySelectorAll('.custom-page-item').forEach(n => n.remove());
-            if (pagesPlaceholder) {
-                pagesPlaceholder.classList.toggle('d-none', pages.length > 0);
-            }
+            // Плейсхолдер всегда скрыт (d-none в HTML) — нужен только как якорь для вставки новых страниц
+            // вставляем страницы в секцию Navigation: после плейсхолдера, затем друг за другом
+            let insertRef = pagesPlaceholder || navList.querySelector('.menu-label');
             pages.forEach(page => {
                 const li = document.createElement('li');
                 li.className = 'nav-item custom-page-item';
@@ -693,11 +687,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 wrapper.appendChild(btn);
                 li.appendChild(wrapper);
 
-                // insert after placeholder label (first menu-label is Navigation, second is Custom Pages)
-                const labelNodes = navList.querySelectorAll('.menu-label');
-                const customLabel = labelNodes.length > 1 ? labelNodes[1] : null;
-                if (customLabel) {
-                    customLabel.insertAdjacentElement('afterend', li);
+                if (insertRef) {
+                    insertRef.insertAdjacentElement('afterend', li);
+                    insertRef = li;
                 } else {
                     navList.prepend(li);
                 }
