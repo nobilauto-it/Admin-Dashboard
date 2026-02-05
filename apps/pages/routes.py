@@ -116,8 +116,18 @@ def create_page():
         return jsonify({"ok": False, "error": "Страница уже существует", "slug": slug, "url": f"/{slug}"}), 409
 
     page_title = raw_name
-    # Пустая страница — чистый лист, содержимое добавите позже
-    template_content = """{% extends 'layouts/vertical.html' %}
+    # Шаблон с виджетом таблицы сущностей (кнопка «+», модалки, грид) или пустая страница
+    widget_source = PAGES_DIR / "_entity_table_widget_source.html"
+    if widget_source.exists():
+        try:
+            template_content = widget_source.read_text(encoding="utf-8")
+        except Exception as exc:
+            current_app.logger.warning(f"Не удалось прочитать шаблон виджета: {exc}")
+            template_content = None
+    else:
+        template_content = None
+    if not template_content:
+        template_content = """{% extends 'layouts/vertical.html' %}
 
 {% block title %}__PAGE_TITLE__{% endblock %}
 
@@ -130,7 +140,7 @@ def create_page():
 </div>
 {% endblock %}
 """
-    template_content = template_content.replace("__PAGE_TITLE__", page_title)
+    template_content = template_content.replace("__PAGE_TITLE__", page_title).replace("__PAGE_SLUG__", slug)
 
     try:
         with open(target_path, 'w', encoding='utf-8') as fp:
@@ -169,6 +179,21 @@ def delete_page(slug):
     except ValueError:
         return jsonify({"ok": False, "error": "Некорректный путь"}), 400
 
+    # Сначала удалить все связанные настройки (чтобы при создании страницы с тем же slug — чистый старт)
+    try:
+        from apps.models import EntityTableConfig
+        from apps import db
+        deleted = EntityTableConfig.query.filter_by(page_slug=slug).delete()
+        db.session.commit()
+        if deleted:
+            current_app.logger.info(f"Удалён конфиг таблицы сущностей для страницы {slug}")
+    except Exception as exc:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        current_app.logger.warning(f"EntityTableConfig при удалении страницы {slug}: {exc}")
+
     if target_path.exists():
         try:
             target_path.unlink()
@@ -180,6 +205,206 @@ def delete_page(slug):
     registry = [item for item in registry if item.get("slug") != slug]
     _write_registry(registry)
     return jsonify({"ok": True})
+
+
+# -------------------------
+# Entity Table (CRM) — прокси API и конфиг/шаблоны
+# -------------------------
+
+def _crm_base_url():
+    return current_app.config.get('CRM_API_BASE_URL', 'http://194.33.40.197:7070').rstrip('/')
+
+
+# Список воронок сделок (если бэкенд не отдаёт — используем статичный)
+DEAL_CATEGORIES = [
+    {"id": "2", "title": "Покупатели авто"},
+    {"id": "12", "title": "Сервис"},
+    {"id": "8", "title": "HR кандидаты"},
+    {"id": "16", "title": "HR тек. сотрудники"},
+    {"id": "20", "title": "Сделки - прокат"},
+    {"id": "22", "title": "Chirie - solicitări prelucrate"},
+    {"id": "0", "title": "После визита"},
+    {"id": "25", "title": "Vânzări realizare"},
+    {"id": "30", "title": "Vânzări auto"},
+    {"id": "31", "title": "Atragere auto"},
+]
+
+
+@blueprint.route('/api/entity-table/deal-categories/', methods=['GET'])
+def entity_table_deal_categories():
+    """Список воронок сделок для выбора в модалке сущностей."""
+    return jsonify({"ok": True, "categories": DEAL_CATEGORIES})
+
+
+@blueprint.route('/api/entity-table/processes-deals/', methods=['GET'])
+def entity_table_processes_deals():
+    """Прокси: список сущностей для формы выбора (контакты, лиды, сделки, смарт-процессы)."""
+    url = f"{_crm_base_url()}/api/processes-deals/"
+    try:
+        data = _proxy_get(url)
+        return jsonify(data)
+    except Exception as e:
+        current_app.logger.error(f"Entity table processes-deals: {e}")
+        return make_response(jsonify({"ok": False, "detail": str(e)}), 500)
+
+
+@blueprint.route('/api/entity-table/entity-meta-fields/', methods=['GET'])
+def entity_table_meta_fields():
+    """Прокси: поля сущности для формы шестерёнки. Для сделок передаём category_id (воронку), чтобы API вернул поля и вложенности именно этой сделки."""
+    entity_type = request.args.get('type', 'deal')
+    entity_key = request.args.get('entity_key')
+    category_id = request.args.get('category_id')
+    params = {'type': entity_type}
+    if entity_key:
+        params['entity_key'] = entity_key
+    if category_id is not None and category_id != '':
+        params['category_id'] = category_id
+    url = f"{_crm_base_url()}/api/entity-meta-fields/"
+    try:
+        data = _proxy_get(url, params=params)
+        return jsonify(data)
+    except Exception as e:
+        current_app.logger.error(f"Entity table meta-fields: {e}")
+        return make_response(jsonify({"ok": False, "detail": str(e)}), 500)
+
+
+@blueprint.route('/api/entity-table/entity-meta-data/', methods=['GET'])
+def entity_table_meta_data():
+    """Прокси: данные сущности для грида (limit/offset). При ошибке CRM — пустой ответ 200."""
+    entity_type = request.args.get('type', 'deal')
+    entity_key = request.args.get('entity_key')
+    limit = request.args.get('limit', '10000')
+    offset = request.args.get('offset', '0')
+    category_id = request.args.get('category_id')
+    params = {'type': entity_type, 'limit': limit, 'offset': offset}
+    if entity_key:
+        params['entity_key'] = entity_key
+    if category_id is not None and category_id != '':
+        params['category_id'] = category_id
+    url = f"{_crm_base_url()}/api/entity-meta-data/"
+    try:
+        if requests is None:
+            return jsonify({"ok": True, "data": [], "total": 0})
+        resp = requests.get(url, params=params, timeout=30)
+        if resp.status_code != 200:
+            current_app.logger.warning(f"Entity table meta-data upstream: {resp.status_code} {resp.text[:200]}")
+            return jsonify({"ok": True, "data": [], "total": 0})
+        return jsonify(resp.json())
+    except Exception as e:
+        current_app.logger.error(f"Entity table meta-data: {e}")
+        return jsonify({"ok": True, "data": [], "total": 0})
+
+
+@blueprint.route('/api/entity-table/config', methods=['GET', 'POST'])
+def entity_table_config():
+    """GET: конфиг по page_slug. POST: сохранить конфиг (entities, fields)."""
+    from apps.models import EntityTableConfig
+    from apps import db
+
+    if request.method == 'GET':
+        try:
+            page_slug = (request.args.get('page_slug') or 'entity-table').strip()
+            rec = EntityTableConfig.query.filter(
+                db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
+            ).first()
+            if not rec:
+                return jsonify({"ok": True, "table_title": "", "table_description": "", "entities": [], "fields": []})
+            entities = rec.get_entities()
+            fields = rec.get_fields()
+            if not isinstance(entities, list):
+                entities = []
+            if not isinstance(fields, list):
+                fields = []
+            return jsonify({
+                "ok": True,
+                "table_title": rec.table_title or "",
+                "table_description": rec.table_description or "",
+                "entities": entities,
+                "fields": fields,
+            })
+        except Exception as e:
+            current_app.logger.exception("Entity table config GET: %s", e)
+            return jsonify({"ok": True, "table_title": "", "table_description": "", "entities": [], "fields": []})
+
+    data = request.get_json(silent=True) or {}
+    page_slug = (data.get('page_slug') or 'entity-table').strip()
+    table_title = (data.get('table_title') or '').strip()
+    table_description = (data.get('table_description') or '').strip()
+    entities = data.get('entities', [])
+    fields = data.get('fields', [])
+
+    rec = EntityTableConfig.query.filter(
+        db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
+    ).first()
+    if not rec:
+        rec = EntityTableConfig(page_slug=page_slug)
+        db.session.add(rec)
+    rec.table_title = table_title
+    rec.table_description = table_description
+    rec.set_entities(entities)
+    rec.set_fields(fields)
+    try:
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Entity table config save: {e}")
+        return make_response(jsonify({"ok": False, "error": str(e)}), 500)
+
+
+@blueprint.route('/api/entity-table/templates', methods=['GET', 'POST'])
+def entity_table_templates_list():
+    """GET: список шаблонов. POST: сохранить шаблон (name, entities, fields)."""
+    from apps.models import EntityTableTemplate
+    from apps import db
+
+    if request.method == 'GET':
+        rows = EntityTableTemplate.query.order_by(EntityTableTemplate.name).all()
+        return jsonify({
+            "ok": True,
+            "templates": [
+                {"id": r.id, "name": r.name, "entities": r.get_entities(), "fields": r.get_fields()}
+                for r in rows
+            ],
+        })
+
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({"ok": False, "error": "Название обязательно"}), 400
+    entities = data.get('entities', [])
+    fields = data.get('fields', [])
+
+    rec = EntityTableTemplate(name=name)
+    rec.set_entities(entities)
+    rec.set_fields(fields)
+    try:
+        db.session.add(rec)
+        db.session.commit()
+        return jsonify({"ok": True, "id": rec.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Entity table template save: {e}")
+        return make_response(jsonify({"ok": False, "error": str(e)}), 500)
+
+
+@blueprint.route('/api/entity-table/templates/<int:template_id>', methods=['DELETE'])
+def entity_table_template_delete(template_id):
+    """Удалить шаблон."""
+    from apps.models import EntityTableTemplate
+    from apps import db
+
+    rec = EntityTableTemplate.query.get(template_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "Шаблон не найден"}), 404
+    try:
+        db.session.delete(rec)
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Entity table template delete: {e}")
+        return make_response(jsonify({"ok": False, "error": str(e)}), 500)
 
 
 @blueprint.route('/<template>')

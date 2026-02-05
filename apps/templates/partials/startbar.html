@@ -1,6 +1,6 @@
 <div class="startbar d-print-none">
     <style>
-    @media (max-width: 991px) {
+    @media (max-width: 1199.98px) {
         .startbar {
             transform: translateX(-100%);
             transition: transform 0.2s ease;
@@ -642,6 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await resp.json();
             if (!resp.ok || !data.ok) throw new Error(data.error || 'Не удалось удалить страницу');
             await loadPages();
+            window.location.href = '/';
         } catch (err) {
             console.error(err);
             alert(err.message || 'Ошибка удаления страницы');
@@ -701,7 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPages();
 });
 
-// Mobile startbar toggle
+// Кнопка меню: показ/скрытие startbar
 document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('togglemenu');
     const startbar = document.querySelector('.startbar');
@@ -712,13 +713,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.remove('startbar-open');
     };
     const toggle = () => {
-        const isOpen = startbar?.classList.toggle('startbar-open');
-        if (overlay) overlay.classList.toggle('active', !!isOpen);
-        document.body.classList.toggle('startbar-open', !!isOpen);
+        if (!startbar) return;
+        const isOpen = startbar.classList.toggle('startbar-open');
+        if (overlay) overlay.classList.toggle('active', isOpen);
+        document.body.classList.toggle('startbar-open', isOpen);
     };
     if (btn) {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             toggle();
         });
     }

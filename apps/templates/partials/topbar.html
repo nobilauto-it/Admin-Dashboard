@@ -5,15 +5,13 @@
 
             <ul class="topbar-item list-unstyled d-inline-flex align-items-center mb-0">                        
                 <li>
-                    <button class="nav-link mobile-menu-btn nav-icon" id="togglemenu">
+                    <button type="button" class="nav-link mobile-menu-btn nav-icon" id="togglemenu" aria-label="Меню">
                         <i class="iconoir-menu"></i>
                     </button>
                 </li> 
                 <li class="mx-2 welcome-text">
-                    <a class=" btn btn-sm btn-soft-primary" href="#" role="button"><i class="fas fa-plus me-2"></i>New Task</a>
-                    <!-- <h5 class="mb-0 fw-semibold text-truncate">Good Morning, James!</h5> -->
-                    <!-- <h6 class="mb-0 fw-normal text-muted text-truncate fs-14">Here's your overview this week.</h6> -->
-                </li>                   
+                    <a class="btn btn-sm btn-soft-primary" href="#" role="button" id="topbarBtnAddEntity" title="Добавить сущность"><i class="iconoir-plus"></i></a>
+                </li>
             </ul>
             <ul class="topbar-item list-unstyled d-inline-flex align-items-center mb-0">
                 <li class="hide-phone app-search">
@@ -252,3 +250,12 @@
         <!-- end navbar-->
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var btn = document.getElementById('topbarBtnAddEntity');
+    if (btn) btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        /* Заглушка: функциональный плюс и шаблоны — в контенте страницы таблицы сущностей */
+    });
+});
+</script>

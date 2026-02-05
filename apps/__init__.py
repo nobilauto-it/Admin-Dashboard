@@ -44,6 +44,7 @@ def create_app(config):
     app = Flask(__name__)
     app.config.from_object(config)
     register_extensions(app)
+    import apps.models  # noqa: F401 — регистрируем модели для db.create_all()
     register_blueprints(app)
     configure_database(app)
     return app

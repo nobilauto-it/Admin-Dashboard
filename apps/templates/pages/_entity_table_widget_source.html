@@ -1,0 +1,1163 @@
+{% extends 'layouts/vertical.html' %}
+
+{% block title %}__PAGE_TITLE__{% endblock %}
+
+{% block styles %}
+<link href="{{ config.ASSETS_ROOT }}/libs/simple-datatables/style.css" rel="stylesheet" type="text/css"/>
+<style>
+    .entity-table-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; margin-bottom: 16px; }
+    .entity-table-toolbar .btn-plus-content { width: 48px; height: 48px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; }
+    .entity-table-toolbar .btn-gear { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+    .entity-table-loading { padding: 24px; text-align: center; color: #64748b; }
+    .entity-table-grid-wrap { min-width: 0; }
+    .entity-table-grid-wrap .datatable-table { white-space: nowrap; }
+    .modal-entity-list .entity-group { margin-bottom: 16px; }
+    .modal-entity-list .entity-group-title { font-weight: 700; margin-bottom: 8px; }
+    .modal-entity-list .form-check { margin-bottom: 4px; }
+    .fields-modal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 16px; max-height: 400px; overflow-y: auto; }
+    .fields-modal-nested { margin-bottom: 12px; }
+    .fields-modal-nested .nested-title { font-weight: 600; margin-bottom: 6px; }
+    #paginationBlock.datatable-bottom { padding: 8px 10px; margin-top: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    #paginationBlock .datatable-input { padding: 6px 12px; margin: 0 4px; }
+    #paginationBlock .entity-table-pager-btn { border: 1px solid transparent; padding: 6px 12px; margin-left: 2px; text-decoration: none; color: #333; cursor: pointer; border-radius: 4px; background: transparent; font-size: inherit; }
+    #paginationBlock .entity-table-pager-btn:hover:not(:disabled) { background-color: #d9d9d9; }
+    #paginationBlock .entity-table-pager-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .entity-list-two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 2rem; max-height: 50vh; overflow-y: auto; }
+    @media (max-width: 576px) { .entity-list-two-cols { grid-template-columns: 1fr; } }
+    .entity-select-hint .entity-select-hint-icon { width: 24px; height: 24px; min-width: 24px; font-size: 14px; font-weight: 600; font-style: normal; }
+    #nestedCheckboxesRow .btn.nested-toggle.active { background-color: var(--bs-primary); color: #fff; border-color: var(--bs-primary); }
+    #gridTopRow #btnFields { margin-left: auto !important; }
+    .entity-table-grid-wrap th.entity-table-th-draggable { cursor: grab; user-select: none; }
+    .entity-table-grid-wrap th.entity-table-th-draggable:active { cursor: grabbing; }
+    .entity-table-grid-wrap th.dragging { opacity: 0.5; }
+    .entity-table-grid-wrap th.drag-over { border-left: 2px solid var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.08); }
+    .entity-table-grid-wrap .datatable-table { table-layout: fixed; }
+    .entity-table-grid-wrap th.entity-table-th-wrap { position: relative; padding-right: 10px; }
+    .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; }
+    .entity-table-grid-wrap th .entity-table-col-resize:hover { background: rgba(var(--bs-primary-rgb), 0.2); }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="entity-table-toolbar d-flex align-items-center flex-wrap">
+                <button type="button" class="btn btn-primary btn-plus-content" id="btnAddEntity" title="Добавить сущность / настройки таблицы">
+                    <i class="iconoir-plus"></i>
+                </button>
+                <span class="text-muted small" id="selectedEntitiesLabel"></span>
+            </div>
+
+            <div id="loadingBlock" class="entity-table-loading d-none">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mb-0 mt-2" id="loadingText">Загрузка...</p>
+            </div>
+
+            <div id="gridTopRow" class="d-flex align-items-start mb-3 d-none">
+                <div id="tableTitleBlock" class="d-none flex-grow-1">
+                    <h4 class="mb-1" id="tableTitleText"></h4>
+                    <p class="text-muted small mb-0" id="tableDescriptionText"></p>
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-gear d-none ms-auto flex-shrink-0" id="btnFields" title="Настроить поля">
+                    <i class="iconoir-settings"></i>
+                </button>
+            </div>
+
+            <div id="gridBlock" class="entity-table-grid-wrap table-responsive d-none">
+                <table class="table datatable datatable-table mb-0" id="entityTable">
+                    <thead class="table-light" id="gridHead"></thead>
+                    <tbody id="gridBody"></tbody>
+                </table>
+            </div>
+
+            <div id="emptyBlock" class="entity-table-loading">
+                <p class="text-muted mb-0">Выберите сущности или шаблон (кнопка «+»).</p>
+            </div>
+
+            <div id="paginationBlock" class="datatable-bottom d-none">
+                <span class="small text-muted">На странице:</span>
+                <select class="datatable-input" id="pageSize" style="width: 70px;">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                </select>
+                <span class="datatable-info small text-muted" id="paginationInfo" style="margin-left: 8px;">0 — 0 из 0</span>
+                <button type="button" class="entity-table-pager-btn" id="btnPrev">‹</button>
+                <button type="button" class="entity-table-pager-btn" id="btnNext">›</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEntity" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавление таблицы</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body modal-entity-list">
+                <div class="d-flex justify-content-end mb-3">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Шаблоны</button>
+                        <ul class="dropdown-menu dropdown-menu-end" id="templatesDropdown"></ul>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="tableNameInput">Название таблицы</label>
+                    <input type="text" class="form-control" id="tableNameInput" placeholder="Название таблицы">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="tableDescriptionInput">Описание</label>
+                    <textarea class="form-control" id="tableDescriptionInput" rows="2" placeholder="Описание"></textarea>
+                </div>
+                <div class="entity-select-hint col-auto ms-auto bg-primary-subtle p-2 border border-dashed border-primary rounded mb-3 d-flex align-items-center gap-2" role="alert">
+                    <span class="entity-select-hint-icon rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center">i</span>
+                    <span class="text-dark">Выберите <strong>основную сущность</strong> для создания таблицы.</span>
+                </div>
+                <div id="modalEntityBody" class="entity-list-two-cols"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-primary" id="modalEntitySave">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalFields" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Поля для таблицы</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <div class="flex-grow-1" style="min-width: 200px;">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="iconoir-search"></i></span>
+                            <input type="text" class="form-control" id="fieldsSearchInput" placeholder="Поиск полей" autocomplete="off">
+                        </div>
+                    </div>
+                    <div id="nestedCheckboxesRow" class="d-flex flex-wrap gap-2 align-items-center"></div>
+                </div>
+                <div class="fields-modal-grid" id="fieldsList"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="modalFieldsSave">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var PAGE_SLUG = '__PAGE_SLUG__';
+    var pathMatch = window.location.pathname.match(/^\/([^\/]+)/);
+    if (pathMatch && pathMatch[1]) {
+        PAGE_SLUG = pathMatch[1];
+    } else if (PAGE_SLUG === '__PAGE_SLUG__' || !PAGE_SLUG) {
+        PAGE_SLUG = 'entity-table';
+    }
+    const API = {
+        processesDeals: '/api/entity-table/processes-deals/',
+        dealCategories: '/api/entity-table/deal-categories/',
+        metaFields: '/api/entity-table/entity-meta-fields/',
+        metaData: '/api/entity-table/entity-meta-data/',
+        config: '/api/entity-table/config',
+        templates: '/api/entity-table/templates',
+    };
+
+    let selectedEntities = [];
+    let selectedFields = [];
+    let tableTitle = '';
+    let tableDescription = '';
+    let fullData = [];
+    let allColumns = [];
+    let currentPage = 1;
+    let pageSize = 25;
+    let entitiesList = [];
+    let fieldsCache = {};
+    let columnWidths = {};
+
+    const btnAddEntity = document.getElementById('btnAddEntity');
+    const btnFields = document.getElementById('btnFields');
+    const loadingBlock = document.getElementById('loadingBlock');
+    const loadingText = document.getElementById('loadingText');
+    const gridBlock = document.getElementById('gridBlock');
+    const gridTopRow = document.getElementById('gridTopRow');
+    const emptyBlock = document.getElementById('emptyBlock');
+    const gridHead = document.getElementById('gridHead');
+    const gridBody = document.getElementById('gridBody');
+    const paginationBlock = document.getElementById('paginationBlock');
+    const pageSizeSelect = document.getElementById('pageSize');
+    const paginationInfo = document.getElementById('paginationInfo');
+    const btnPrev = document.getElementById('btnPrev');
+    const btnNext = document.getElementById('btnNext');
+    const selectedEntitiesLabel = document.getElementById('selectedEntitiesLabel');
+    const modalEntity = new bootstrap.Modal(document.getElementById('modalEntity'));
+    const modalEntityBody = document.getElementById('modalEntityBody');
+    const modalEntitySave = document.getElementById('modalEntitySave');
+    const modalFields = new bootstrap.Modal(document.getElementById('modalFields'));
+    const fieldsList = document.getElementById('fieldsList');
+    const modalFieldsSave = document.getElementById('modalFieldsSave');
+    const templatesDropdown = document.getElementById('templatesDropdown');
+    const nestedCheckboxesRow = document.getElementById('nestedCheckboxesRow');
+
+    let entityRadioName = 0;
+
+    /** Делегирование: при клике по кнопке/чекбоксу вложенности показывать/скрывать рубрику и поля в реальном времени. */
+    if (nestedCheckboxesRow && fieldsList) {
+        nestedCheckboxesRow.addEventListener('click', function(e) {
+            var target = e.target.closest && e.target.closest('.nested-toggle') ? e.target.closest('.nested-toggle') : (e.target.classList && e.target.classList.contains('nested-toggle') ? e.target : null);
+            if (!target) return;
+            e.preventDefault();
+            var ek = target.getAttribute('data-entitykey');
+            var typ = target.getAttribute('data-type');
+            if (!ek || !typ) return;
+            var isButton = target.tagName === 'BUTTON' || target.getAttribute('role') === 'button';
+            var show;
+            if (isButton) {
+                show = !target.classList.contains('active');
+                target.classList.toggle('active', show);
+                target.setAttribute('data-active', show ? 'true' : 'false');
+            } else {
+                show = target.checked;
+            }
+            fieldsList.querySelectorAll('[data-entitykey="' + ek + '"][data-nested-type="' + typ + '"]').forEach(function(el) {
+                el.style.display = show ? '' : 'none';
+            });
+            filterFieldsBySearch();
+        });
+    }
+
+    function showLoading(show, text) {
+        if (show) {
+            loadingBlock.classList.remove('d-none');
+            loadingText.textContent = text || 'Загрузка...';
+        } else {
+            loadingBlock.classList.add('d-none');
+        }
+    }
+
+    function entityKey(e) {
+        return (e.entity_key || e.type) + (e.category_id != null ? '_' + e.category_id : '');
+    }
+
+    /** Убирает дубли сущностей и объединяет поля по entityKey (одна запись полей на сущность). */
+    function normalizeEntitiesAndFields(entities, fields) {
+        var seen = {};
+        var dedupEntities = [];
+        var fieldsByKey = {};
+        (fields || []).forEach(function(f) {
+            var k = f.entityKey;
+            if (!k) return;
+            if (!fieldsByKey[k]) fieldsByKey[k] = { entityKey: k, human_titles: [], activeNestedTypes: [], nestedFields: {} };
+            if (f.human_titles && f.human_titles.length) {
+                f.human_titles.forEach(function(t) {
+                    if (fieldsByKey[k].human_titles.indexOf(t) < 0) fieldsByKey[k].human_titles.push(t);
+                });
+            }
+            if (f.activeNestedTypes && f.activeNestedTypes.length) {
+                f.activeNestedTypes.forEach(function(typ) {
+                    if (fieldsByKey[k].activeNestedTypes.indexOf(typ) < 0) fieldsByKey[k].activeNestedTypes.push(typ);
+                });
+            }
+            if (f.nestedFields && typeof f.nestedFields === 'object') {
+                Object.keys(f.nestedFields).forEach(function(typ) {
+                    if (!fieldsByKey[k].nestedFields[typ]) fieldsByKey[k].nestedFields[typ] = [];
+                    (f.nestedFields[typ] || []).forEach(function(t) {
+                        if (fieldsByKey[k].nestedFields[typ].indexOf(t) < 0) fieldsByKey[k].nestedFields[typ].push(t);
+                    });
+                });
+            }
+        });
+        (entities || []).forEach(function(e) {
+            var k = entityKey(e);
+            if (seen[k]) return;
+            seen[k] = true;
+            dedupEntities.push(e);
+        });
+        return {
+            entities: dedupEntities,
+            fields: dedupEntities.map(function(e) {
+                var base = fieldsByKey[entityKey(e)] || { entityKey: entityKey(e), human_titles: [], activeNestedTypes: [], nestedFields: {} };
+                if (!base.nestedFields) base.nestedFields = {};
+                return base;
+            })
+        };
+    }
+
+    function updateUI() {
+        const hasEntities = selectedEntities.length > 0;
+        btnFields.classList.toggle('d-none', !hasEntities);
+        selectedEntitiesLabel.textContent = hasEntities
+            ? 'Сущности: ' + selectedEntities.map(function(e) { return e.title || e.type; }).join(', ')
+            : '';
+    }
+
+    function getPageSlug() {
+        return (PAGE_SLUG && String(PAGE_SLUG).trim()) ? String(PAGE_SLUG).trim() : 'entity-table';
+    }
+
+    var STORAGE_KEY_PREFIX = 'entity_table_config_';
+    var COLUMN_ORDER_KEY_PREFIX = 'entity_table_column_order_';
+
+    function getColumnOrderStorageKey() {
+        return COLUMN_ORDER_KEY_PREFIX + getPageSlug();
+    }
+
+    function saveColumnOrder() {
+        if (!allColumns.length) return;
+        try {
+            var keys = allColumns.map(function(c) { return c.key; });
+            localStorage.setItem(getColumnOrderStorageKey(), JSON.stringify(keys));
+        } catch (e) {}
+    }
+
+    function loadColumnOrder() {
+        try {
+            var raw = localStorage.getItem(getColumnOrderStorageKey());
+            if (!raw) return null;
+            return JSON.parse(raw);
+        } catch (e) { return null; }
+    }
+
+    function applyColumnOrder(columns, orderKeys) {
+        if (!orderKeys || !orderKeys.length) return columns;
+        var byKey = {};
+        columns.forEach(function(c) { byKey[c.key] = c; });
+        var result = [];
+        var added = {};
+        orderKeys.forEach(function(k) {
+            if (byKey[k] && !added[k]) { result.push(byKey[k]); added[k] = true; }
+        });
+        columns.forEach(function(c) {
+            if (!added[c.key]) result.push(c);
+        });
+        return result;
+    }
+
+    var COLUMN_WIDTH_KEY_PREFIX = 'entity_table_column_widths_';
+    var MIN_COL_WIDTH = 40;
+
+    function getColumnWidthStorageKey() {
+        return COLUMN_WIDTH_KEY_PREFIX + getPageSlug();
+    }
+
+    function saveColumnWidths() {
+        try {
+            localStorage.setItem(getColumnWidthStorageKey(), JSON.stringify(columnWidths));
+        } catch (e) {}
+    }
+
+    function loadColumnWidths() {
+        try {
+            var raw = localStorage.getItem(getColumnWidthStorageKey());
+            if (!raw) return {};
+            var obj = JSON.parse(raw);
+            return obj && typeof obj === 'object' ? obj : {};
+        } catch (e) { return {}; }
+    }
+
+    function saveConfigToStorage() {
+        if (selectedEntities.length === 0) return;
+        try {
+            var key = STORAGE_KEY_PREFIX + getPageSlug();
+            var payload = { table_title: tableTitle, table_description: tableDescription, entities: selectedEntities, fields: selectedFields };
+            localStorage.setItem(key, JSON.stringify(payload));
+        } catch (e) {}
+    }
+
+    function loadConfigFromStorage() {
+        try {
+            var key = STORAGE_KEY_PREFIX + getPageSlug();
+            var raw = localStorage.getItem(key);
+            if (!raw) return null;
+            var data = JSON.parse(raw);
+            if (!data || !(data.entities && Array.isArray(data.entities) && data.entities.length > 0)) return null;
+            return data;
+        } catch (e) { return null; }
+    }
+
+    function applyConfig(data, openModalIfNoFields) {
+        if (openModalIfNoFields === undefined) openModalIfNoFields = true;
+        tableTitle = (data.table_title != null) ? String(data.table_title) : '';
+        tableDescription = (data.table_description != null) ? String(data.table_description) : '';
+        var norm = normalizeEntitiesAndFields(data.entities, data.fields || []);
+        selectedEntities = norm.entities;
+        selectedFields = norm.fields;
+        updateUI();
+        loadFieldsThenData(openModalIfNoFields);
+    }
+
+    /** Загрузка конфига: сначала с сервера; если пусто или ошибка — восстанавливаем из localStorage, чтобы таблица не пропадала после обновления. */
+    function loadConfig() {
+        var slug = getPageSlug();
+        fetch(API.config + '?page_slug=' + encodeURIComponent(slug))
+            .then(function(r) {
+                if (!r.ok) return Promise.reject(new Error(r.status));
+                return r.json();
+            })
+            .then(function(data) {
+                if (data && data.ok && data.entities && Array.isArray(data.entities) && data.entities.length > 0) {
+                    tableTitle = (data.table_title != null) ? String(data.table_title) : '';
+                    tableDescription = (data.table_description != null) ? String(data.table_description) : '';
+                    var norm = normalizeEntitiesAndFields(data.entities, data.fields || []);
+                    selectedEntities = norm.entities;
+                    selectedFields = norm.fields;
+                    updateUI();
+                    loadFieldsThenData(false);
+                    saveConfigToStorage();
+                    return;
+                }
+                var stored = loadConfigFromStorage();
+                if (stored) applyConfig(stored, false);
+            })
+            .catch(function() {
+                var stored = loadConfigFromStorage();
+                if (stored) applyConfig(stored, false);
+            });
+    }
+
+    function saveConfig(opts) {
+        opts = opts || {};
+        var slug = getPageSlug();
+        var payload = {
+            page_slug: slug,
+            table_title: tableTitle,
+            table_description: tableDescription,
+            entities: selectedEntities,
+            fields: selectedFields,
+        };
+        var fetchOpts = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        };
+        if (opts.keepalive) fetchOpts.keepalive = true;
+        return fetch(API.config, fetchOpts)
+            .then(function(r) {
+                if (!r.ok) throw new Error('Save failed: ' + r.status);
+                return r.json();
+            })
+            .then(function(data) {
+                if (data && !data.ok) throw new Error(data.error || 'Save failed');
+            })
+            .catch(function(err) {
+                if (typeof console !== 'undefined' && console.error) console.error('Entity table config save:', err);
+            });
+    }
+
+    function saveConfigBeforeUnload() {
+        if (selectedEntities.length === 0) return;
+        saveConfigToStorage();
+        saveConfig({ keepalive: true });
+    }
+
+    function updateTableTitleBlock() {
+        var block = document.getElementById('tableTitleBlock');
+        if (!block) return;
+        var titleEl = document.getElementById('tableTitleText');
+        var descEl = document.getElementById('tableDescriptionText');
+        if (titleEl) titleEl.textContent = tableTitle || '';
+        if (descEl) descEl.textContent = tableDescription || '';
+        block.classList.toggle('d-none', !gridBlock.classList.contains('d-none') || (!tableTitle && !tableDescription));
+    }
+
+    /** API может возвращать type: "entity" или "crm_entity" — оба считаем смарт-процессами. */
+    function normalizeEntityType(e) {
+        var t = (e && e.type) ? e.type : '';
+        if (t === 'entity' || t === 'crm_entity') return Object.assign({}, e, { type: 'smart_process' });
+        return e;
+    }
+    function loadEntitiesList() {
+        return fetch(API.processesDeals).then(function(r) { return r.json(); }).then(function(data) {
+            var raw = (data && data.entities) ? data.entities : [];
+            entitiesList = raw.map(normalizeEntityType);
+            return entitiesList;
+        });
+    }
+
+    function openEntityModal() {
+        loadTemplates();
+        var nameInput = document.getElementById('tableNameInput');
+        var descInput = document.getElementById('tableDescriptionInput');
+        if (nameInput) nameInput.value = tableTitle;
+        if (descInput) descInput.value = tableDescription;
+
+        Promise.all([
+            loadEntitiesList(),
+            fetch(API.dealCategories).then(function(r) { return r.json(); }).then(function(d) { return (d && d.categories) ? d.categories : []; }).catch(function() { return []; })
+        ]).then(function(results) {
+            var entities = results[0];
+            var dealCategories = results[1];
+            entityRadioName++;
+            var name = 'entity_radio_' + entityRadioName;
+            var contact = entities.filter(function(e) { return e.type === 'contact'; })[0];
+            var lead = entities.filter(function(e) { return e.type === 'lead'; })[0];
+            var deal = entities.filter(function(e) { return e.type === 'deal'; })[0];
+            var smartList = entities.filter(function(e) { return e.type === 'smart_process'; });
+
+            var leftCol = '';
+            var rightCol = '';
+            if (contact) {
+                leftCol += '<div class="entity-group"><div class="entity-group-title">Контакты</div>';
+                leftCol += '<div class="form-check"><input class="form-check-input" type="radio" name="' + name + '" value="contact" data-entity=\'' + JSON.stringify({ type: 'contact', entity_key: 'contact', title: contact.title || 'Контакты' }) + '\'><label class="form-check-label">' + (contact.title || 'Контакты') + '</label></div></div>';
+            }
+            if (deal) {
+                leftCol += '<div class="entity-group"><div class="entity-group-title"><strong>Сделки</strong></div>';
+                if (dealCategories.length) {
+                    dealCategories.forEach(function(c) {
+                        var ent = { type: 'deal', entity_key: 'deal', category_id: c.id, title: c.title || 'Сделки (' + c.id + ')' };
+                        leftCol += '<div class="form-check"><input class="form-check-input" type="radio" name="' + name + '" value="deal" data-entity=\'' + JSON.stringify(ent) + '\'><label class="form-check-label">' + (c.title || c.id) + '</label></div>';
+                    });
+                } else {
+                    leftCol += '<div class="form-check"><input class="form-check-input" type="radio" name="' + name + '" value="deal" data-entity=\'' + JSON.stringify({ type: 'deal', entity_key: 'deal', title: deal.title || 'Сделки' }) + '\'><label class="form-check-label">' + (deal.title || 'Сделки') + '</label></div>';
+                }
+                leftCol += '</div>';
+            }
+            if (lead) {
+                rightCol += '<div class="entity-group"><div class="entity-group-title">Лиды</div>';
+                rightCol += '<div class="form-check"><input class="form-check-input" type="radio" name="' + name + '" value="lead" data-entity=\'' + JSON.stringify({ type: 'lead', entity_key: 'lead', title: lead.title || 'Лиды' }) + '\'><label class="form-check-label">' + (lead.title || 'Лиды') + '</label></div></div>';
+            }
+            if (smartList.length) {
+                rightCol += '<div class="entity-group"><div class="entity-group-title"><strong>Смарт-процессы</strong></div>';
+                smartList.forEach(function(e) {
+                    var ent = { type: 'smart_process', entity_key: e.entity_key, title: e.title || e.entity_key };
+                    rightCol += '<div class="form-check"><input class="form-check-input" type="radio" name="' + name + '" value="smart" data-entity=\'' + JSON.stringify(ent) + '\'><label class="form-check-label">' + (e.title || e.entity_key) + '</label></div>';
+                });
+                rightCol += '</div>';
+            }
+            var html = (leftCol || rightCol) ? ('<div class="entity-list-col">' + (leftCol || '<p class="text-muted small">—</p>') + '</div><div class="entity-list-col">' + (rightCol || '<p class="text-muted small">—</p>') + '</div>') : '<p class="text-muted">Нет сущностей.</p>';
+            modalEntityBody.innerHTML = html;
+            modalEntity.show();
+        });
+    }
+
+    modalEntitySave.addEventListener('click', function() {
+        var nameInput = document.getElementById('tableNameInput');
+        var descInput = document.getElementById('tableDescriptionInput');
+        if (nameInput) tableTitle = nameInput.value.trim();
+        if (descInput) tableDescription = descInput.value.trim();
+        saveConfig();
+        saveConfigToStorage();
+        updateTableTitleBlock();
+
+        var radio = modalEntityBody.querySelector('input[type="radio"]:checked');
+        if (radio) {
+            var entity = JSON.parse(radio.getAttribute('data-entity') || '{}');
+            if (entity.type && !selectedEntities.some(function(e) { return entityKey(e) === entityKey(entity); })) {
+                selectedEntities.push(entity);
+                selectedFields.push({ entityKey: entityKey(entity), human_titles: [], activeNestedTypes: [], nestedFields: {} });
+                updateUI();
+                saveConfig();
+                saveConfigToStorage();
+                loadFieldsThenData();
+            }
+        }
+        modalEntity.hide();
+        if (selectedEntities.length > 0) {
+            var templateName = (tableTitle && String(tableTitle).trim()) || ('Шаблон ' + new Date().toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
+            fetch(API.templates, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: templateName, entities: selectedEntities, fields: selectedFields })
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data && data.ok) loadTemplates();
+            }).catch(function() {});
+        }
+    });
+
+    if (btnAddEntity) btnAddEntity.addEventListener('click', openEntityModal);
+
+    function loadFieldsForEntity(ent, callback) {
+        const key = entityKey(ent);
+        if (fieldsCache[key]) {
+            if (callback) callback(fieldsCache[key]);
+            return Promise.resolve(fieldsCache[key]);
+        }
+        var url = API.metaFields + '?type=' + encodeURIComponent(ent.type);
+        if (ent.entity_key && ent.type === 'smart_process') url += '&entity_key=' + encodeURIComponent(ent.entity_key);
+        if (ent.category_id != null && ent.category_id !== '') url += '&category_id=' + encodeURIComponent(ent.category_id);
+        return fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+            var result = { fields: (data && data.fields) ? data.fields : [], nested: [] };
+            if (result.fields) {
+                result.fields.forEach(function(f) {
+                    if (f.nested_fields && f.nested_fields.length) result.nested.push(f);
+                });
+            }
+            fieldsCache[key] = result;
+            if (callback) callback(result);
+            return result;
+        });
+    }
+
+    var NESTED_TYPE_LABELS = {
+        contact: 'Контакт',
+        company: 'Компания',
+        lead: 'Лид',
+        deal: 'Сделка',
+        entity: 'Смарт-Процесс',
+        smart_process: 'Смарт-Процесс'
+    };
+    var ENTITY_TYPE_TITLES = {
+        contact: 'Контакты',
+        lead: 'Лиды',
+        deal: 'Сделки',
+        smart_process: 'Смарт-процесс'
+    };
+    function nestedTypeLabel(type) {
+        return NESTED_TYPE_LABELS[type] || type;
+    }
+    function entityTitleForNested(ent) {
+        return ENTITY_TYPE_TITLES[ent.type] || ent.title || entityKey(ent);
+    }
+
+    /** В API поле field_type может быть entity или crm_entity — оба отображаем как Смарт-Процесс. */
+    function nestedTypeKey(apiType) {
+        var t = ((apiType || '').replace('crm_', '') || 'entity').toLowerCase();
+        if (t === 'entity') t = 'smart_process';
+        return t;
+    }
+
+    function openFieldsModal() {
+        if (!selectedEntities.length) return;
+        var nestedRow = document.getElementById('nestedCheckboxesRow');
+        if (nestedRow) nestedRow.innerHTML = '';
+        fieldsList.innerHTML = '';
+        selectedEntities.forEach(function(ent) {
+            var key = entityKey(ent);
+            var sel = selectedFields.find(function(f) { return f.entityKey === key; });
+            var titles = (sel && sel.human_titles) ? sel.human_titles : [];
+            loadFieldsForEntity(ent).then(function(res) {
+                var mainFields = [];
+                var nestedByGroup = {};
+                (res.fields || []).forEach(function(f) {
+                    if (f.nested_fields && f.nested_fields.length) {
+                        var t = nestedTypeKey(f.field_type);
+                        var slug = (f.human_title || f.column_name || String(f.id || '')).replace(/\s/g, '_').replace(/[^a-zA-Z0-9_-]/g, '_') || t;
+                        var groupKey = t + '::' + slug;
+                        if (!nestedByGroup[groupKey]) nestedByGroup[groupKey] = { label: f.human_title || f.column_name || nestedTypeLabel(t), fields: [] };
+                        f.nested_fields.forEach(function(n) {
+                            nestedByGroup[groupKey].fields.push({ human_title: n.human_title, column_name: n.column_name, id: n.id });
+                        });
+                    } else {
+                        mainFields.push(f);
+                    }
+                });
+
+                if (Object.keys(nestedByGroup).length && nestedRow) {
+                    var wrap = document.createElement('div');
+                    wrap.className = 'd-flex flex-wrap gap-2 align-items-center';
+                    var activeNestedRaw = (sel && sel.activeNestedTypes && Array.isArray(sel.activeNestedTypes)) ? sel.activeNestedTypes : [];
+                    var activeNested = activeNestedRaw.filter(function(typ) { return Object.prototype.hasOwnProperty.call(nestedByGroup, typ); });
+                    Object.keys(nestedByGroup).forEach(function(typ) {
+                        var group = nestedByGroup[typ];
+                        var hasSelected = activeNested.indexOf(typ) >= 0;
+                        var safeId = (key + '_' + typ).replace(/[^a-zA-Z0-9_]/g, '_');
+                        var labelEsc = (group.label || typ).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                        var btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'btn btn-sm btn-outline-primary nested-toggle' + (hasSelected ? ' active' : '');
+                        btn.setAttribute('data-entitykey', key);
+                        btn.setAttribute('data-type', typ);
+                        btn.setAttribute('data-active', hasSelected ? 'true' : 'false');
+                        btn.id = 'nested_cb_' + safeId;
+                        btn.textContent = group.label || typ;
+                        wrap.appendChild(btn);
+                    });
+                    nestedRow.appendChild(wrap);
+                }
+
+                mainFields.forEach(function(f) {
+                    var div = document.createElement('div');
+                    div.className = 'form-check field-row';
+                    div.setAttribute('data-entitykey', key);
+                    div.setAttribute('data-nested-type', '');
+                    div.setAttribute('data-search-text', ((f.human_title || f.column_name || '') + '').toLowerCase());
+                    var id = 'f_' + key + '_main_' + (f.human_title || f.column_name || f.id).replace(/\s/g, '_');
+                    var checked = titles.indexOf(f.human_title) >= 0 ? ' checked' : '';
+                    var nestAttr = ' data-nested-type=""';
+                    div.innerHTML = '<input class="form-check-input field-cb" type="checkbox" id="' + id + '" data-entitykey="' + key + '" data-human-title="' + (f.human_title || '').replace(/"/g, '&quot;') + '"' + nestAttr + checked + '><label class="form-check-label" for="' + id + '">' + (f.human_title || f.column_name || '') + '</label>';
+                    fieldsList.appendChild(div);
+                });
+
+                var activeNestedForLabels = activeNested.slice();
+                Object.keys(nestedByGroup).forEach(function(typ) {
+                    var group = nestedByGroup[typ];
+                    var hasSelectedLabel = activeNestedForLabels.indexOf(typ) >= 0;
+                    var titlesNested = (sel && sel.nestedFields && sel.nestedFields[typ] && Array.isArray(sel.nestedFields[typ])) ? sel.nestedFields[typ] : [];
+                    var groupLabel = document.createElement('div');
+                    groupLabel.className = 'form-check fields-modal-group-label field-row';
+                    groupLabel.setAttribute('data-entitykey', key);
+                    groupLabel.setAttribute('data-nested-type', typ);
+                    groupLabel.setAttribute('data-search-text', (group.label || typ).toLowerCase());
+                    groupLabel.style.display = hasSelectedLabel ? '' : 'none';
+                    groupLabel.style.gridColumn = '1 / -1';
+                    groupLabel.innerHTML = '<span class="fw-bold text-dark">Поля: ' + (group.label || typ) + '</span>';
+                    fieldsList.appendChild(groupLabel);
+                    group.fields.forEach(function(n) {
+                        var div = document.createElement('div');
+                        div.className = 'form-check field-row';
+                        div.setAttribute('data-entitykey', key);
+                        div.setAttribute('data-nested-type', typ);
+                        div.style.display = hasSelectedLabel ? '' : 'none';
+                        div.setAttribute('data-search-text', ((n.human_title || n.column_name || '') + '').toLowerCase());
+                        var id = 'f_' + key + '_' + typ.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + (n.human_title || n.column_name || n.id).replace(/\s/g, '_');
+                        var checked = titlesNested.indexOf(n.human_title) >= 0 ? ' checked' : '';
+                        var nestAttr = ' data-nested-type="' + String(typ).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"';
+                        div.innerHTML = '<input class="form-check-input field-cb" type="checkbox" id="' + id + '" data-entitykey="' + key + '" data-human-title="' + (n.human_title || '').replace(/"/g, '&quot;') + '"' + nestAttr + checked + '><label class="form-check-label" for="' + id + '">' + (n.human_title || n.column_name || '') + '</label>';
+                        fieldsList.appendChild(div);
+                    });
+                });
+                filterFieldsBySearch();
+            });
+        });
+        var searchEl = document.getElementById('fieldsSearchInput');
+        if (searchEl) {
+            searchEl.value = '';
+            searchEl.oninput = filterFieldsBySearch;
+        }
+        modalFields.show();
+    }
+
+    function filterFieldsBySearch() {
+        var q = (document.getElementById('fieldsSearchInput') && document.getElementById('fieldsSearchInput').value || '').trim().toLowerCase();
+        fieldsList.querySelectorAll('.field-row').forEach(function(row) {
+            var text = row.getAttribute('data-search-text') || '';
+            var passesSearch = !q || text.indexOf(q) >= 0;
+            var nestedType = row.getAttribute('data-nested-type');
+            var entityKeyVal = row.getAttribute('data-entitykey');
+            var nestedVisible = true;
+            if (nestedType && entityKeyVal) {
+                var safeId = (entityKeyVal + '_' + nestedType).replace(/[^a-zA-Z0-9_]/g, '_');
+                var toggleEl = document.getElementById('nested_cb_' + safeId);
+                nestedVisible = toggleEl && (toggleEl.checked === true || toggleEl.getAttribute('data-active') === 'true');
+            }
+            row.style.display = (passesSearch && nestedVisible) ? '' : 'none';
+        });
+    }
+
+    modalFieldsSave.addEventListener('click', function() {
+        var byKey = {};
+        var activeNestedByKey = {};
+        var nestedFieldsByKey = {};
+        selectedEntities.forEach(function(e) {
+            var k = entityKey(e);
+            byKey[k] = [];
+            activeNestedByKey[k] = [];
+            nestedFieldsByKey[k] = {};
+        });
+        fieldsList.querySelectorAll('.field-cb:checked').forEach(function(cb) {
+            var k = cb.getAttribute('data-entitykey');
+            var ht = cb.getAttribute('data-human-title');
+            var nt = (cb.getAttribute('data-nested-type') || '').trim();
+            if (k && ht && byKey[k]) byKey[k].push(ht);
+            if (k && nt && activeNestedByKey[k] && activeNestedByKey[k].indexOf(nt) < 0) activeNestedByKey[k].push(nt);
+            if (k && nt && ht && nestedFieldsByKey[k]) {
+                if (!nestedFieldsByKey[k][nt]) nestedFieldsByKey[k][nt] = [];
+                if (nestedFieldsByKey[k][nt].indexOf(ht) < 0) nestedFieldsByKey[k][nt].push(ht);
+            }
+        });
+        selectedFields = selectedEntities.map(function(e) {
+            var k = entityKey(e);
+            return { entityKey: k, human_titles: byKey[k] || [], activeNestedTypes: activeNestedByKey[k] || [], nestedFields: nestedFieldsByKey[k] || {} };
+        });
+        saveConfig();
+        saveConfigToStorage();
+        loadData();
+        modalFields.hide();
+    });
+
+    btnFields.addEventListener('click', openFieldsModal);
+
+    function loadFieldsThenData(openModalIfNoFields) {
+        if (openModalIfNoFields === undefined) openModalIfNoFields = true;
+        if (!selectedEntities.length) {
+            emptyBlock.classList.remove('d-none');
+            gridBlock.classList.add('d-none');
+            if (gridTopRow) gridTopRow.classList.add('d-none');
+            return;
+        }
+        var hasAnyFields = selectedFields.some(function(f) { return f.human_titles && f.human_titles.length; });
+        if (!hasAnyFields) {
+            if (openModalIfNoFields) openFieldsModal();
+            else {
+                emptyBlock.classList.remove('d-none');
+                gridBlock.classList.add('d-none');
+                if (gridTopRow) gridTopRow.classList.add('d-none');
+            }
+            return;
+        }
+        loadData();
+    }
+
+    var FIRST_BATCH_SIZE = 2000;
+    function fetchPage(ent, titles, key, offset, limit) {
+        var url = API.metaData + '?type=' + encodeURIComponent(ent.type) + '&limit=' + limit + '&offset=' + offset;
+        if (ent.entity_key && ent.type === 'smart_process') url += '&entity_key=' + encodeURIComponent(ent.entity_key);
+        if (ent.category_id != null) url += '&category_id=' + ent.category_id;
+        return fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+            var list = (data && data.data) ? data.data : [];
+            var total = (data && data.total) != null ? data.total : 0;
+            var out = [];
+            list.forEach(function(row) {
+                var o = { _entityKey: key };
+                titles.forEach(function(t) {
+                    var val = row[t];
+                    if (val !== null && typeof val === 'object' && !Array.isArray(val)) val = JSON.stringify(val);
+                    o[key + '::' + t] = val != null ? val : '';
+                });
+                out.push(o);
+            });
+            return { rows: out, total: total };
+        });
+    }
+
+    function loadData() {
+        if (!selectedEntities.length) return;
+        fullData = [];
+        allColumns = [];
+        showLoading(true, 'Загрузка данных...');
+        var columnsByKey = [];
+        var FUNNEL_FIELD = 'Воронка';
+        selectedEntities.forEach(function(ent) {
+            var key = entityKey(ent);
+            var sel = selectedFields.find(function(f) { return f.entityKey === key; });
+            var displayTitles = (sel && sel.human_titles) ? sel.human_titles : [];
+            if (!displayTitles.length) return;
+            var fetchTitles = displayTitles.slice();
+            if (ent.type === 'deal' && ent.category_id != null && displayTitles.indexOf(FUNNEL_FIELD) < 0) {
+                fetchTitles.push(FUNNEL_FIELD);
+            }
+            displayTitles.forEach(function(t) {
+                allColumns.push({ key: key + '::' + t, label: t, entityKey: key, entityTitle: ent.title || entityTitleForNested(ent) });
+            });
+            columnsByKey.push({ ent: ent, titles: fetchTitles, key: key, displayTitles: displayTitles });
+        });
+        if (columnsByKey.length === 0) {
+            showLoading(false);
+            fullData = [];
+            allColumns = [];
+            emptyBlock.classList.remove('d-none');
+            gridBlock.classList.add('d-none');
+            if (gridTopRow) gridTopRow.classList.add('d-none');
+            paginationBlock.classList.add('d-none');
+            renderGrid();
+            return;
+        }
+        var seenKey = {};
+        allColumns = allColumns.filter(function(c) {
+            if (seenKey[c.key]) return false;
+            seenKey[c.key] = true;
+            return true;
+        });
+        var labelCount = {};
+        allColumns.forEach(function(c) {
+            labelCount[c.label] = (labelCount[c.label] || 0) + 1;
+        });
+        allColumns.forEach(function(c) {
+            if (labelCount[c.label] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
+        });
+        allColumns = applyColumnOrder(allColumns, loadColumnOrder());
+        columnWidths = loadColumnWidths();
+
+        var firstBatchPromises = columnsByKey.map(function(obj) {
+            return fetchPage(obj.ent, obj.titles, obj.key, 0, FIRST_BATCH_SIZE);
+        });
+        Promise.all(firstBatchPromises).then(function(firstResults) {
+            if (firstResults.length === 1) {
+                firstResults[0].rows.forEach(function(row) { fullData.push(row); });
+                var obj = columnsByKey[0];
+                if (obj.ent.type === 'deal' && obj.ent.category_id != null) {
+                    var funnelKey = obj.key + '::' + FUNNEL_FIELD;
+                    var funnelTitle = String(obj.ent.title || '').trim();
+                    var funnelCatId = String(obj.ent.category_id).trim();
+                    fullData = fullData.filter(function(row) {
+                        var v = row[funnelKey];
+                        if (v == null || v === '') return false;
+                        var s = String(v).trim();
+                        return s === funnelTitle || s === funnelCatId;
+                    });
+                }
+            } else if (firstResults.length > 1) {
+                var primaryRows = firstResults[0].rows;
+                var primaryObj = columnsByKey[0];
+                primaryRows.forEach(function(baseRow, idx) {
+                    var merged = Object.assign({}, baseRow);
+                    for (var j = 1; j < firstResults.length; j++) {
+                        if (firstResults[j].rows && firstResults[j].rows[idx]) {
+                            Object.assign(merged, firstResults[j].rows[idx]);
+                        }
+                    }
+                    fullData.push(merged);
+                });
+                if (primaryObj.ent.type === 'deal' && primaryObj.ent.category_id != null) {
+                    var funnelKeyM = primaryObj.key + '::' + FUNNEL_FIELD;
+                    var funnelTitleM = String(primaryObj.ent.title || '').trim();
+                    var funnelCatIdM = String(primaryObj.ent.category_id).trim();
+                    fullData = fullData.filter(function(row) {
+                        var v = row[funnelKeyM];
+                        if (v == null || v === '') return false;
+                        var s = String(v).trim();
+                        return s === funnelTitleM || s === funnelCatIdM;
+                    });
+                }
+            }
+            showLoading(false);
+            currentPage = 1;
+            pageSize = parseInt(pageSizeSelect.value, 10) || 25;
+            renderGrid();
+            emptyBlock.classList.add('d-none');
+            if (gridTopRow) gridTopRow.classList.remove('d-none');
+            gridBlock.classList.remove('d-none');
+            paginationBlock.classList.remove('d-none');
+
+            if (firstResults.length === 1) {
+                columnsByKey.forEach(function(obj, idx) {
+                    var res = firstResults[idx];
+                    var total = res.total;
+                    var offset = res.rows.length;
+                    if (offset >= total) return;
+                    var funnelKeyF = (obj.ent.type === 'deal' && obj.ent.category_id != null) ? (obj.key + '::' + FUNNEL_FIELD) : null;
+                    var funnelTitleF = funnelKeyF ? String(obj.ent.title || '').trim() : '';
+                    var funnelCatIdF = funnelKeyF ? String(obj.ent.category_id).trim() : '';
+                    function fetchMore() {
+                        fetchPage(obj.ent, obj.titles, obj.key, offset, 10000).then(function(nextRes) {
+                            var rows = nextRes.rows;
+                            if (funnelKeyF) {
+                                rows = rows.filter(function(row) {
+                                    var v = row[funnelKeyF];
+                                    if (v == null || v === '') return false;
+                                    var s = String(v).trim();
+                                    return s === funnelTitleF || s === funnelCatIdF;
+                                });
+                            }
+                            rows.forEach(function(row) { fullData.push(row); });
+                            offset += nextRes.rows.length;
+                            renderGrid();
+                            if (offset < nextRes.total) fetchMore();
+                        }).catch(function() {});
+                    }
+                    fetchMore();
+                });
+            } else if (firstResults.length > 1) {
+                var primaryTotal = firstResults[0].total;
+                function fetchMoreMerged() {
+                    var nextOffset = fullData.length;
+                    if (nextOffset >= primaryTotal) return;
+                    Promise.all(columnsByKey.map(function(obj, idx) {
+                        return fetchPage(obj.ent, obj.titles, obj.key, nextOffset, 10000);
+                    })).then(function(nextResults) {
+                        var primaryRows = nextResults[0].rows;
+                        if (!primaryRows.length) return;
+                        primaryRows.forEach(function(baseRow, i) {
+                            var merged = Object.assign({}, baseRow);
+                            for (var j = 1; j < nextResults.length; j++) {
+                                if (nextResults[j].rows && nextResults[j].rows[i]) Object.assign(merged, nextResults[j].rows[i]);
+                            }
+                            fullData.push(merged);
+                        });
+                        renderGrid();
+                        if (fullData.length < primaryTotal) fetchMoreMerged();
+                    }).catch(function() {});
+                }
+                fetchMoreMerged();
+            }
+        }).catch(function(err) {
+            showLoading(false);
+            console.error(err);
+        });
+    }
+
+    function renderGrid() {
+        var start = (currentPage - 1) * pageSize;
+        var slice = fullData.slice(start, start + pageSize);
+        var totalRows = fullData.length;
+        gridHead.innerHTML = '<tr>' + allColumns.map(function(c, i) {
+            var labelEsc = (c.label || c.key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            var keyEsc = (c.key || '').replace(/"/g, '&quot;');
+            var w = columnWidths[c.key];
+            var style = (w && w >= MIN_COL_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
+            return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '"' + style + '>' + labelEsc + '<span class="entity-table-col-resize" title="Изменить ширину"></span></th>';
+        }).join('') + '</tr>';
+        gridBody.innerHTML = slice.map(function(row) {
+            return '<tr>' + allColumns.map(function(c) {
+                var val = row[c.key];
+                if (val !== null && typeof val === 'object') val = JSON.stringify(val);
+                return '<td>' + (val != null ? String(val) : '') + '</td>';
+            }).join('') + '</tr>';
+        }).join('');
+        paginationInfo.textContent = (start + 1) + ' — ' + (start + slice.length) + ' из ' + totalRows;
+        btnPrev.disabled = currentPage <= 1;
+        btnNext.disabled = currentPage >= Math.ceil(totalRows / pageSize);
+        updateTableTitleBlock();
+
+        gridHead.querySelectorAll('.entity-table-col-resize').forEach(function(handle) {
+            handle.onmousedown = null;
+            handle.onmousedown = function(e) {
+                e.preventDefault();
+                var th = handle.closest('th');
+                if (!th) return;
+                var columnKey = th.getAttribute('data-column-key');
+                if (!columnKey) return;
+                var startX = e.clientX;
+                var startWidth = th.offsetWidth;
+                function onMove(e2) {
+                    var dx = e2.clientX - startX;
+                    var newWidth = Math.max(MIN_COL_WIDTH, startWidth + dx);
+                    th.style.width = newWidth + 'px';
+                    th.style.minWidth = newWidth + 'px';
+                    columnWidths[columnKey] = newWidth;
+                }
+                function onUp() {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    document.body.style.userSelect = '';
+                    document.body.style.cursor = '';
+                    saveColumnWidths();
+                }
+                document.body.style.userSelect = 'none';
+                document.body.style.cursor = 'col-resize';
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            };
+        });
+    }
+
+    (function setupColumnDragDrop() {
+        if (!gridHead) return;
+        var columnDropTargetIndex = null;
+
+        gridHead.addEventListener('dragstart', function(e) {
+            if (e.target.closest('.entity-table-col-resize')) { e.preventDefault(); return; }
+            var th = e.target.closest('th');
+            if (!th || !th.classList.contains('entity-table-th-draggable')) return;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', th.getAttribute('data-column-index'));
+            e.dataTransfer.setData('text/html', th.innerHTML);
+            th.classList.add('dragging');
+            columnDropTargetIndex = null;
+        });
+        gridHead.addEventListener('dragend', function(e) {
+            gridHead.querySelectorAll('th').forEach(function(el) {
+                el.classList.remove('dragging', 'drag-over');
+            });
+            columnDropTargetIndex = null;
+        });
+        gridHead.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            var th = document.elementFromPoint(e.clientX, e.clientY);
+            if (th) th = th.closest('th');
+            if (!th || !th.classList.contains('entity-table-th-draggable')) {
+                gridHead.querySelectorAll('th').forEach(function(el) { el.classList.remove('drag-over'); });
+                columnDropTargetIndex = null;
+                return;
+            }
+            var toIdx = parseInt(th.getAttribute('data-column-index'), 10);
+            if (!isNaN(toIdx)) columnDropTargetIndex = toIdx;
+            gridHead.querySelectorAll('th').forEach(function(el) { el.classList.remove('drag-over'); });
+            th.classList.add('drag-over');
+        });
+        gridHead.addEventListener('dragleave', function(e) {
+            if (!gridHead.contains(e.relatedTarget)) {
+                gridHead.querySelectorAll('th').forEach(function(el) { el.classList.remove('drag-over'); });
+                columnDropTargetIndex = null;
+            }
+        });
+        gridHead.addEventListener('drop', function(e) {
+            e.preventDefault();
+            gridHead.querySelectorAll('th').forEach(function(el) { el.classList.remove('drag-over'); });
+            var toIdx = columnDropTargetIndex;
+            if (toIdx == null || isNaN(toIdx)) {
+                var th = document.elementFromPoint(e.clientX, e.clientY);
+                if (th) th = th.closest('th');
+                if (th && th.classList.contains('entity-table-th-draggable')) {
+                    toIdx = parseInt(th.getAttribute('data-column-index'), 10);
+                }
+            }
+            if (toIdx == null || isNaN(toIdx)) return;
+            var fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+            if (isNaN(fromIdx) || fromIdx === toIdx) return;
+            var a = allColumns[fromIdx];
+            var b = allColumns[toIdx];
+            allColumns[fromIdx] = b;
+            allColumns[toIdx] = a;
+            saveColumnOrder();
+            renderGrid();
+            columnDropTargetIndex = null;
+        });
+    })();
+
+    pageSizeSelect.addEventListener('change', function() {
+        pageSize = parseInt(this.value, 10) || 25;
+        currentPage = 1;
+        renderGrid();
+    });
+    btnPrev.addEventListener('click', function() {
+        if (currentPage > 1) { currentPage--; renderGrid(); }
+    });
+    btnNext.addEventListener('click', function() {
+        if (currentPage < Math.ceil(fullData.length / pageSize)) { currentPage++; renderGrid(); }
+    });
+
+    function loadTemplates() {
+        if (!templatesDropdown) return;
+        fetch(API.templates).then(function(r) { return r.json(); }).then(function(data) {
+            var list = (data && data.templates) ? data.templates : [];
+            templatesDropdown.innerHTML = list.length
+                ? list.map(function(t) {
+                    var nameEsc = (t.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                    return '<li class="d-flex align-items-center dropdown-item-wrap">' +
+                        '<a class="dropdown-item flex-grow-1 text-truncate" href="#" data-id="' + t.id + '" data-entities=\'' + (JSON.stringify(t.entities) || '[]').replace(/'/g, '&#39;') + '\' data-fields=\'' + (JSON.stringify(t.fields) || '[]').replace(/'/g, '&#39;') + '\'>' + nameEsc + '</a>' +
+                        '<button type="button" class="btn btn-link btn-sm text-danger p-1 ms-1" title="Удалить шаблон" data-delete-id="' + t.id + '" aria-label="Удалить">&times;</button>' +
+                        '</li>';
+                }).join('')
+                : '<li><span class="dropdown-item text-muted">Нет шаблонов</span></li>';
+            templatesDropdown.querySelectorAll('a[data-id]').forEach(function(a) {
+                a.addEventListener('click', function(e) {
+                    if (e.target.closest('button[data-delete-id]')) return;
+                    e.preventDefault();
+                    var norm = normalizeEntitiesAndFields(
+                        JSON.parse(this.getAttribute('data-entities') || '[]'),
+                        JSON.parse(this.getAttribute('data-fields') || '[]')
+                    );
+                    selectedEntities = norm.entities;
+                    selectedFields = norm.fields;
+                    updateUI();
+                    saveConfig();
+                    saveConfigToStorage();
+                    loadFieldsThenData();
+                    modalEntity.hide();
+                });
+            });
+            templatesDropdown.querySelectorAll('button[data-delete-id]').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var id = this.getAttribute('data-delete-id');
+                    if (!id) return;
+                    if (!confirm('Удалить этот шаблон?')) return;
+                    fetch(API.templates + '/' + id, { method: 'DELETE' }).then(function(r) { return r.json(); }).then(function(res) {
+                        if (res.ok) loadTemplates();
+                    }).catch(function() {});
+                });
+            });
+        }).catch(function() {});
+    }
+
+    loadTemplates();
+    loadConfig();
+
+    window.addEventListener('beforeunload', saveConfigBeforeUnload);
+});
+</script>
+{% endblock %}
