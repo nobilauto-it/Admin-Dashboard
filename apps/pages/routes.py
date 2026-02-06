@@ -37,6 +37,53 @@ def _write_registry(data):
         current_app.logger.error(f"Не удалось записать реестр страниц: {exc}")
 
 
+# Системные шаблоны — не показывать в списке «кастомных страниц»
+_SYSTEM_PAGE_STEMS = frozenset({
+    "index", "deals", "error-403", "error-404", "error-500",
+    "auth-404", "auth-500", "auth-lock-screen", "auth-login", "auth-maintenance", "auth-recover-pw", "auth-register",
+    "advanced-animation", "advanced-clipboard", "advanced-dragula", "advanced-files", "advanced-highlight",
+    "advanced-rangeslider", "advanced-ratings", "advanced-ribbons", "advanced-sweetalerts", "advanced-toasts",
+    "analytics-customers", "analytics-reports", "apps-calendar", "apps-chat", "apps-contact-list", "apps-invoice",
+    "charts-apex", "charts-chartjs", "charts-justgage", "charts-toast-ui",
+    "ecommerce-customer-details", "ecommerce-customers", "ecommerce-order-details", "ecommerce-orders",
+    "ecommerce-products", "ecommerce-refunds", "email-templates-alert", "email-templates-basic", "email-templates-billing",
+    "forms-advanced", "forms-editors", "forms-elements", "forms-img-crop", "forms-uploads", "forms-validation", "forms-wizard",
+    "icons-fontawesome", "icons-icofont", "icons-iconoir", "icons-lineawesome",
+    "maps-google", "maps-leaflet", "maps-vector",
+    "pages-blogs", "pages-faq", "pages-gallery", "pages-notifications", "pages-pricing", "pages-profile",
+    "pages-starter", "pages-timeline", "pages-treeview",
+    "projects-board", "projects-create-project", "projects-files", "projects-overview", "projects-projects", "projects-teams",
+    "sales-index", "tables-basic", "tables-datatable", "tables-editable",
+    "ui-alerts", "ui-avatar", "ui-badges", "ui-buttons", "ui-cards", "ui-carousels", "ui-dropdowns", "ui-grids",
+    "ui-images", "ui-list", "ui-modals", "ui-navbar", "ui-navs", "ui-offcanvas", "ui-paginations",
+    "ui-popover-tooltips", "ui-progress", "ui-spinners", "ui-tabs-accordions", "ui-typography", "ui-videos",
+})
+
+
+def _list_pages_with_fallback():
+    """Список страниц: реестр + недостающие по файлам (чтобы после обновления/потери JSON страницы не пропадали)."""
+    registry = _read_registry()
+    by_slug = {item.get("slug"): item for item in registry if item.get("slug")}
+    if not PAGES_DIR.exists():
+        return registry
+    try:
+        for p in PAGES_DIR.iterdir():
+            if not p.is_file() or p.suffix != ".html" or p.name.startswith("_"):
+                continue
+            slug = p.stem
+            if not slug or slug in _SYSTEM_PAGE_STEMS or not re.match(r"^[0-9A-Za-zА-Яа-я_-]+$", slug):
+                continue
+            if slug not in by_slug:
+                by_slug[slug] = {"slug": slug, "title": slug}
+        merged = list(by_slug.values())
+        if len(merged) != len(registry):
+            _write_registry(merged)
+        return merged
+    except Exception as exc:
+        current_app.logger.warning(f"Скан папки страниц: {exc}")
+    return registry
+
+
 @blueprint.route('/')
 def index():
     
@@ -161,9 +208,9 @@ def create_page():
 
 @blueprint.route('/api/pages/list')
 def list_pages():
-    """Return list of generated pages for sidebar."""
-    registry = _read_registry()
-    return jsonify({"ok": True, "pages": registry})
+    """Return list of generated pages for sidebar (реестр + страницы по файлам, чтобы не пропадали после обновления)."""
+    pages = _list_pages_with_fallback()
+    return jsonify({"ok": True, "pages": pages})
 
 
 @blueprint.route('/api/pages/<slug>', methods=['DELETE'])
@@ -297,9 +344,14 @@ def entity_table_meta_data():
 
 @blueprint.route('/api/entity-table/config', methods=['GET', 'POST'])
 def entity_table_config():
-    """GET: конфиг по page_slug. POST: сохранить конфиг (entities, fields)."""
+    """GET: конфиг по page_slug. POST: сохранить конфиг. Сохранение в БД проекта (SQLite в apps/db.sqlite3)."""
     from apps.models import EntityTableConfig
     from apps import db
+
+    try:
+        db.create_all()
+    except Exception as e:
+        current_app.logger.warning("entity_table_config create_all: %s", e)
 
     if request.method == 'GET':
         try:
@@ -308,7 +360,10 @@ def entity_table_config():
                 db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
             ).first()
             if not rec:
-                return jsonify({"ok": True, "table_title": "", "table_description": "", "entities": [], "fields": []})
+                return jsonify({"ok": True, "tables": [], "table_title": "", "table_description": "", "entities": [], "fields": []})
+            tables = rec.get_tables()
+            if isinstance(tables, list) and len(tables) > 0:
+                return jsonify({"ok": True, "tables": tables})
             entities = rec.get_entities()
             fields = rec.get_fields()
             if not isinstance(entities, list):
@@ -317,6 +372,7 @@ def entity_table_config():
                 fields = []
             return jsonify({
                 "ok": True,
+                "tables": [],
                 "table_title": rec.table_title or "",
                 "table_description": rec.table_description or "",
                 "entities": entities,
@@ -324,86 +380,110 @@ def entity_table_config():
             })
         except Exception as e:
             current_app.logger.exception("Entity table config GET: %s", e)
-            return jsonify({"ok": True, "table_title": "", "table_description": "", "entities": [], "fields": []})
+            return jsonify({"ok": True, "tables": [], "table_title": "", "table_description": "", "entities": [], "fields": []})
 
     data = request.get_json(silent=True) or {}
     page_slug = (data.get('page_slug') or 'entity-table').strip()
-    table_title = (data.get('table_title') or '').strip()
-    table_description = (data.get('table_description') or '').strip()
-    entities = data.get('entities', [])
-    fields = data.get('fields', [])
-
-    rec = EntityTableConfig.query.filter(
-        db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
-    ).first()
-    if not rec:
-        rec = EntityTableConfig(page_slug=page_slug)
-        db.session.add(rec)
-    rec.table_title = table_title
-    rec.table_description = table_description
-    rec.set_entities(entities)
-    rec.set_fields(fields)
+    tables = data.get('tables')
+    if isinstance(tables, list):
+        rec = EntityTableConfig.query.filter(
+            db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
+        ).first()
+        if not rec:
+            rec = EntityTableConfig(page_slug=page_slug)
+            db.session.add(rec)
+        rec.set_tables(tables)
+    else:
+        table_title = (data.get('table_title') or '').strip()
+        table_description = (data.get('table_description') or '').strip()
+        entities = data.get('entities', [])
+        fields = data.get('fields', [])
+        rec = EntityTableConfig.query.filter(
+            db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
+        ).first()
+        if not rec:
+            rec = EntityTableConfig(page_slug=page_slug)
+            db.session.add(rec)
+        rec.table_title = table_title
+        rec.table_description = table_description
+        rec.set_entities(entities)
+        rec.set_fields(fields)
     try:
         db.session.commit()
         return jsonify({"ok": True})
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Entity table config save: {e}")
+        current_app.logger.exception("Entity table config save: %s", e)
         return make_response(jsonify({"ok": False, "error": str(e)}), 500)
 
 
-@blueprint.route('/api/entity-table/templates', methods=['GET', 'POST'])
-def entity_table_templates_list():
-    """GET: список шаблонов. POST: сохранить шаблон (name, entities, fields)."""
-    from apps.models import EntityTableTemplate
-    from apps import db
+# --- Шаблоны таблиц: JSON-файл на сервере (общие для всех, без БД) ---
 
+_TEMPLATES_FILE = Path(__file__).resolve().parent.parent / "data" / "entity_table_templates.json"
+
+
+def _read_templates_file():
+    """Прочитать список шаблонов из файла. При ошибке или отсутствии файла — пустой список."""
+    if not _TEMPLATES_FILE.exists():
+        return []
+    try:
+        with open(_TEMPLATES_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, list) else []
+    except Exception as e:
+        current_app.logger.warning("read templates file: %s", e)
+        return []
+
+
+def _write_templates_file(templates_list):
+    """Записать список шаблонов в файл."""
+    _TEMPLATES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(_TEMPLATES_FILE, "w", encoding="utf-8") as f:
+        json.dump(templates_list, f, ensure_ascii=False, indent=2)
+
+
+@blueprint.route('/api/entity-table/templates', methods=['GET', 'POST'])
+def entity_table_templates():
+    """GET: список шаблонов из файла. POST: добавить шаблон в файл. Общие для всех пользователей."""
     if request.method == 'GET':
-        rows = EntityTableTemplate.query.order_by(EntityTableTemplate.name).all()
-        return jsonify({
-            "ok": True,
-            "templates": [
-                {"id": r.id, "name": r.name, "entities": r.get_entities(), "fields": r.get_fields()}
-                for r in rows
-            ],
-        })
+        templates = _read_templates_file()
+        return jsonify({"ok": True, "templates": templates})
 
     data = request.get_json(silent=True) or {}
     name = (data.get('name') or '').strip()
     if not name:
         return jsonify({"ok": False, "error": "Название обязательно"}), 400
-    entities = data.get('entities', [])
-    fields = data.get('fields', [])
+    tables = data.get('tables') if isinstance(data.get('tables'), list) else []
 
-    rec = EntityTableTemplate(name=name)
-    rec.set_entities(entities)
-    rec.set_fields(fields)
+    templates = _read_templates_file()
+    new_id = max([t.get("id", 0) for t in templates], default=0) + 1
+    templates.append({
+        "id": new_id,
+        "name": name,
+        "entities": [],
+        "fields": [],
+        "tables": tables,
+    })
     try:
-        db.session.add(rec)
-        db.session.commit()
-        return jsonify({"ok": True, "id": rec.id}), 201
+        _write_templates_file(templates)
+        return jsonify({"ok": True, "id": new_id}), 201
     except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Entity table template save: {e}")
+        current_app.logger.exception("POST templates file: %s", e)
         return make_response(jsonify({"ok": False, "error": str(e)}), 500)
 
 
 @blueprint.route('/api/entity-table/templates/<int:template_id>', methods=['DELETE'])
 def entity_table_template_delete(template_id):
-    """Удалить шаблон."""
-    from apps.models import EntityTableTemplate
-    from apps import db
-
-    rec = EntityTableTemplate.query.get(template_id)
-    if not rec:
+    """Удалить шаблон по id из файла."""
+    templates = _read_templates_file()
+    new_list = [t for t in templates if int(t.get("id", 0)) != int(template_id)]
+    if len(new_list) == len(templates):
         return jsonify({"ok": False, "error": "Шаблон не найден"}), 404
     try:
-        db.session.delete(rec)
-        db.session.commit()
+        _write_templates_file(new_list)
         return jsonify({"ok": True})
     except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Entity table template delete: {e}")
+        current_app.logger.exception("DELETE template file: %s", e)
         return make_response(jsonify({"ok": False, "error": str(e)}), 500)
 
 

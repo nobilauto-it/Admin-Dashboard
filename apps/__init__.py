@@ -19,21 +19,24 @@ def register_blueprints(app):
 
 
 def configure_database(app):
-
-    @app.before_request
-    def initialize_database():
+    """Создаём таблицы при старте приложения (entity_table_config, entity_table_template в SQLite проекта)."""
+    with app.app_context():
         try:
             db.create_all()
         except Exception as e:
+            print('> Error: DBMS Exception: ' + str(e))
+            if 'SQLALCHEMY_DATABASE_URI' not in app.config or not app.config.get('SQLALCHEMY_DATABASE_URI', '').startswith('sqlite'):
+                basedir = os.path.abspath(os.path.dirname(__file__))
+                app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'db.sqlite3')
+                print('> Fallback to SQLite ')
+                db.create_all()
 
-            print('> Error: DBMS Exception: ' + str(e) )
-
-            # fallback to SQLite
-            basedir = os.path.abspath(os.path.dirname(__file__))
-            app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'db.sqlite3')
-
-            print('> Fallback to SQLite ')
+    @app.before_request
+    def ensure_tables():
+        try:
             db.create_all()
+        except Exception:
+            pass
 
     @app.teardown_request
     def shutdown_session(exception=None):

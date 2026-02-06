@@ -13,7 +13,19 @@ class EntityTableConfig(db.Model):
     table_description = db.Column(db.Text, nullable=True, default='')
     entities = db.Column(db.Text, nullable=False, default='[]')   # JSON: [{type, entity_key, category_id?}]
     fields = db.Column(db.Text, nullable=False, default='[]')     # JSON: [{entity_key or type, human_titles: []}]
+    tables = db.Column(db.Text, nullable=False, default='[]')     # JSON: [{table_title, table_description, entities, fields}] — несколько таблиц на странице
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    def get_tables(self):
+        import json
+        try:
+            return json.loads(self.tables) if self.tables else []
+        except Exception:
+            return []
+
+    def set_tables(self, value):
+        import json
+        self.tables = json.dumps(value, ensure_ascii=False)
 
     def get_entities(self):
         import json
@@ -46,7 +58,19 @@ class EntityTableTemplate(db.Model):
     name = db.Column(db.String(255), nullable=False)
     entities = db.Column(db.Text, nullable=False, default='[]')
     fields = db.Column(db.Text, nullable=False, default='[]')
+    tables = db.Column(db.Text, nullable=False, default='[]')   # JSON: [{entities, fields}, ...] — все таблицы страницы
     created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    def get_tables(self):
+        import json
+        try:
+            return json.loads(self.tables) if self.tables else []
+        except Exception:
+            return []
+
+    def set_tables(self, value):
+        import json
+        self.tables = json.dumps(value, ensure_ascii=False)
 
     def get_entities(self):
         import json
