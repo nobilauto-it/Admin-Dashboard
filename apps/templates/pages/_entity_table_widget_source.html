@@ -1,6 +1,6 @@
 {% extends 'layouts/vertical.html' %}
 
-{% block title %}__PAGE_TITLE__{% endblock %}
+{% block title %}{% if page_title is defined %}{{ page_title }}{% else %}__PAGE_TITLE__{% endif %}{% endblock %}
 
 {% block styles %}
 <link href="{{ config.ASSETS_ROOT }}/libs/simple-datatables/style.css" rel="stylesheet" type="text/css"/>
@@ -52,9 +52,12 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="d-flex justify-content-end mb-2">
+            <div class="d-flex justify-content-end align-items-center gap-2 mb-2" id="entityTableAdminToolbar">
                 <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddTableBlock" title="Добавить ещё одну таблицу на страницу">
                     <i class="iconoir-plus"></i> Добавить таблицу
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" id="btnSaveDashboard" title="Создать дэшборд для просмотра (появится в меню)">
+                    <i class="iconoir-dashboard-dots"></i> Сохранить Дэшборд
                 </button>
             </div>
             <div id="entityTablesContainer">
@@ -168,12 +171,31 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalSaveDashboard" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Сохранить Дэшборд</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label" for="dashboardNameInput">Введите имя, на кого создать дэшборд</label>
+                <input type="text" class="form-control" id="dashboardNameInput" placeholder="Например: Иван" autocomplete="off">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="modalSaveDashboardCreate">Создать</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block javascripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var PAGE_SLUG = '__PAGE_SLUG__';
+    var PAGE_SLUG = '{% if page_slug is defined %}{{ page_slug }}{% else %}__PAGE_SLUG__{% endif %}';
     var pathMatch = window.location.pathname.match(/^\/([^\/]+)/);
     if (pathMatch && pathMatch[1]) {
         PAGE_SLUG = pathMatch[1];
@@ -187,7 +209,36 @@ document.addEventListener('DOMContentLoaded', function() {
         metaData: '/api/entity-table/entity-meta-data/',
         config: '/api/entity-table/config',
         templates: '/api/entity-table/templates',
+        saveDashboard: '/api/entity-table/save-dashboard',
     };
+
+    var isReadOnly = false;
+    var DASHBOARD_HIDE_CLASS = 'dashboard-toolbar-hidden';
+    function applyReadOnlyMode() {
+        var hide = isReadOnly || isDashboardSlug();
+        var toolbar = document.getElementById('entityTableAdminToolbar');
+        if (toolbar) {
+            if (hide) {
+                toolbar.style.setProperty('display', 'none', 'important');
+                toolbar.classList.add(DASHBOARD_HIDE_CLASS);
+            } else {
+                toolbar.classList.remove(DASHBOARD_HIDE_CLASS);
+                toolbar.style.display = '';
+            }
+        }
+        var b1 = document.getElementById('btnAddTableBlock');
+        var b2 = document.getElementById('btnSaveDashboard');
+        if (b1) { if (hide) { b1.style.setProperty('display', 'none', 'important'); b1.classList.add(DASHBOARD_HIDE_CLASS); } else { b1.classList.remove(DASHBOARD_HIDE_CLASS); b1.style.display = ''; } }
+        if (b2) { if (hide) { b2.style.setProperty('display', 'none', 'important'); b2.classList.add(DASHBOARD_HIDE_CLASS); } else { b2.classList.remove(DASHBOARD_HIDE_CLASS); b2.style.display = ''; } }
+        if (entityTablesContainer) {
+            entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection').forEach(function(el) {
+                if (hide) { el.style.setProperty('display', 'none', 'important'); el.classList.add(DASHBOARD_HIDE_CLASS); } else { el.classList.remove(DASHBOARD_HIDE_CLASS); el.style.display = ''; }
+            });
+        }
+    }
+    function isDashboardSlug() {
+        return (String(PAGE_SLUG || '').toLowerCase().indexOf('dash-') === 0);
+    }
 
     function defaultTableState() {
         return {
@@ -209,6 +260,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let fieldsCache = {};
 
     const entityTablesContainer = document.getElementById('entityTablesContainer');
+    isReadOnly = isDashboardSlug();
+    if (isReadOnly) applyReadOnlyMode();
     const modalEntity = new bootstrap.Modal(document.getElementById('modalEntity'));
     const modalEntityBody = document.getElementById('modalEntityBody');
     const modalEntitySave = document.getElementById('modalEntitySave');
@@ -572,6 +625,7 @@ document.addEventListener('DOMContentLoaded', function() {
     /** Загрузка конфига: сначала с сервера; если пусто или ошибка — восстанавливаем из localStorage. */
     function loadConfig() {
         var slug = getPageSlug();
+        try { localStorage.removeItem(STORAGE_KEY_PREFIX + slug); } catch (e) {}
         fetch(API.config + '?page_slug=' + encodeURIComponent(slug))
             .then(function(r) {
                 if (!r.ok) return Promise.reject(new Error(r.status));
@@ -601,6 +655,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         loadFieldsThenData(i, false);
                     });
                     saveConfigToStorage();
+                    isReadOnly = !!(data.read_only || isDashboardSlug());
+                    applyReadOnlyMode();
                     return;
                 }
                 if (data.entities && Array.isArray(data.entities) && data.entities.length > 0) {
@@ -620,11 +676,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     updateUI(0);
                     loadFieldsThenData(0, false);
                     saveConfigToStorage();
+                    isReadOnly = !!(data.read_only || isDashboardSlug());
+                    applyReadOnlyMode();
                     return;
                 }
                 tableStates = [defaultTableState()];
                 ensureSections();
                 updateUI(0);
+                isReadOnly = !!(data.read_only || isDashboardSlug());
+                applyReadOnlyMode();
+                try { localStorage.removeItem(STORAGE_KEY_PREFIX + getPageSlug()); } catch (e) {}
                 return;
             })
             .catch(function() { tryApplyStored(); });
@@ -640,6 +701,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 ensureSections();
                 updateUI(0);
             }
+            isReadOnly = false;
+            applyReadOnlyMode();
         }
     }
 
@@ -1033,7 +1096,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function fetchPage(ent, titles, key, offset, limit) {
         var url = API.metaData + '?type=' + encodeURIComponent(ent.type) + '&limit=' + limit + '&offset=' + offset;
         if (ent.entity_key && ent.type === 'smart_process') url += '&entity_key=' + encodeURIComponent(ent.entity_key);
-        if (ent.category_id != null) url += '&category_id=' + ent.category_id;
+        if (ent.category_id != null && ent.category_id !== '') url += '&category_id=' + encodeURIComponent(String(ent.category_id));
+        if (titles && titles.length) url += '&fields=' + titles.map(function(t) { return encodeURIComponent(t); }).join(',');
         return fetch(url).then(function(r) { return r.json(); }).then(function(data) {
             var list = (data && data.data) ? data.data : [];
             var total = (data && data.total) != null ? data.total : 0;
@@ -1155,7 +1219,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (els.paginationBlock) els.paginationBlock.classList.remove('d-none');
             updateTableTitleBlock(tableIndex);
 
-            if (firstResults.length === 1) {
+            /* На дашборде (режим только просмотр) не догружаем все записи — только первая порция по настройке таблицы */
+            var isDashboard = isReadOnly || isDashboardSlug();
+            if (!isDashboard && firstResults.length === 1) {
                 columnsByKey.forEach(function(obj, idx) {
                     var res = firstResults[idx];
                     var total = res.total;
@@ -1183,7 +1249,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     fetchMore();
                 });
-            } else if (firstResults.length > 1) {
+            } else if (!isDashboard && firstResults.length > 1) {
                 var primaryTotal = firstResults[0].total;
                 function fetchMoreMerged() {
                     var nextOffset = st.fullData.length;
@@ -1388,6 +1454,42 @@ document.addEventListener('DOMContentLoaded', function() {
         if (descInput) descInput.value = '';
         openEntityModal();
     });
+
+    (function setupSaveDashboard() {
+        var btn = document.getElementById('btnSaveDashboard');
+        var modalEl = document.getElementById('modalSaveDashboard');
+        var inputEl = document.getElementById('dashboardNameInput');
+        var createBtn = document.getElementById('modalSaveDashboardCreate');
+        if (!btn || !modalEl || !createBtn) return;
+        var modal = new bootstrap.Modal(modalEl);
+        btn.addEventListener('click', function() {
+            if (inputEl) inputEl.value = '';
+            modal.show();
+        });
+        createBtn.addEventListener('click', function() {
+            var name = (inputEl && inputEl.value || '').trim();
+            if (!name) { alert('Введите имя.'); return; }
+            var slug = getPageSlug();
+            createBtn.disabled = true;
+            saveConfig().catch(function() {}).then(function() {
+                return fetch(API.saveDashboard, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, source_page_slug: slug })
+                });
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                modal.hide();
+                if (data && data.ok && data.url) {
+                    window.dispatchEvent(new Event('pages-updated'));
+                    alert('Дэшборд «' + (data.title || name) + '» создан. Он появится в меню. Откройте: ' + data.url);
+                } else {
+                    alert('Ошибка: ' + (data && data.error ? data.error : 'не удалось создать'));
+                }
+            }).catch(function(err) {
+                alert('Ошибка: ' + (err && err.message ? err.message : 'не удалось создать дэшборд'));
+            }).finally(function() { createBtn.disabled = false; });
+        });
+    })();
 
     // --- Шаблоны: с сервера (общие для всех), выпадающий список по кнопке «Шаблоны» ---
     function loadTemplates() {

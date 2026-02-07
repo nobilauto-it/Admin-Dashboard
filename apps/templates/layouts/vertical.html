@@ -4,7 +4,22 @@
 
 {% block title %}{% endblock %}
 
-{% block styles %}{% endblock styles %}
+{% block body_attribute %}{% if is_dashboard_page|default(false) %} class="page-dashboard-readonly"{% endif %}{% endblock %}
+
+{% block styles %}
+<style>
+/* Скрытие кнопок редактирования на страницах дашбордов (только просмотр).
+   Класс .dashboard-toolbar-hidden перебивает Bootstrap .d-flex (display: flex). */
+.dashboard-toolbar-hidden,
+body.page-dashboard-readonly #entityTableAdminToolbar,
+body.page-dashboard-readonly #btnAddTableBlock,
+body.page-dashboard-readonly #btnSaveDashboard,
+body.page-dashboard-readonly .btnAddEntityInSection,
+body.page-dashboard-readonly .btnFieldsInSection { display: none !important; }
+body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-2.mb-2:has(#btnAddTableBlock),
+body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-2.mb-2:has(#btnSaveDashboard) { display: none !important; }
+</style>
+{% endblock styles %}
 
 {% block content %}
 
@@ -34,3 +49,29 @@
 {% endblock %}
 
 {% block javascripts %} {% endblock javascripts %}
+<script>
+(function() {
+    var isDashboard = window.location.pathname.indexOf('dash-') !== -1;
+    if (isDashboard) document.body.classList.add('page-dashboard-readonly');
+    function hideDashboardToolbar() {
+        if (!document.body.classList.contains('page-dashboard-readonly') && !isDashboard) return;
+        var t = document.getElementById('entityTableAdminToolbar');
+        if (t) { t.style.setProperty('display', 'none', 'important'); t.classList.add('dashboard-toolbar-hidden'); }
+        var b1 = document.getElementById('btnAddTableBlock');
+        if (b1) { b1.style.setProperty('display', 'none', 'important'); b1.classList.add('dashboard-toolbar-hidden'); }
+        var b2 = document.getElementById('btnSaveDashboard');
+        if (b2) { b2.style.setProperty('display', 'none', 'important'); b2.classList.add('dashboard-toolbar-hidden'); }
+        var c = document.getElementById('entityTablesContainer');
+        if (c) c.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection').forEach(function(el) { el.style.setProperty('display', 'none', 'important'); el.classList.add('dashboard-toolbar-hidden'); });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', hideDashboardToolbar);
+    } else {
+        hideDashboardToolbar();
+    }
+    setTimeout(hideDashboardToolbar, 100);
+    setTimeout(hideDashboardToolbar, 500);
+    var interval = setInterval(hideDashboardToolbar, 400);
+    setTimeout(function() { clearInterval(interval); }, 5000);
+})();
+</script>

@@ -14,6 +14,63 @@ except ImportError:
 
 PAGES_DIR = Path(__file__).resolve().parent.parent / "templates" / "pages"
 PAGES_REGISTRY = PAGES_DIR / ".generated_pages.json"
+APPS_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+READ_ONLY_PAGES_FILE = APPS_DATA_DIR / "read_only_pages.json"
+
+
+def _read_only_pages_list():
+    """Список page_slug страниц в режиме «только просмотр» (дэшборды)."""
+    if not READ_ONLY_PAGES_FILE.exists():
+        return []
+    try:
+        with open(READ_ONLY_PAGES_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _add_read_only_page(slug):
+    """Добавить slug в список read-only страниц."""
+    slugs = _read_only_pages_list()
+    if slug in slugs:
+        return
+    slugs.append(slug)
+    APPS_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(READ_ONLY_PAGES_FILE, "w", encoding="utf-8") as f:
+        json.dump(slugs, f, ensure_ascii=False, indent=2)
+
+
+def _ensure_entity_table_config_columns():
+    """Добавить в entity_table_config отсутствующие колонки (миграция для старых БД)."""
+    from apps import db
+    from sqlalchemy import text
+
+    try:
+        with db.engine.connect() as conn:
+            r = conn.execute(text("PRAGMA table_info(entity_table_config)"))
+            rows = r.fetchall()
+    except Exception:
+        return
+    existing = {row[1] for row in rows} if rows else set()
+    columns_to_add = [
+        ("table_title", "TEXT"),
+        ("table_description", "TEXT"),
+        ("entities", "TEXT"),
+        ("fields", "TEXT"),
+        ("tables", "TEXT"),
+        ("updated_at", "DATETIME"),
+    ]
+    for col_name, col_type in columns_to_add:
+        if col_name in existing:
+            continue
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(text(f"ALTER TABLE entity_table_config ADD COLUMN {col_name} {col_type}"))
+                conn.commit()
+            current_app.logger.info("entity_table_config: добавлена колонка %s", col_name)
+        except Exception as e:
+            current_app.logger.warning("entity_table_config ADD COLUMN %s: %s", col_name, e)
 
 
 def _read_registry():
@@ -162,6 +219,20 @@ def create_page():
     if target_path.exists():
         return jsonify({"ok": False, "error": "Страница уже существует", "slug": slug, "url": f"/{slug}"}), 409
 
+    # Новая страница — сбрасываем конфиг таблицы для этого slug (чтобы не подтянулись старые данные)
+    try:
+        from apps.models import EntityTableConfig
+        from apps import db
+        EntityTableConfig.query.filter(
+            db.func.lower(EntityTableConfig.page_slug) == slug.lower()
+        ).delete(synchronize_session=False)
+        db.session.commit()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
     page_title = raw_name
     # Шаблон с виджетом таблицы сущностей (кнопка «+», модалки, грид) или пустая страница
     widget_source = PAGES_DIR / "_entity_table_widget_source.html"
@@ -230,7 +301,9 @@ def delete_page(slug):
     try:
         from apps.models import EntityTableConfig
         from apps import db
-        deleted = EntityTableConfig.query.filter_by(page_slug=slug).delete()
+        deleted = EntityTableConfig.query.filter(
+            db.func.lower(EntityTableConfig.page_slug) == slug.lower()
+        ).delete(synchronize_session=False)
         db.session.commit()
         if deleted:
             current_app.logger.info(f"Удалён конфиг таблицы сущностей для страницы {slug}")
@@ -323,11 +396,14 @@ def entity_table_meta_data():
     limit = request.args.get('limit', '10000')
     offset = request.args.get('offset', '0')
     category_id = request.args.get('category_id')
+    fields = request.args.get('fields')
     params = {'type': entity_type, 'limit': limit, 'offset': offset}
     if entity_key:
         params['entity_key'] = entity_key
     if category_id is not None and category_id != '':
         params['category_id'] = category_id
+    if fields:
+        params['fields'] = fields
     url = f"{_crm_base_url()}/api/entity-meta-data/"
     try:
         if requests is None:
@@ -350,37 +426,43 @@ def entity_table_config():
 
     try:
         db.create_all()
+        _ensure_entity_table_config_columns()
     except Exception as e:
         current_app.logger.warning("entity_table_config create_all: %s", e)
 
     if request.method == 'GET':
         try:
             page_slug = (request.args.get('page_slug') or 'entity-table').strip()
+            read_only_slugs = _read_only_pages_list()
+            read_only = page_slug in read_only_slugs
+
+            def _resp(ok=True, tables=None, table_title="", table_description="", entities=None, fields=None):
+                out = {"ok": ok, "tables": tables or [], "table_title": table_title or "", "table_description": table_description or "", "entities": entities or [], "fields": fields or [], "read_only": read_only}
+                return jsonify(out)
+
             rec = EntityTableConfig.query.filter(
                 db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
             ).first()
             if not rec:
-                return jsonify({"ok": True, "tables": [], "table_title": "", "table_description": "", "entities": [], "fields": []})
+                return _resp()
             tables = rec.get_tables()
             if isinstance(tables, list) and len(tables) > 0:
-                return jsonify({"ok": True, "tables": tables})
+                return jsonify({"ok": True, "tables": tables, "read_only": read_only})
             entities = rec.get_entities()
             fields = rec.get_fields()
             if not isinstance(entities, list):
                 entities = []
             if not isinstance(fields, list):
                 fields = []
-            return jsonify({
-                "ok": True,
-                "tables": [],
-                "table_title": rec.table_title or "",
-                "table_description": rec.table_description or "",
-                "entities": entities,
-                "fields": fields,
-            })
+            return _resp(
+                table_title=rec.table_title or "",
+                table_description=rec.table_description or "",
+                entities=entities,
+                fields=fields,
+            )
         except Exception as e:
             current_app.logger.exception("Entity table config GET: %s", e)
-            return jsonify({"ok": True, "tables": [], "table_title": "", "table_description": "", "entities": [], "fields": []})
+            return jsonify({"ok": True, "tables": [], "table_title": "", "table_description": "", "entities": [], "fields": [], "read_only": False})
 
     data = request.get_json(silent=True) or {}
     page_slug = (data.get('page_slug') or 'entity-table').strip()
@@ -415,6 +497,101 @@ def entity_table_config():
         db.session.rollback()
         current_app.logger.exception("Entity table config save: %s", e)
         return make_response(jsonify({"ok": False, "error": str(e)}), 500)
+
+
+# --- Сохранить дэшборд: новая страница «только просмотр» + пункт в меню ---
+
+@blueprint.route('/api/entity-table/save-dashboard', methods=['POST'])
+def entity_table_save_dashboard():
+    """
+    Создать дэшборд: новая страница с копией конфига текущей, в режиме только просмотр.
+    Body: { "name": "Имя", "source_page_slug": "Test" }.
+    В меню появится пункт «Дэшборд Имя», страница без кнопок настройки.
+    """
+    from apps.models import EntityTableConfig
+    from apps import db
+
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    source_slug = (data.get('source_page_slug') or '').strip() or 'entity-table'
+    if not name:
+        return jsonify({"ok": False, "error": "Введите имя"}), 400
+
+    slug = re.sub(r'[^0-9A-Za-zА-Яа-я_-]+', '-', name).strip('-')
+    if not slug:
+        slug = 'dashboard'
+    slug = ('dash-' + slug).lower()
+    filename = f"{slug}.html"
+    target_path = (PAGES_DIR / filename).resolve()
+    try:
+        target_path.relative_to(PAGES_DIR.resolve())
+    except ValueError:
+        return jsonify({"ok": False, "error": "Некорректное имя"}), 400
+
+    if target_path.exists():
+        return jsonify({"ok": False, "error": "Дэшборд с таким именем уже существует", "slug": slug}), 409
+
+    page_title = "Дэшборд " + name
+    widget_source = PAGES_DIR / "_entity_table_widget_source.html"
+    if not widget_source.exists():
+        return jsonify({"ok": False, "error": "Шаблон виджета не найден"}), 500
+    try:
+        template_content = widget_source.read_text(encoding="utf-8")
+    except Exception as e:
+        current_app.logger.error("save-dashboard read widget: %s", e)
+        return jsonify({"ok": False, "error": "Не удалось прочитать шаблон"}), 500
+
+    template_content = template_content.replace("__PAGE_TITLE__", page_title).replace("__PAGE_SLUG__", slug)
+    try:
+        with open(target_path, 'w', encoding='utf-8') as fp:
+            fp.write(template_content)
+    except OSError as e:
+        current_app.logger.error("save-dashboard write: %s", e)
+        return jsonify({"ok": False, "error": "Не удалось создать страницу"}), 500
+
+    try:
+        db.create_all()
+        _ensure_entity_table_config_columns()
+        source_rec = EntityTableConfig.query.filter(
+            db.func.lower(EntityTableConfig.page_slug) == source_slug.lower()
+        ).first()
+        new_rec = EntityTableConfig.query.filter(
+            db.func.lower(EntityTableConfig.page_slug) == slug.lower()
+        ).first()
+        if not new_rec:
+            new_rec = EntityTableConfig(page_slug=slug)
+            db.session.add(new_rec)
+        if source_rec:
+            new_rec.table_title = source_rec.table_title or page_title
+            new_rec.table_description = source_rec.table_description or ""
+            new_rec.set_entities(source_rec.get_entities())
+            new_rec.set_fields(source_rec.get_fields())
+            new_rec.set_tables(source_rec.get_tables())
+        else:
+            new_rec.table_title = page_title
+            new_rec.table_description = ""
+            new_rec.set_entities([])
+            new_rec.set_fields([])
+            new_rec.set_tables([])
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception("save-dashboard config copy: %s", e)
+        try:
+            target_path.unlink()
+        except Exception:
+            pass
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+    _add_read_only_page(slug)
+
+    registry = _read_registry()
+    registry = [item for item in registry if item.get("slug") != slug]
+    registry.append({"slug": slug, "title": page_title})
+    _write_registry(registry)
+
+    current_app.logger.info("Создан дэшборд: %s -> /%s", page_title, slug)
+    return jsonify({"ok": True, "slug": slug, "url": f"/{slug}", "title": page_title}), 201
 
 
 # --- Шаблоны таблиц: JSON-файл на сервере (общие для всех, без БД) ---
@@ -497,9 +674,27 @@ def route_template(template):
 
         # Detect the current page
         segment = get_segment(request)
+        template_name = template if template.endswith('.html') else template + '.html'
+        page_slug = template_name.replace('.html', '')
+        is_dashboard_page = page_slug.lower().startswith('dash-')
+
+        # Дашборды отдаём из исходного шаблона с контекстом (актуальная логика скрытия кнопок)
+        if is_dashboard_page:
+            registry = _read_registry()
+            title = next((item.get("title") for item in registry if (item.get("slug") or "").lower() == page_slug.lower()), None)
+            if not title:
+                name = page_slug.replace("dash-", "").replace("-", " ").strip() or "Dashboard"
+                title = "Дэшборд " + (name[:1].upper() + name[1:] if name else "Dashboard")
+            return render_template(
+                "pages/_entity_table_widget_source.html",
+                segment=segment,
+                is_dashboard_page=True,
+                page_slug=page_slug,
+                page_title=title,
+            )
 
         # Serve the file (if exists) from app/templates/pages/FILE.html
-        return render_template("pages/" + template, segment=segment)
+        return render_template("pages/" + template_name, segment=segment, is_dashboard_page=is_dashboard_page)
 
     except TemplateNotFound:
         return render_template('pages/error-404.html'), 404
