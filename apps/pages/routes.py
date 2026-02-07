@@ -514,6 +514,7 @@ def entity_table_save_dashboard():
     data = request.get_json(silent=True) or {}
     name = (data.get('name') or '').strip()
     source_slug = (data.get('source_page_slug') or '').strip() or 'entity-table'
+    tables_from_body = data.get('tables')  # опционально: текущие таблицы с фронта (приоритет над копией из source)
     if not name:
         return jsonify({"ok": False, "error": "Введите имя"}), 400
 
@@ -561,7 +562,12 @@ def entity_table_save_dashboard():
         if not new_rec:
             new_rec = EntityTableConfig(page_slug=slug)
             db.session.add(new_rec)
-        if source_rec:
+        if isinstance(tables_from_body, list) and len(tables_from_body) > 0:
+            new_rec.set_tables(tables_from_body)
+            first_t = tables_from_body[0]
+            new_rec.table_title = (first_t.get('table_title') or '').strip() or page_title
+            new_rec.table_description = (first_t.get('table_description') or '').strip() or ""
+        elif source_rec and (source_rec.get_tables() or source_rec.get_entities()):
             new_rec.table_title = source_rec.table_title or page_title
             new_rec.table_description = source_rec.table_description or ""
             new_rec.set_entities(source_rec.get_entities())

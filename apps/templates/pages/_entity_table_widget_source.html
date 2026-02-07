@@ -449,8 +449,27 @@ document.addEventListener('DOMContentLoaded', function() {
         return valid;
     }
 
+    /** Стандартный порядок колонок при первой загрузке (по названию поля). Остальные — после в текущем порядке. */
+    var DEFAULT_COLUMN_ORDER = [
+        'Воронка', 'Название', 'Кем создана', 'Ответственный', 'Валюта',
+        'Дата создания', 'Дата изменения', 'Стадия', 'Стадия сделки', 'Источник',
+        'Сумма', 'ID', 'Тип'
+    ];
+    function applyDefaultColumnOrder(columns) {
+        if (!columns || !columns.length) return columns;
+        var order = DEFAULT_COLUMN_ORDER;
+        return columns.slice().sort(function(a, b) {
+            var ia = order.indexOf(a.label);
+            var ib = order.indexOf(b.label);
+            if (ia === -1 && ib === -1) return 0;
+            if (ia === -1) return 1;
+            if (ib === -1) return -1;
+            return ia - ib;
+        });
+    }
+
     function applyColumnOrder(columns, orderKeys) {
-        if (!orderKeys || !orderKeys.length) return columns;
+        if (!orderKeys || !orderKeys.length) return applyDefaultColumnOrder(columns);
         var byKey = {};
         columns.forEach(function(c) { byKey[c.key] = c; });
         var result = [];
@@ -1470,24 +1489,36 @@ document.addEventListener('DOMContentLoaded', function() {
             var name = (inputEl && inputEl.value || '').trim();
             if (!name) { alert('Введите имя.'); return; }
             var slug = getPageSlug();
+            var tablesPayload = tableStates.map(function(st) {
+                return { table_title: st.tableTitle, table_description: st.tableDescription, entities: st.selectedEntities, fields: st.selectedFields };
+            });
+            if (!tablesPayload.length || !tablesPayload[0].entities || !tablesPayload[0].entities.length) {
+                alert('Сначала добавьте таблицу и выберите сущности.');
+                return;
+            }
             createBtn.disabled = true;
-            saveConfig().catch(function() {}).then(function() {
-                return fetch(API.saveDashboard, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name, source_page_slug: slug })
-                });
-            }).then(function(r) { return r.json(); }).then(function(data) {
-                modal.hide();
-                if (data && data.ok && data.url) {
-                    window.dispatchEvent(new Event('pages-updated'));
-                    alert('Дэшборд «' + (data.title || name) + '» создан. Он появится в меню. Откройте: ' + data.url);
-                } else {
-                    alert('Ошибка: ' + (data && data.error ? data.error : 'не удалось создать'));
-                }
-            }).catch(function(err) {
-                alert('Ошибка: ' + (err && err.message ? err.message : 'не удалось создать дэшборд'));
-            }).finally(function() { createBtn.disabled = false; });
+            saveConfig()
+                .then(function() {
+                    return fetch(API.saveDashboard, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: name, source_page_slug: slug, tables: tablesPayload })
+                    });
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    modal.hide();
+                    if (data && data.ok && data.url) {
+                        window.dispatchEvent(new Event('pages-updated'));
+                        alert('Дэшборд «' + (data.title || name) + '» создан. Он появится в меню. Откройте: ' + data.url);
+                    } else {
+                        alert('Ошибка: ' + (data && data.error ? data.error : 'не удалось создать'));
+                    }
+                })
+                .catch(function(err) {
+                    alert('Ошибка: ' + (err && err.message ? err.message : 'не удалось создать дэшборд. Сохраните настройки таблицы.'));
+                })
+                .finally(function() { createBtn.disabled = false; });
         });
     })();
 
