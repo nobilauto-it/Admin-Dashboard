@@ -1,6 +1,7 @@
 import json
 import re
 import traceback
+import unicodedata
 from pathlib import Path
 
 from apps.pages import blueprint
@@ -433,6 +434,7 @@ def entity_table_config():
     if request.method == 'GET':
         try:
             page_slug = (request.args.get('page_slug') or 'entity-table').strip()
+            page_slug = unicodedata.normalize('NFC', page_slug)
             read_only_slugs = _read_only_pages_list()
             read_only = page_slug in read_only_slugs
 
@@ -522,6 +524,7 @@ def entity_table_save_dashboard():
     if not slug:
         slug = 'dashboard'
     slug = ('dash-' + slug).lower()
+    slug = unicodedata.normalize('NFC', slug)
     filename = f"{slug}.html"
     target_path = (PAGES_DIR / filename).resolve()
     try:
@@ -542,7 +545,16 @@ def entity_table_save_dashboard():
         current_app.logger.error("save-dashboard read widget: %s", e)
         return jsonify({"ok": False, "error": "Не удалось прочитать шаблон"}), 500
 
-    template_content = template_content.replace("__PAGE_TITLE__", page_title).replace("__PAGE_SLUG__", slug)
+    template_content = template_content.replace("__PAGE_TITLE__", page_title)
+    # В сгенерированном HTML файле дэшборда нужен буквальный PAGE_SLUG (файл не рендерится через Jinja)
+    template_content = re.sub(
+        r"var PAGE_SLUG = '[^']*';",
+        "var PAGE_SLUG = " + json.dumps(slug) + ";",
+        template_content,
+        count=1,
+    )
+    if "__PAGE_SLUG__" in template_content:
+        template_content = template_content.replace("__PAGE_SLUG__", slug)
     try:
         with open(target_path, 'w', encoding='utf-8') as fp:
             fp.write(template_content)

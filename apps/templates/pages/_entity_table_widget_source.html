@@ -9,8 +9,45 @@
     .entity-table-toolbar .btn-plus-content { width: 48px; height: 48px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; }
     .entity-table-toolbar .btn-gear { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
     .entity-table-loading { padding: 24px; text-align: center; color: #64748b; }
-    .entity-table-grid-wrap { min-width: 0; }
-    .entity-table-grid-wrap .datatable-table { white-space: nowrap; }
+    .entity-table-grid-wrap { min-width: 0; overflow: auto; max-height: 70vh; }
+    /* Те же стили, что у шаблонных table.datatable.datatable-table (simple-datatables + _tables.scss) */
+    .entity-table-section .entity-table-grid-wrap .datatable-table,
+    .entity-table-section .entity-table-grid-wrap table.datatable-table {
+        width: max-content;
+        min-width: 100%;
+        border-spacing: 0;
+        border-collapse: separate;
+        white-space: nowrap;
+    }
+    .entity-table-section .entity-table-grid-wrap .datatable-table > thead {
+        background-color: var(--bs-light, #f8f9fa) !important;
+    }
+    .entity-table-section .entity-table-grid-wrap .datatable-table > thead > tr > th {
+        color: var(--bs-secondary-color, #495057);
+        font-weight: 500;
+        font-size: 0.875rem;
+        background-color: var(--bs-light, #f8f9fa);
+        vertical-align: middle;
+        text-align: left;
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+    }
+    .entity-table-section .entity-table-grid-wrap .datatable-table > tbody > tr > td,
+    .entity-table-section .entity-table-grid-wrap .datatable-table > tbody > tr > th,
+    .entity-table-section .entity-table-grid-wrap .datatable-table > thead > tr > td {
+        vertical-align: middle;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 220px;
+        min-width: 4rem;
+    }
+    .entity-table-section .entity-table-grid-wrap .datatable-table th a {
+        text-decoration: none;
+        color: inherit;
+    }
     .modal-entity-list .entity-group { margin-bottom: 16px; }
     .modal-entity-list .entity-group-title { font-weight: 700; margin-bottom: 8px; }
     .modal-entity-list .form-check { margin-bottom: 4px; }
@@ -22,7 +59,9 @@
     #paginationBlock .entity-table-pager-btn { border: 1px solid transparent; padding: 6px 12px; margin-left: 2px; text-decoration: none; color: #333; cursor: pointer; border-radius: 4px; background: transparent; font-size: inherit; }
     #paginationBlock .entity-table-pager-btn:hover:not(:disabled) { background-color: #d9d9d9; }
     #paginationBlock .entity-table-pager-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .entity-table-section .datatable-bottom.paginationBlockInSection { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 8px 0; margin-top: 0; width: 100%; }
+    .entity-table-section .datatable-bottom.paginationBlockInSection { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 8px 0; margin-top: 0; width: 100%; max-width: 100%; min-width: 0; flex-shrink: 0; border-top: 1px solid var(--bs-border-color, #dee2e6); box-sizing: border-box; }
+    .entity-table-section .paginationBlockInSection .pagination-left-in-section { flex: 1 1 auto; min-width: 0; overflow: hidden; }
+    .entity-table-section .paginationBlockInSection .paginationNavInSection { flex: 0 0 auto; min-width: 0; }
     .entity-table-section .pagination-left-in-section { flex: 0 0 auto; }
     .entity-table-section .datatable-pagination.paginationNavInSection { margin-left: auto; flex-shrink: 0; }
     .entity-table-section .datatable-pagination ul { display: flex; flex-wrap: wrap; gap: 2px; margin: 0; padding: 0; list-style: none; }
@@ -39,12 +78,27 @@
     .entity-table-grid-wrap th.entity-table-th-draggable:active { cursor: grabbing; }
     .entity-table-grid-wrap th.dragging { opacity: 0.5; }
     .entity-table-grid-wrap th.drag-over { border-left: 2px solid var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.08); }
-    .entity-table-grid-wrap .datatable-table { table-layout: fixed; }
+    /* auto — ширина колонок по содержимому; при ручном ресайзе сохраняем width в columnWidths */
+    .entity-table-grid-wrap .datatable-table { table-layout: auto; }
     .entity-table-grid-wrap th.entity-table-th-wrap { position: relative; padding-right: 10px; }
     .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; }
     .entity-table-grid-wrap th .entity-table-col-resize:hover { background: rgba(var(--bs-primary-rgb), 0.2); }
-    .entity-table-section { margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
-    .entity-table-section:last-child { border-bottom: none; margin-bottom: 0; }
+    #entityTablesContainer { display: grid; gap: 1rem; align-items: start; }
+    .entity-table-section { min-width: 0; margin-bottom: 0; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; padding: 1rem; background: var(--bs-body-bg, #fff); display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .entity-table-section .entity-table-toolbar { margin-bottom: 12px; }
+    .entity-table-section .gridTopRowInSection { margin-bottom: 12px; }
+    .entity-table-section .entity-table-grid-wrap { flex: 1 1 auto; min-height: 0; border-radius: 6px; border: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,.08)); }
+    .entity-table-section .entity-table-section-table { width: 100%; margin-bottom: 0; }
+    .entity-table-section .entity-table-cell-link { color: var(--bs-primary, #6f6af8); text-decoration: none; word-break: break-all; }
+    .entity-table-section .entity-table-cell-link:hover { text-decoration: underline; }
+    .entity-table-section .emptyBlockInSection { cursor: pointer; padding: 1.5rem; border: 2px dashed var(--bs-border-color); border-radius: 8px; transition: border-color .15s, background-color .15s; }
+    .entity-table-section .emptyBlockInSection:hover { border-color: var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.04); }
+    .entity-insert-grid .insert-grid-cell { min-height: 72px; border: 2px dashed var(--bs-border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color .15s, background-color .15s; }
+    .entity-insert-grid .insert-grid-cell:hover:not(.disabled) { border-color: var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.06); }
+    .entity-insert-grid .insert-grid-cell.disabled { opacity: 0.4; cursor: not-allowed; }
+    .entity-insert-grid .insert-grid-cell .cell-placeholder { color: var(--bs-secondary); font-size: 1.25rem; }
+    .entity-insert-grid .insert-grid-cell-occupied { border-style: solid; background: rgba(var(--bs-primary-rgb), 0.08); border-color: rgba(var(--bs-primary-rgb), 0.3); }
+    .entity-insert-grid .insert-grid-cell-occupied .cell-occupied { font-weight: 600; color: var(--bs-primary); }
 </style>
 {% endblock %}
 
@@ -82,7 +136,7 @@
                         </button>
                     </div>
                     <div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none">
-                        <table class="table datatable datatable-table mb-0 entityTableInSection">
+                        <table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">
                             <thead class="table-light entity-table-grid-head"></thead>
                             <tbody class="entity-table-grid-body"></tbody>
                         </table>
@@ -123,12 +177,12 @@
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" for="tableNameInput">Название таблицы</label>
-                    <input type="text" class="form-control" id="tableNameInput" placeholder="Название таблицы">
+                    <label class="form-label" for="tableNameInput">Название таблицы <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="tableNameInput" placeholder="Название таблицы" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" for="tableDescriptionInput">Описание</label>
-                    <textarea class="form-control" id="tableDescriptionInput" rows="2" placeholder="Описание"></textarea>
+                    <label class="form-label" for="tableDescriptionInput">Описание <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="tableDescriptionInput" rows="2" placeholder="Описание" required></textarea>
                 </div>
                 <div class="entity-select-hint col-auto ms-auto bg-primary-subtle p-2 border border-dashed border-primary rounded mb-3 d-flex align-items-center gap-2" role="alert">
                     <span class="entity-select-hint-icon rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center">i</span>
@@ -166,6 +220,23 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <button type="button" class="btn btn-primary" id="modalFieldsSave">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalInsertTableGrid" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Куда вставить новую таблицу?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Выберите ячейку сетки — новая таблица появится в выбранной позиции.</p>
+                <div id="insertTableGrid" class="entity-insert-grid row g-2" style="max-width: 320px;">
+                    <!-- 3×3: ячейки с data-insert-index="0".."8" подставляются скриптом -->
+                </div>
             </div>
         </div>
     </div>
@@ -336,6 +407,15 @@ document.addEventListener('DOMContentLoaded', function() {
         return (e.entity_key || e.type) + (e.category_id != null ? '_' + e.category_id : '');
     }
 
+    /** Служебные колонки не показываем и не сохраняем в настройках. */
+    function isSystemColumn(key) {
+        if (!key) return true;
+        if (key === '_entityKey') return true;
+        var i = key.indexOf('::');
+        if (i >= 0 && key.slice(i + 2) === '_entityKey') return true;
+        return false;
+    }
+
     /** Убирает дубли сущностей и объединяет поля по entityKey (одна запись полей на сущность). */
     function normalizeEntitiesAndFields(entities, fields) {
         var seen = {};
@@ -389,6 +469,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (els.selectedEntitiesLabel) els.selectedEntitiesLabel.textContent = hasEntities
             ? 'Сущности: ' + st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ')
             : '';
+        var plusBtn = els.section && els.section.querySelector('.btnAddEntityInSection');
+        if (plusBtn) plusBtn.classList.toggle('d-none', !hasEntities);
     }
 
     function getPageSlug() {
@@ -421,6 +503,13 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) { return null; }
     }
 
+    /** Порядок колонок: с сервера (виден всем с любого ПК) или из localStorage. */
+    function getColumnOrderForTable(tableIndex) {
+        var st = tableStates[tableIndex];
+        if (st && st.columnOrderFromServer && st.columnOrderFromServer.length) return st.columnOrderFromServer;
+        return loadColumnOrder(tableIndex);
+    }
+
     /** Сбросить сохранённый порядок колонок для одной таблицы (после смены полей удалённые колонки не должны влиять на порядок). */
     function clearColumnOrderForTable(tableIndex) {
         try {
@@ -431,7 +520,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) {}
     }
 
-    /** По selectedFields строит множество ключей колонок (key::title), которые реально выбраны (базовые + вложенные). */
+    /** По selectedFields строит множество ключей колонок (key::title), которые реально выбраны (базовые + вложенные). _entityKey не включается ни для каких сущностей. */
     function getValidColumnKeysFromSelectedFields(st) {
         if (!st || !st.selectedEntities || !st.selectedFields) return {};
         var valid = {};
@@ -439,10 +528,16 @@ document.addEventListener('DOMContentLoaded', function() {
             var key = entityKey(ent);
             var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
             if (!sel) return;
-            (sel.human_titles || []).forEach(function(t) { valid[key + '::' + t] = true; });
+            (sel.human_titles || []).forEach(function(t) {
+                var colKey = key + '::' + t;
+                if (!isSystemColumn(colKey)) valid[colKey] = true;
+            });
             if (sel.nestedFields && typeof sel.nestedFields === 'object') {
                 Object.keys(sel.nestedFields).forEach(function(typ) {
-                    (sel.nestedFields[typ] || []).forEach(function(t) { valid[key + '::' + t] = true; });
+                    (sel.nestedFields[typ] || []).forEach(function(t) {
+                        var colKey = key + '::' + t;
+                        if (!isSystemColumn(colKey)) valid[colKey] = true;
+                    });
                 });
             }
         });
@@ -469,7 +564,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function applyColumnOrder(columns, orderKeys) {
-        if (!orderKeys || !orderKeys.length) return applyDefaultColumnOrder(columns);
+        /* Без сохранённого порядка оставляем порядок из конфига (selectedFields), чтобы дашборд совпадал с настройками. */
+        if (!orderKeys || !orderKeys.length) return columns.slice();
         var byKey = {};
         columns.forEach(function(c) { byKey[c.key] = c; });
         var result = [];
@@ -485,6 +581,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var COLUMN_WIDTH_KEY_PREFIX = 'entity_table_column_widths_';
     var MIN_COL_WIDTH = 40;
+    /** Минимальная ширина (px), при которой применяем сохранённую ширину; иначе колонка подстраивается под содержимое (даты, заголовки не обрезаются). */
+    var MIN_CONTENT_SAFE_WIDTH = 180;
 
     function getColumnWidthStorageKey() {
         return COLUMN_WIDTH_KEY_PREFIX + getPageSlug();
@@ -513,8 +611,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function saveConfigToStorage() {
         try {
             var key = STORAGE_KEY_PREFIX + getPageSlug();
-            var tables = tableStates.map(function(st) {
-                return { table_title: st.tableTitle, table_description: st.tableDescription, entities: st.selectedEntities, fields: st.selectedFields };
+            var tables = tableStates.map(function(st, i) {
+                var keys = getColumnKeysFromSection(i);
+                if (!keys.length && st.allColumns && st.allColumns.length) keys = st.allColumns.map(function(c) { return c.key; });
+                return {
+                    table_title: st.tableTitle,
+                    table_description: st.tableDescription,
+                    entities: st.selectedEntities,
+                    fields: st.selectedFields,
+                    column_order: keys.length ? keys : null,
+                    column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null
+                };
             });
             localStorage.setItem(key, JSON.stringify({ tables: tables }));
         } catch (e) {}
@@ -535,6 +642,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
             tableStates = data.tables.map(function(t) {
                 var norm = normalizeEntitiesAndFields(t.entities || [], t.fields || []);
+                var orderFromServer = (t.column_order && Array.isArray(t.column_order)) ? t.column_order : null;
+                var widthsFromServer = (t.column_widths && typeof t.column_widths === 'object') ? t.column_widths : {};
                 return {
                     selectedEntities: norm.entities,
                     selectedFields: norm.fields,
@@ -544,12 +653,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     allColumns: [],
                     currentPage: 1,
                     pageSize: 25,
-                    columnWidths: {}
+                    columnOrderFromServer: orderFromServer,
+                    columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : {}
                 };
             });
             ensureSections();
             tableStates.forEach(function(st, i) {
-                st.columnWidths = loadColumnWidths(i);
+                if (!st.columnWidths || !Object.keys(st.columnWidths).length) st.columnWidths = loadColumnWidths(i);
                 updateUI(i);
                 loadFieldsThenData(i, openModalIfNoFields);
             });
@@ -557,6 +667,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (data.entities && Array.isArray(data.entities) && data.entities.length > 0) {
             var norm = normalizeEntitiesAndFields(data.entities, data.fields || []);
+            var orderFromServer = (data.column_order && Array.isArray(data.column_order)) ? data.column_order : null;
+            var widthsFromServer = (data.column_widths && typeof data.column_widths === 'object') ? data.column_widths : {};
             tableStates = [{
                 selectedEntities: norm.entities,
                 selectedFields: norm.fields,
@@ -566,7 +678,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 allColumns: [],
                 currentPage: 1,
                 pageSize: 25,
-                columnWidths: loadColumnWidths(0)
+                columnOrderFromServer: orderFromServer,
+                columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : loadColumnWidths(0)
             }];
             ensureSections();
             updateUI(0);
@@ -582,9 +695,9 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +
             '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div>' +
             '<button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none ms-auto flex-shrink-0" title="Настроить поля"><i class="iconoir-settings"></i></button></div>' +
-            '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="table border-dashed datatable datatable-table mb-0 entityTableInSection">' +
+            '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">' +
             '<thead class="table-light entity-table-grid-head"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
-            '<div class="entity-table-loading emptyBlockInSection"><p class="text-muted mb-0">Выберите сущности или шаблон (кнопка «+»).</p></div>' +
+            '<div class="entity-table-loading emptyBlockInSection" role="button" tabindex="0" title="Нажмите, чтобы выбрать сущности и поля"><p class="text-muted mb-0">Нажмите, чтобы выбрать сущности и поля</p></div>' +
             '<div class="datatable-bottom paginationBlockInSection d-none"><div class="pagination-left-in-section d-flex align-items-center flex-wrap gap-2"><span class="datatable-info small text-muted paginationInfoInSection">Показано 0 — 0 из 0 записей</span><span class="small text-muted">На странице:</span><select class="datatable-input pageSizeInSection" style="width:70px;"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></div><nav class="datatable-pagination paginationNavInSection" aria-label="Пагинация таблицы"></nav></div></div>';
     }
 
@@ -596,6 +709,8 @@ document.addEventListener('DOMContentLoaded', function() {
             div.innerHTML = createSectionHtml(i);
             entityTablesContainer.appendChild(div.firstElementChild);
         }
+        var n = tableStates.length;
+        entityTablesContainer.style.gridTemplateColumns = n === 1 ? '1fr' : 'repeat(' + n + ', 1fr)';
         bindSectionListeners();
     }
 
@@ -605,6 +720,12 @@ document.addEventListener('DOMContentLoaded', function() {
             var section = btn.closest('.entity-table-section');
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
             btn.onclick = function() { currentTableIndex = idx; openEntityModal(); };
+        });
+        entityTablesContainer.querySelectorAll('.emptyBlockInSection').forEach(function(block) {
+            var section = block.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            block.onclick = function() { currentTableIndex = idx; openEntityModal(); };
         });
         entityTablesContainer.querySelectorAll('.btnFieldsInSection').forEach(function(btn) {
             var section = btn.closest('.entity-table-section');
@@ -644,17 +765,20 @@ document.addEventListener('DOMContentLoaded', function() {
     /** Загрузка конфига: сначала с сервера; если пусто или ошибка — восстанавливаем из localStorage. */
     function loadConfig() {
         var slug = getPageSlug();
-        try { localStorage.removeItem(STORAGE_KEY_PREFIX + slug); } catch (e) {}
+        if (!isDashboardSlug()) { try { localStorage.removeItem(STORAGE_KEY_PREFIX + slug); } catch (e) {} }
         fetch(API.config + '?page_slug=' + encodeURIComponent(slug))
             .then(function(r) {
                 if (!r.ok) return Promise.reject(new Error(r.status));
                 return r.json();
             })
             .then(function(data) {
-                if (!data || !data.ok) { tryApplyStored(); return; }
+                if (!data || !data.ok) { if (isDashboardSlug()) showDashboardLoadError(); else tryApplyStored(); return; }
                 if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
+                    var isDashboard = !!(data.read_only || isDashboardSlug());
                     tableStates = data.tables.map(function(t) {
                         var norm = normalizeEntitiesAndFields(t.entities || [], t.fields || []);
+                        var orderFromServer = (t.column_order && Array.isArray(t.column_order)) ? t.column_order : null;
+                        var widthsFromServer = (t.column_widths && typeof t.column_widths === 'object') ? t.column_widths : {};
                         return {
                             selectedEntities: norm.entities,
                             selectedFields: norm.fields,
@@ -664,12 +788,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             allColumns: [],
                             currentPage: 1,
                             pageSize: 25,
-                            columnWidths: {}
+                            columnOrderFromServer: orderFromServer,
+                            columnWidths: isDashboard ? {} : (Object.keys(widthsFromServer).length ? widthsFromServer : {})
                         };
                     });
                     ensureSections();
                     tableStates.forEach(function(st, i) {
-                        st.columnWidths = loadColumnWidths(i);
+                        if (!isDashboard && (!st.columnWidths || !Object.keys(st.columnWidths).length)) st.columnWidths = loadColumnWidths(i);
                         updateUI(i);
                         loadFieldsThenData(i, false);
                     });
@@ -699,6 +824,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     applyReadOnlyMode();
                     return;
                 }
+                if (isDashboardSlug()) {
+                    showDashboardLoadError();
+                    return;
+                }
                 tableStates = [defaultTableState()];
                 ensureSections();
                 updateUI(0);
@@ -707,7 +836,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 try { localStorage.removeItem(STORAGE_KEY_PREFIX + getPageSlug()); } catch (e) {}
                 return;
             })
-            .catch(function() { tryApplyStored(); });
+            .catch(function() { if (isDashboardSlug()) showDashboardLoadError(); else tryApplyStored(); });
+
+        function showDashboardLoadError() {
+            tableStates = [defaultTableState()];
+            ensureSections();
+            updateUI(0);
+            isReadOnly = true;
+            applyReadOnlyMode();
+            var msg = document.querySelector('.emptyBlockInSection p');
+            if (msg) msg.textContent = 'Не удалось загрузить дэшборд. Проверьте подключение или обновите страницу.';
+        }
 
         function tryApplyStored() {
             var stored = loadConfigFromStorage();
@@ -720,7 +859,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ensureSections();
                 updateUI(0);
             }
-            isReadOnly = false;
+            isReadOnly = isDashboardSlug();
             applyReadOnlyMode();
         }
     }
@@ -728,8 +867,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function saveConfig(opts) {
         opts = opts || {};
         var slug = getPageSlug();
-        var tables = tableStates.map(function(st) {
-            return { table_title: st.tableTitle, table_description: st.tableDescription, entities: st.selectedEntities, fields: st.selectedFields };
+        var tables = tableStates.map(function(st, i) {
+            var keys = getColumnKeysFromSection(i);
+            if (!keys.length && st.allColumns && st.allColumns.length) keys = st.allColumns.map(function(c) { return c.key; });
+            return {
+                table_title: st.tableTitle,
+                table_description: st.tableDescription,
+                entities: st.selectedEntities,
+                fields: st.selectedFields,
+                column_order: keys.length ? keys : null,
+                column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null
+            };
         });
         var payload = { page_slug: slug, tables: tables };
         var fetchOpts = {
@@ -795,8 +943,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!st) return;
         var nameInput = document.getElementById('tableNameInput');
         var descInput = document.getElementById('tableDescriptionInput');
-        if (nameInput) nameInput.value = '';
-        if (descInput) descInput.value = '';
+        if (nameInput) nameInput.value = (st.tableTitle && String(st.tableTitle).trim()) ? st.tableTitle.trim() : '';
+        if (descInput) descInput.value = (st.tableDescription && String(st.tableDescription).trim()) ? st.tableDescription.trim() : '';
 
         Promise.all([
             loadEntitiesList(),
@@ -852,8 +1000,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!st) return;
         var nameInput = document.getElementById('tableNameInput');
         var descInput = document.getElementById('tableDescriptionInput');
-        if (nameInput) st.tableTitle = nameInput.value.trim();
-        if (descInput) st.tableDescription = descInput.value.trim();
+        var title = nameInput ? nameInput.value.trim() : '';
+        var desc = descInput ? descInput.value.trim() : '';
+        if (!title) { alert('Введите название таблицы.'); if (nameInput) nameInput.focus(); return; }
+        if (!desc) { alert('Введите описание.'); if (descInput) descInput.focus(); return; }
+        st.tableTitle = title;
+        st.tableDescription = desc;
         // Не сохраняем конфиг на сервер в первом модальном — только после выбора полей во втором
         saveConfigToStorage();
         updateTableTitleBlock(currentTableIndex);
@@ -1175,7 +1327,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return true;
         });
         var validKeys = getValidColumnKeysFromSelectedFields(st);
-        st.allColumns = st.allColumns.filter(function(c) { return validKeys[c.key]; });
+        st.allColumns = st.allColumns.filter(function(c) { return !isSystemColumn(c.key) && validKeys[c.key]; });
         var labelCount = {};
         st.allColumns.forEach(function(c) {
             labelCount[c.label] = (labelCount[c.label] || 0) + 1;
@@ -1183,8 +1335,8 @@ document.addEventListener('DOMContentLoaded', function() {
         st.allColumns.forEach(function(c) {
             if (labelCount[c.label] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
         });
-        st.allColumns = applyColumnOrder(st.allColumns, loadColumnOrder(tableIndex));
-        st.columnWidths = loadColumnWidths(tableIndex);
+        st.allColumns = applyColumnOrder(st.allColumns, getColumnOrderForTable(tableIndex));
+        if (!st.columnWidths || !Object.keys(st.columnWidths).length) st.columnWidths = loadColumnWidths(tableIndex);
 
         var firstBatchPromises = columnsByKey.map(function(obj) {
             return fetchPage(obj.ent, obj.titles, obj.key, 0, FIRST_BATCH_SIZE);
@@ -1297,9 +1449,117 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    /** Восстанавливает allColumns из selectedEntities/selectedFields, если колонки потеряны. */
+    function rebuildAllColumnsFromSelectedFields(tableIndex) {
+        var st = tableStates[tableIndex];
+        if (!st || !st.selectedEntities || !st.selectedEntities.length || !st.selectedFields) return;
+        var cols = [];
+        st.selectedEntities.forEach(function(ent) {
+            var key = entityKey(ent);
+            var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
+            var displayTitles = (sel && sel.human_titles) ? sel.human_titles : [];
+            displayTitles.forEach(function(t) {
+                cols.push({ key: key + '::' + t, label: t, entityKey: key, entityTitle: ent.title || entityTitleForNested(ent) });
+            });
+            if (sel && sel.nestedFields && typeof sel.nestedFields === 'object') {
+                Object.keys(sel.nestedFields).forEach(function(typ) {
+                    (sel.nestedFields[typ] || []).forEach(function(t) {
+                        cols.push({ key: key + '::' + t, label: t, entityKey: key, entityTitle: ent.title || entityTitleForNested(ent) });
+                    });
+                });
+            }
+        });
+        var seenKey = {};
+        cols = cols.filter(function(c) { if (seenKey[c.key]) return false; seenKey[c.key] = true; return true; });
+        cols = cols.filter(function(c) { return !isSystemColumn(c.key); });
+        var validKeys = getValidColumnKeysFromSelectedFields(st);
+        cols = cols.filter(function(c) { return validKeys[c.key]; });
+        var labelCount = {};
+        cols.forEach(function(c) { labelCount[c.label] = (labelCount[c.label] || 0) + 1; });
+        cols.forEach(function(c) { if (labelCount[c.label] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')'; });
+        st.allColumns = applyColumnOrder(cols, getColumnOrderForTable(tableIndex));
+    }
+
+    /** Дополняет selectedFields из allColumns (для текущей страницы). */
+    function syncSelectedFieldsFromAllColumns(tableIndex) {
+        var st = tableStates[tableIndex];
+        if (!st || !st.allColumns || !st.allColumns.length || !st.selectedFields) return;
+        st.allColumns.forEach(function(c) {
+            var idx = (c.key || '').indexOf('::');
+            if (idx <= 0) return;
+            var entityKey = c.key.slice(0, idx);
+            var title = c.key.slice(idx + 2);
+            var sel = st.selectedFields.find(function(f) { return f.entityKey === entityKey; });
+            if (sel) {
+                if (!sel.human_titles) sel.human_titles = [];
+                if (sel.human_titles.indexOf(title) < 0) sel.human_titles.push(title);
+            }
+        });
+    }
+
+    /** Строит массив fields для сохранения дэшборда только из allColumns — без опоры на selectedFields. */
+    function buildFieldsFromAllColumns(st) {
+        if (!st || !st.allColumns || !st.allColumns.length) return (st && st.selectedFields) ? st.selectedFields : [];
+        return buildFieldsFromColumnKeys(st.allColumns.map(function(c) { return c.key; }));
+    }
+
+    /** По списку ключей колонок (entityKey::title) строит массив fields для сохранения. */
+    function buildFieldsFromColumnKeys(columnKeys) {
+        if (!columnKeys || !columnKeys.length) return [];
+        var byKey = {};
+        columnKeys.forEach(function(key) {
+            if (isSystemColumn(key)) return;
+            var idx = (key || '').indexOf('::');
+            if (idx <= 0) return;
+            var entityKey = key.slice(0, idx);
+            var title = key.slice(idx + 2);
+            if (!byKey[entityKey]) byKey[entityKey] = { entityKey: entityKey, human_titles: [] };
+            if (byKey[entityKey].human_titles.indexOf(title) < 0) byKey[entityKey].human_titles.push(title);
+        });
+        return Object.keys(byKey).map(function(k) {
+            var b = byKey[k];
+            return { entityKey: b.entityKey, human_titles: b.human_titles.slice(), activeNestedTypes: [], nestedFields: {} };
+        });
+    }
+
+    /** Берёт ключи колонок из DOM (то, что реально отрисовано в настройках) — так в дэшборд попадает точная копия. */
+    function getColumnKeysFromSection(tableIndex) {
+        var els = getSectionEls(tableIndex);
+        if (!els.gridHead) return [];
+        var keys = [];
+        els.gridHead.querySelectorAll('th[data-column-key]').forEach(function(th) {
+            var k = th.getAttribute('data-column-key');
+            if (k) keys.push(k);
+        });
+        return keys;
+    }
+
+    /** Восстанавливает allColumns из ключей первой строки fullData, если в данных больше полей, чем в allColumns. */
+    function rebuildAllColumnsFromData(tableIndex) {
+        var st = tableStates[tableIndex];
+        if (!st || !st.fullData || !st.fullData.length) return;
+        var firstRow = st.fullData[0];
+        var dataKeys = Object.keys(firstRow || {}).filter(function(k) { return !isSystemColumn(k); });
+        if (!dataKeys.length) return;
+        var cols = dataKeys.map(function(k) {
+            var label = k;
+            var idx = k.indexOf('::');
+            if (idx >= 0) label = k.slice(idx + 2);
+            return { key: k, label: label, entityKey: k.slice(0, idx >= 0 ? idx : 0), entityTitle: '' };
+        });
+        st.allColumns = applyColumnOrder(cols, getColumnOrderForTable(tableIndex));
+    }
+
     function renderGrid(tableIndex) {
         var st = tableStates[tableIndex];
         if (!st) return;
+        if (st.fullData && st.fullData.length > 0) {
+            var dataKeys = Object.keys(st.fullData[0] || {});
+            if (!st.allColumns || st.allColumns.length === 0 || st.allColumns.length < dataKeys.length) {
+                rebuildAllColumnsFromSelectedFields(tableIndex);
+                if (st.allColumns.length < dataKeys.length) rebuildAllColumnsFromData(tableIndex);
+            }
+        }
         var els = getSectionEls(tableIndex);
         if (!els.gridHead || !els.gridBody) return;
         var start = (st.currentPage - 1) * st.pageSize;
@@ -1309,14 +1569,23 @@ document.addEventListener('DOMContentLoaded', function() {
             var labelEsc = (c.label || c.key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
             var keyEsc = (c.key || '').replace(/"/g, '&quot;');
             var w = st.columnWidths[c.key];
-            var style = (w && w >= MIN_COL_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
+            var style = (w && w >= MIN_CONTENT_SAFE_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
             return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '"' + style + '>' + labelEsc + '<span class="entity-table-col-resize" title="Изменить ширину"></span></th>';
         }).join('') + '</tr>';
         els.gridBody.innerHTML = slice.map(function(row) {
             return '<tr>' + st.allColumns.map(function(c) {
                 var val = row[c.key];
                 if (val !== null && typeof val === 'object') val = JSON.stringify(val);
-                return '<td>' + (val != null ? String(val) : '') + '</td>';
+                var str = val != null ? String(val).trim() : '';
+                var cellHtml = '';
+                if (str && (str.indexOf('http://') === 0 || str.indexOf('https://') === 0)) {
+                    var hrefEsc = str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    var textEsc = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                    cellHtml = '<a href="' + hrefEsc + '" target="_blank" rel="noopener noreferrer" class="entity-table-cell-link">' + textEsc + '</a>';
+                } else {
+                    cellHtml = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                }
+                return '<td>' + cellHtml + '</td>';
             }).join('') + '</tr>';
         }).join('');
         var totalPages = totalRows ? Math.ceil(totalRows / st.pageSize) : 0;
@@ -1463,16 +1732,82 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    document.getElementById('btnAddTableBlock').addEventListener('click', function() {
-        tableStates.push(defaultTableState());
-        ensureSections();
-        currentTableIndex = tableStates.length - 1;
-        var nameInput = document.getElementById('tableNameInput');
-        var descInput = document.getElementById('tableDescriptionInput');
-        if (nameInput) nameInput.value = '';
-        if (descInput) descInput.value = '';
-        openEntityModal();
-    });
+    (function setupAddTableGrid() {
+        var btn = document.getElementById('btnAddTableBlock');
+        var modalEl = document.getElementById('modalInsertTableGrid');
+        var gridEl = document.getElementById('insertTableGrid');
+        if (!btn || !modalEl || !gridEl) return;
+        var modal = new bootstrap.Modal(modalEl);
+        var GRID_ROWS = 3;
+        var GRID_COLS = 3;
+        var MAX_CELLS = GRID_ROWS * GRID_COLS;
+
+        function renderInsertModalGrid() {
+            var n = tableStates.length;
+            gridEl.innerHTML = '';
+            for (var i = 0; i < GRID_ROWS; i++) {
+                for (var j = 0; j < GRID_COLS; j++) {
+                    var idx = i * GRID_COLS + j;
+                    var isOccupied = idx < n;
+                    var isAddSlot = idx === n && n < MAX_CELLS;
+                    var disabled = !isOccupied && !isAddSlot;
+                    var div = document.createElement('div');
+                    div.className = 'col-4';
+                    var cell = document.createElement('div');
+                    cell.className = 'insert-grid-cell' + (isOccupied ? ' insert-grid-cell-occupied' : '') + (disabled ? ' disabled' : '');
+                    cell.setAttribute('data-insert-index', String(idx));
+                    cell.setAttribute('role', 'button');
+                    cell.setAttribute('tabindex', disabled ? '-1' : '0');
+                    if (isOccupied) {
+                        var st = tableStates[idx];
+                        var label = (st && st.tableTitle && st.tableTitle.trim()) ? st.tableTitle.trim() : (st && st.selectedEntities && st.selectedEntities[0]) ? (st.selectedEntities[0].title || st.selectedEntities[0].type || '') : '';
+                        if (label.length > 20) label = label.slice(0, 17) + '…';
+                        cell.setAttribute('title', label ? ('Таблица ' + (idx + 1) + ': ' + label) : ('Таблица ' + (idx + 1)));
+                        cell.innerHTML = '<span class="cell-placeholder cell-occupied">' + (idx + 1) + '</span>';
+                    } else {
+                        cell.innerHTML = '<span class="cell-placeholder">' + (disabled ? '—' : '+') + '</span>';
+                    }
+                    if (!disabled) {
+                        cell.addEventListener('click', function() {
+                            var index = parseInt(this.getAttribute('data-insert-index'), 10);
+                            modal.hide();
+                            tableStates.splice(index, 0, defaultTableState());
+                            ensureSections();
+                            for (var i = 0; i < tableStates.length; i++) {
+                                var s = tableStates[i];
+                                if (s.fullData && s.fullData.length > 0) {
+                                    var dk = Object.keys(s.fullData[0] || {});
+                                    if (!s.allColumns || s.allColumns.length < dk.length) {
+                                        rebuildAllColumnsFromSelectedFields(i);
+                                        if (s.allColumns.length < dk.length) rebuildAllColumnsFromData(i);
+                                    }
+                                }
+                                renderGrid(i);
+                            }
+                            updateUI(index);
+                            currentTableIndex = index;
+                            var nameInput = document.getElementById('tableNameInput');
+                            var descInput = document.getElementById('tableDescriptionInput');
+                            if (nameInput) nameInput.value = '';
+                            if (descInput) descInput.value = '';
+                            openEntityModal();
+                        });
+                    }
+                    div.appendChild(cell);
+                    gridEl.appendChild(div);
+                }
+            }
+        }
+
+        btn.addEventListener('click', function() {
+            if (tableStates.length >= MAX_CELLS) {
+                alert('Достигнут максимум таблиц на странице (' + MAX_CELLS + ').');
+                return;
+            }
+            renderInsertModalGrid();
+            modal.show();
+        });
+    })();
 
     (function setupSaveDashboard() {
         var btn = document.getElementById('btnSaveDashboard');
@@ -1489,8 +1824,31 @@ document.addEventListener('DOMContentLoaded', function() {
             var name = (inputEl && inputEl.value || '').trim();
             if (!name) { alert('Введите имя.'); return; }
             var slug = getPageSlug();
-            var tablesPayload = tableStates.map(function(st) {
-                return { table_title: st.tableTitle, table_description: st.tableDescription, entities: st.selectedEntities, fields: st.selectedFields };
+            for (var i = 0; i < tableStates.length; i++) {
+                var st = tableStates[i];
+                if (st.fullData && st.fullData.length > 0) {
+                    var dk = Object.keys(st.fullData[0] || {});
+                    if (!st.allColumns || st.allColumns.length < dk.length) {
+                        rebuildAllColumnsFromSelectedFields(i);
+                        if (st.allColumns.length < dk.length) rebuildAllColumnsFromData(i);
+                    }
+                    rebuildAllColumnsFromData(i);
+                }
+            }
+            for (var i = 0; i < tableStates.length; i++) { renderGrid(i); }
+            var tablesPayload = tableStates.map(function(st, i) {
+                var keysFromDom = getColumnKeysFromSection(i);
+                if (!keysFromDom.length && st.allColumns && st.allColumns.length) keysFromDom = st.allColumns.map(function(c) { return c.key; });
+                var fieldsToSave = keysFromDom.length ? buildFieldsFromColumnKeys(keysFromDom) : buildFieldsFromAllColumns(st);
+                if (!fieldsToSave.length) fieldsToSave = st.selectedFields || [];
+                return {
+                    table_title: st.tableTitle,
+                    table_description: st.tableDescription,
+                    entities: st.selectedEntities,
+                    fields: fieldsToSave,
+                    column_order: keysFromDom.length ? keysFromDom : null,
+                    column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null
+                };
             });
             if (!tablesPayload.length || !tablesPayload[0].entities || !tablesPayload[0].entities.length) {
                 alert('Сначала добавьте таблицу и выберите сущности.');
@@ -1622,6 +1980,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (modalFieldsEl) modalFieldsEl.addEventListener('shown.bs.modal', loadTemplates);
     })();
 
+    if (isDashboardSlug()) { isReadOnly = true; applyReadOnlyMode(); }
     loadConfig();
     ensureSections();
 
