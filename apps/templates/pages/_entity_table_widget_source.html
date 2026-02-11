@@ -503,11 +503,13 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) { return null; }
     }
 
-    /** Порядок колонок: с сервера (виден всем с любого ПК) или из localStorage. */
+    /** Порядок колонок: приоритет у локального (localStorage после перетаскивания), иначе с сервера. */
     function getColumnOrderForTable(tableIndex) {
+        var local = loadColumnOrder(tableIndex);
+        if (local && local.length) return local;
         var st = tableStates[tableIndex];
         if (st && st.columnOrderFromServer && st.columnOrderFromServer.length) return st.columnOrderFromServer;
-        return loadColumnOrder(tableIndex);
+        return null;
     }
 
     /** Сбросить сохранённый порядок колонок для одной таблицы (после смены полей удалённые колонки не должны влиять на порядок). */
@@ -1721,11 +1723,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (toIdx == null || isNaN(toIdx)) return;
             var fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
             if (isNaN(fromIdx) || fromIdx === toIdx) return;
-            var cols = tableStates[tableIndex].allColumns;
+            var st = tableStates[tableIndex];
+            if (!st) return;
+            var cols = st.allColumns;
             var a = cols[fromIdx];
             var b = cols[toIdx];
             cols[fromIdx] = b;
             cols[toIdx] = a;
+            st.columnOrderFromServer = cols.map(function(c) { return c.key; });
             saveColumnOrder();
             renderGrid(tableIndex);
             columnDropTargetIndex = null;
