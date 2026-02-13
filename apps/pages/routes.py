@@ -97,7 +97,7 @@ def _write_registry(data):
 
 # Системные шаблоны — не показывать в списке «кастомных страниц»
 _SYSTEM_PAGE_STEMS = frozenset({
-    "index", "deals", "error-403", "error-404", "error-500",
+    "index", "deals", "test", "error-403", "error-404", "error-500",
     "auth-404", "auth-500", "auth-lock-screen", "auth-login", "auth-maintenance", "auth-recover-pw", "auth-register",
     "advanced-animation", "advanced-clipboard", "advanced-dragula", "advanced-files", "advanced-highlight",
     "advanced-rangeslider", "advanced-ratings", "advanced-ribbons", "advanced-sweetalerts", "advanced-toasts",
@@ -129,7 +129,7 @@ def _list_pages_with_fallback():
             if not p.is_file() or p.suffix != ".html" or p.name.startswith("_"):
                 continue
             slug = p.stem
-            if not slug or slug in _SYSTEM_PAGE_STEMS or not re.match(r"^[0-9A-Za-zА-Яа-я_-]+$", slug):
+            if not slug or slug.lower() in _SYSTEM_PAGE_STEMS or not re.match(r"^[0-9A-Za-zА-Яа-я_-]+$", slug):
                 continue
             if slug not in by_slug:
                 by_slug[slug] = {"slug": slug, "title": slug}
