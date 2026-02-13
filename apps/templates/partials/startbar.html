@@ -1,6 +1,7 @@
 <div class="startbar d-print-none">
     <style>
     .startbar-guest .startbar-auth-only { display: none !important; }
+    .startbar-guest .custom-page-item { display: none !important; }
     @media (max-width: 1199.98px) {
         .startbar {
             transform: translateX(-100%);
@@ -52,7 +53,7 @@
                     <li class="menu-label mt-2 startbar-auth-only" id="createDashboardsLabel">
                         <span>Create Dashboards</span>
                     </li>
-                    <li class="nav-item d-none" id="customPagesPlaceholder" aria-hidden="true">
+                    <li class="nav-item d-none startbar-auth-only" id="customPagesPlaceholder" aria-hidden="true">
                         <a class="nav-link text-muted" href="javascript:void(0);">
                             <i class="iconoir-info-empty menu-icon"></i>
                             <span>Пока нет страниц</span>
