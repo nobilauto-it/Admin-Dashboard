@@ -266,7 +266,13 @@
                 '  <a class="dropdown-item text-danger" href="#" id="topbar-logout"><i class="las la-power-off fs-18 me-1 align-text-bottom"></i> Log Out</a>' +
                 '</div>';
             var logoutBtn = document.getElementById('topbar-logout');
-            if (logoutBtn) logoutBtn.addEventListener('click', function(e) { e.preventDefault(); localStorage.removeItem(AUTH_USER_ID_KEY); localStorage.removeItem(AUTH_USER_NAME_KEY); renderUserBlock(); });
+            if (logoutBtn) logoutBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                localStorage.removeItem(AUTH_USER_ID_KEY);
+                localStorage.removeItem(AUTH_USER_NAME_KEY);
+                renderUserBlock();
+                try { window.dispatchEvent(new CustomEvent('auth-changed')); } catch (err) {}
+            });
         } else {
             block.className = 'topbar-item';
             block.innerHTML = '<a class="btn btn-sm btn-soft-primary" href="/auth-login">Log In</a>';

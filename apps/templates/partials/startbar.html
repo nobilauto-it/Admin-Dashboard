@@ -1,5 +1,6 @@
 <div class="startbar d-print-none">
     <style>
+    .startbar-guest .startbar-auth-only { display: none !important; }
     @media (max-width: 1199.98px) {
         .startbar {
             transform: translateX(-100%);
@@ -38,17 +39,17 @@
     <div class="startbar-menu" >
         <div class="startbar-collapse" id="startbarCollapse" data-simplebar>
             <div class="d-flex align-items-start flex-column w-100">
-                <div class="w-100 px-3 pt-3 pb-2">
+                <div class="w-100 px-3 pt-3 pb-2 startbar-auth-only">
                     <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#createPageModal">
                         <i class="iconoir-plus"></i> Добавить страницу
                     </button>
                 </div>
                 <!-- Navigation -->
-                <ul class="navbar-nav mb-auto w-100">
-                    <li class="menu-label mt-2">
+                <ul class="navbar-nav mb-auto w-100" id="startbarNavList">
+                    <li class="menu-label mt-2 startbar-auth-only">
                         <span>Navigation</span>
                     </li>
-                    <li class="menu-label mt-2">
+                    <li class="menu-label mt-2 startbar-auth-only" id="createDashboardsLabel">
                         <span>Create Dashboards</span>
                     </li>
                     <li class="nav-item d-none" id="customPagesPlaceholder" aria-hidden="true">
@@ -57,7 +58,7 @@
                             <span>Пока нет страниц</span>
                         </a>
                     </li>
-                    <li class="menu-label mt-2">
+                    <li class="menu-label mt-2" id="templatesLabel">
                         <span>Templates</span>
                     </li>
                     <li class="nav-item">
@@ -557,6 +558,34 @@
 </div>
 
 <script>
+(function() {
+    var AUTH_USER_ID_KEY = 'auth_user_id';
+    function isLoggedIn() { return !!localStorage.getItem(AUTH_USER_ID_KEY); }
+    function applyStartbarAuthMode() {
+        var startbar = document.querySelector('.startbar');
+        var templatesLabel = document.getElementById('templatesLabel');
+        if (!startbar) return;
+        if (isLoggedIn()) {
+            startbar.classList.remove('startbar-guest');
+            if (templatesLabel) {
+                templatesLabel.classList.remove('startbar-auth-only');
+                var el = templatesLabel.nextElementSibling;
+                while (el) { el.classList.remove('startbar-auth-only'); el = el.nextElementSibling; }
+            }
+        } else {
+            startbar.classList.add('startbar-guest');
+            if (templatesLabel) {
+                templatesLabel.classList.add('startbar-auth-only');
+                var el = templatesLabel.nextElementSibling;
+                while (el) { el.classList.add('startbar-auth-only'); el = el.nextElementSibling; }
+            }
+        }
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        applyStartbarAuthMode();
+        window.addEventListener('auth-changed', applyStartbarAuthMode);
+    });
+})();
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('createPageForm');
     const input = document.getElementById('newPageName');
@@ -644,31 +673,37 @@ document.addEventListener('DOMContentLoaded', () => {
     function createPageLi(page) {
         const li = document.createElement('li');
         li.className = 'nav-item custom-page-item';
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'd-flex align-items-center justify-content-between';
-
+        const isGuest = !localStorage.getItem('auth_user_id');
         const a = document.createElement('a');
         a.className = 'nav-link flex-grow-1';
         a.href = `/${page.slug}`;
-        a.innerHTML = `<i class="iconoir-page menu-icon"></i> <span>${page.title || page.slug}</span>`;
-
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn btn-sm btn-link text-danger delete-page-btn';
-        btn.innerHTML = '&times;';
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (confirm('Удалить эту страницу?')) {
-                deletePage(page.slug);
-            }
-        });
-
-        wrapper.appendChild(a);
-        wrapper.appendChild(btn);
-        li.appendChild(wrapper);
+        a.innerHTML = `<i class="iconoir-page menu-icon"></i> <span>${escapeHtml(page.title || page.slug)}</span>`;
+        if (isGuest) {
+            li.appendChild(a);
+        } else {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'd-flex align-items-center justify-content-between';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-sm btn-link text-danger delete-page-btn';
+            btn.innerHTML = '&times;';
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (confirm('Удалить эту страницу?')) {
+                    deletePage(page.slug);
+                }
+            });
+            wrapper.appendChild(a);
+            wrapper.appendChild(btn);
+            li.appendChild(wrapper);
+        }
         return li;
+    }
+    function escapeHtml(s) {
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
     }
     async function loadPages() {
         try {

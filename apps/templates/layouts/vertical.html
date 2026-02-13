@@ -50,7 +50,9 @@ body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-
 <script>
 (function() {
     var isDashboard = window.location.pathname.indexOf('dash-') !== -1;
-    if (isDashboard) document.body.classList.add('page-dashboard-readonly');
+    var isGuest = false;
+    try { isGuest = !localStorage.getItem('auth_user_id'); } catch (e) { isGuest = true; }
+    if (isDashboard || isGuest) document.body.classList.add('page-dashboard-readonly');
     function hideDashboardToolbar() {
         if (!document.body.classList.contains('page-dashboard-readonly') && !isDashboard) return;
         var t = document.getElementById('entityTableAdminToolbar');

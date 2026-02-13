@@ -274,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var isReadOnly = false;
     var DASHBOARD_HIDE_CLASS = 'dashboard-toolbar-hidden';
     function applyReadOnlyMode() {
-        var hide = isReadOnly || isDashboardSlug();
+        var hide = isReadOnly || isDashboardSlug() || isGuestUser();
         var toolbar = document.getElementById('entityTableAdminToolbar');
         if (toolbar) {
             if (hide) {
@@ -295,6 +295,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     function isDashboardSlug() {
         return (String(PAGE_SLUG || '').toLowerCase().indexOf('dash-') === 0);
+    }
+    function isGuestUser() {
+        try { return !localStorage.getItem('auth_user_id'); } catch (e) { return true; }
     }
 
     function defaultTableState() {
