@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var currentTableModes = {};
     var DASHBOARD_HIDE_CLASS = 'dashboard-toolbar-hidden';
     function applyReadOnlyMode() {
-        var hide = isReadOnly || isDashboardSlug() || isGuestUser();
+        var hide = isGuestUser() && (isReadOnly || isDashboardSlug());
         var toolbar = document.getElementById('entityTableAdminToolbar');
         if (toolbar) {
             if (hide) {
@@ -331,6 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function applyTableModes(tableModes) {
         if (!entityTablesContainer || !tableModes || typeof tableModes !== 'object') return;
+        if (!isGuestUser()) return;
         entityTablesContainer.querySelectorAll('.entity-table-section').forEach(function(section) {
             var idx = section.getAttribute('data-table-index');
             var mode = (tableModes[idx] || tableModes[String(idx)] || 'edit').toLowerCase();
@@ -346,16 +347,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function applyPageMode(pageMode) {
+        if (!isGuestUser()) return;
         var mode = (pageMode || 'edit').toLowerCase();
         var container = document.getElementById('entityTablesContainer');
         var wrapper = container && container.closest('.row');
-        var toolbar = document.getElementById('entityTableAdminToolbar');
         if (mode === 'hide') {
             if (wrapper) wrapper.style.setProperty('display', 'none', 'important');
-            if (toolbar) toolbar.style.removeProperty('display');
         } else {
             if (wrapper) wrapper.style.removeProperty('display');
-            if (toolbar) toolbar.style.removeProperty('display');
         }
     }
 
@@ -381,15 +380,7 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({ page_modes: { [getPageSlug()]: currentPageMode } })
         }).then(function() {
             isReadOnly = (currentPageMode === 'read_only') || isDashboardSlug();
-            var wrapper = document.getElementById('entityTablesContainer') && document.getElementById('entityTablesContainer').closest('.row');
-            var toolbar = document.getElementById('entityTableAdminToolbar');
-            if (currentPageMode === 'hide') {
-                if (wrapper) wrapper.style.setProperty('display', 'none', 'important');
-                if (toolbar) toolbar.style.removeProperty('display');
-            } else {
-                if (wrapper) wrapper.style.removeProperty('display');
-                if (toolbar) toolbar.style.removeProperty('display');
-            }
+            applyPageMode(currentPageMode);
             applyReadOnlyMode();
         }).catch(function() {});
     }
