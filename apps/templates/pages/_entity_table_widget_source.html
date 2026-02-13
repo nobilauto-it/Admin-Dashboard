@@ -112,6 +112,14 @@
     .entity-insert-grid .insert-grid-cell-occupied .cell-occupied { font-weight: 600; color: var(--bs-primary); }
     .entity-table-section-readonly .entity-table-toolbar,
     .entity-table-section-readonly .btnFieldsInSection { display: none !important; }
+    .entity-table-section-hidden .entity-table-toolbar .btnAddEntityInSection,
+    .entity-table-section-hidden .entity-table-toolbar .selectedEntitiesLabelInSection { display: none !important; }
+    .entity-table-section-hidden .entity-table-toolbar .entity-table-section-hidden-label { display: inline !important; }
+    .entity-table-section-hidden .entity-table-loading.loadingBlockInSection,
+    .entity-table-section-hidden .gridTopRowInSection,
+    .entity-table-section-hidden .entity-table-grid-wrap,
+    .entity-table-section-hidden .emptyBlockInSection,
+    .entity-table-section-hidden .datatable-bottom.paginationBlockInSection { display: none !important; }
 </style>
 {% endblock %}
 
@@ -139,6 +147,7 @@
                             <i class="iconoir-plus"></i>
                         </button>
                         <span class="text-muted small selectedEntitiesLabelInSection ms-2"></span>
+                        <span class="entity-table-section-hidden-label text-muted small d-none">Блок скрыт</span>
                         <div class="table-mode-admin ms-2" style="display: none !important;">
                             <select class="form-select form-select-sm tableModeSelect" title="Режим таблицы" data-table-index="0" style="width: auto; min-width: 120px;">
                                 <option value="edit">Редактирование</option>
@@ -325,9 +334,10 @@ document.addEventListener('DOMContentLoaded', function() {
         entityTablesContainer.querySelectorAll('.entity-table-section').forEach(function(section) {
             var idx = section.getAttribute('data-table-index');
             var mode = (tableModes[idx] || tableModes[String(idx)] || 'edit').toLowerCase();
-            section.classList.remove('entity-table-section-readonly');
+            section.classList.remove('entity-table-section-readonly', 'entity-table-section-hidden');
             if (mode === 'hide') {
-                section.style.setProperty('display', 'none', 'important');
+                section.classList.add('entity-table-section-hidden');
+                section.style.removeProperty('display');
             } else {
                 section.style.removeProperty('display');
                 if (mode === 'read_only') section.classList.add('entity-table-section-readonly');
@@ -337,12 +347,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function applyPageMode(pageMode) {
         var mode = (pageMode || 'edit').toLowerCase();
-        if (mode !== 'hide') return;
         var container = document.getElementById('entityTablesContainer');
         var wrapper = container && container.closest('.row');
-        if (wrapper) wrapper.style.setProperty('display', 'none', 'important');
         var toolbar = document.getElementById('entityTableAdminToolbar');
-        if (toolbar) toolbar.style.setProperty('display', 'none', 'important');
+        if (mode === 'hide') {
+            if (wrapper) wrapper.style.setProperty('display', 'none', 'important');
+            if (toolbar) toolbar.style.removeProperty('display');
+        } else {
+            if (wrapper) wrapper.style.removeProperty('display');
+            if (toolbar) toolbar.style.removeProperty('display');
+        }
     }
 
     function renderComponentModesAdmin() {
@@ -371,7 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var toolbar = document.getElementById('entityTableAdminToolbar');
             if (currentPageMode === 'hide') {
                 if (wrapper) wrapper.style.setProperty('display', 'none', 'important');
-                if (toolbar) toolbar.style.setProperty('display', 'none', 'important');
+                if (toolbar) toolbar.style.removeProperty('display');
             } else {
                 if (wrapper) wrapper.style.removeProperty('display');
                 if (toolbar) toolbar.style.removeProperty('display');
@@ -787,6 +801,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="entity-table-toolbar d-flex align-items-center flex-wrap">' +
             '<button type="button" class="btn btn-primary btn-plus-content btnAddEntityInSection" title="Добавить сущность / настройки таблицы"><i class="iconoir-plus"></i></button>' +
             '<span class="text-muted small selectedEntitiesLabelInSection ms-2"></span>' +
+            '<span class="entity-table-section-hidden-label text-muted small d-none">Блок скрыт</span>' +
             '<div class="table-mode-admin ms-2" style="display:none!important"><select class="form-select form-select-sm tableModeSelect" title="Режим таблицы" data-table-index="' + tableIndex + '" style="width:auto;min-width:120px">' +
             '<option value="edit">Редактирование</option><option value="read_only">Только просмотр</option><option value="hide">Скрыть</option></select></div></div>' +
             '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +

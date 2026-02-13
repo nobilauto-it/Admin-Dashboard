@@ -383,6 +383,24 @@ def delete_page(slug):
     registry = _read_registry()
     registry = [item for item in registry if item.get("slug") != slug]
     _write_registry(registry)
+
+    # Удалить страницу из component_modes (page_modes, table_modes)
+    try:
+        data = _read_component_modes()
+        changed = False
+        if slug in data["page_modes"]:
+            del data["page_modes"][slug]
+            changed = True
+        if slug in data["table_modes"]:
+            del data["table_modes"][slug]
+            changed = True
+        if changed:
+            APPS_DATA_DIR.mkdir(parents=True, exist_ok=True)
+            with open(COMPONENT_MODES_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as exc:
+        current_app.logger.warning("Component modes cleanup on page delete: %s", exc)
+
     return jsonify({"ok": True})
 
 
