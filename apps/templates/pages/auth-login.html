@@ -95,6 +95,7 @@
 (function() {
     var API_LOGIN_URL = '/api/login';
     var AUTH_USER_ID_KEY = 'auth_user_id';
+    var AUTH_USER_NAME_KEY = 'auth_user_name';
 
     function showError(msg) {
         var el = document.getElementById('login-error');
@@ -135,6 +136,7 @@
                 setSubmitting(false);
                 if (result.ok && result.data.success && result.data.user_id != null) {
                     localStorage.setItem(AUTH_USER_ID_KEY, String(result.data.user_id));
+                    localStorage.setItem(AUTH_USER_NAME_KEY, username);
                     window.location.href = '/';
                     return;
                 }
