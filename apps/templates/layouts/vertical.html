@@ -15,6 +15,8 @@ body.page-dashboard-readonly #entityTableAdminToolbar,
 body.page-dashboard-readonly #btnAddTableBlock,
 body.page-dashboard-readonly .btnAddEntityInSection,
 body.page-dashboard-readonly .btnFieldsInSection { display: none !important; }
+/* Скрыть синюю кнопку «плюс» в блоках таблиц для залогиненных пользователей */
+body.page-user-logged-in .btnAddEntityInSection { display: none !important; }
 body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-2.mb-2:has(#btnAddTableBlock) { display: none !important; }
 </style>
 {% endblock styles %}
@@ -53,6 +55,7 @@ body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-
     var isGuest = false;
     try { isGuest = !localStorage.getItem('auth_user_id'); } catch (e) { isGuest = true; }
     if (isDashboard || isGuest) document.body.classList.add('page-dashboard-readonly');
+    if (!isGuest) document.body.classList.add('page-user-logged-in');
     function hideDashboardToolbar() {
         if (!document.body.classList.contains('page-dashboard-readonly') && !isDashboard) return;
         var t = document.getElementById('entityTableAdminToolbar');
