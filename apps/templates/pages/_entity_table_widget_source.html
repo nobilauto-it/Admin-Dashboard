@@ -31,6 +31,14 @@
         text-align: left;
         padding: 0.5rem 0.75rem;
         border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+        overflow: hidden;
+    }
+    .entity-table-section .entity-table-grid-wrap .datatable-table > thead > tr > th .entity-table-th-label {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
     }
     .entity-table-section .entity-table-grid-wrap .datatable-table > tbody > tr > td,
     .entity-table-section .entity-table-grid-wrap .datatable-table > tbody > tr > th,
@@ -1545,9 +1553,10 @@ document.addEventListener('DOMContentLoaded', function() {
         els.gridHead.innerHTML = '<tr>' + st.allColumns.map(function(c, i) {
             var labelEsc = (c.label || c.key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
             var keyEsc = (c.key || '').replace(/"/g, '&quot;');
+            var titleEsc = (c.label || c.key).replace(/"/g, '&quot;').replace(/</g, '&lt;');
             var w = st.columnWidths[c.key];
             var style = (w && w >= MIN_CONTENT_SAFE_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
-            return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '"' + style + '>' + labelEsc + '<span class="entity-table-col-resize" title="Изменить ширину"></span></th>';
+            return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '" title="' + titleEsc + '"' + style + '><span class="entity-table-th-label">' + labelEsc + '</span><span class="entity-table-col-resize" title="Изменить ширину"></span></th>';
         }).join('') + '</tr>';
         els.gridBody.innerHTML = slice.map(function(row) {
             return '<tr>' + st.allColumns.map(function(c) {
