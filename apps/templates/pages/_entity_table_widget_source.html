@@ -112,6 +112,8 @@
     .entity-insert-grid .insert-grid-cell-occupied .cell-occupied { font-weight: 600; color: var(--bs-primary); }
     .entity-table-section-readonly .entity-table-toolbar,
     .entity-table-section-readonly .btnFieldsInSection { display: none !important; }
+    .entity-table-section-plus-hidden .entity-table-toolbar .btnAddEntityInSection { display: none !important; }
+    .entity-table-section-plus-hidden .entity-table-toolbar .entity-table-section-hidden-label { display: none !important; }
     .entity-table-section-hidden .entity-table-toolbar .btnAddEntityInSection { display: none !important; }
     .entity-table-section-hidden .entity-table-toolbar .entity-table-section-hidden-label { display: none !important; }
     .entity-table-section-hidden .entity-table-loading.loadingBlockInSection,
@@ -330,17 +332,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function applyTableModes(tableModes) {
         if (!entityTablesContainer || !tableModes || typeof tableModes !== 'object') return;
-        if (!isGuestUser()) return;
+        var guest = isGuestUser();
         entityTablesContainer.querySelectorAll('.entity-table-section').forEach(function(section) {
             var idx = section.getAttribute('data-table-index');
             var mode = (tableModes[idx] || tableModes[String(idx)] || 'edit').toLowerCase();
-            section.classList.remove('entity-table-section-readonly', 'entity-table-section-hidden');
+            section.classList.remove('entity-table-section-readonly', 'entity-table-section-hidden', 'entity-table-section-plus-hidden');
             if (mode === 'hide') {
-                section.classList.add('entity-table-section-hidden');
+                section.classList.add('entity-table-section-plus-hidden');
+                if (guest) section.classList.add('entity-table-section-hidden');
                 section.style.removeProperty('display');
             } else {
                 section.style.removeProperty('display');
-                if (mode === 'read_only') section.classList.add('entity-table-section-readonly');
+                if (guest && mode === 'read_only') section.classList.add('entity-table-section-readonly');
             }
         });
     }
