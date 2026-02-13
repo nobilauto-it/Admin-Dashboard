@@ -7,6 +7,8 @@
 <style>
     .entity-table-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; margin-bottom: 16px; }
     .entity-table-toolbar .btn-plus-content { width: 48px; height: 48px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; }
+    /* Скрыть кнопку «плюс» (добавить сущность) везде в блоках таблиц */
+    .entity-table-toolbar .btnAddEntityInSection { display: none !important; }
     .entity-table-toolbar .btn-gear { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
     .entity-table-loading { padding: 24px; text-align: center; color: #64748b; }
     .entity-table-grid-wrap { min-width: 0; overflow: auto; max-height: 70vh; }
