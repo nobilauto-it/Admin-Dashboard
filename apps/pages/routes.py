@@ -190,6 +190,36 @@ def deals():
         return render_template('pages/deals.html', segment=segment, deals=[]), 500
 
 
+LOGIN_API_URL = "http://194.33.40.197:7070/api/login"
+
+
+@blueprint.route('/api/login', methods=['POST'])
+def api_login_proxy():
+    """Прокси для входа: обходим CORS, запрос с браузера идёт на тот же origin."""
+    if requests is None:
+        return jsonify({"detail": "Server error"}), 500
+    data = request.get_json(silent=True) or {}
+    username = (data.get("Username") or "").strip()
+    password = data.get("Password") or ""
+    if not username or not password:
+        return jsonify({"detail": "Username and Password are required"}), 400
+    try:
+        r = requests.post(
+            LOGIN_API_URL,
+            json={"Username": username, "Password": password},
+            headers={"Content-Type": "application/json"},
+            timeout=10,
+        )
+        try:
+            body = r.json() if r.content else {}
+        except (ValueError, TypeError):
+            body = {"detail": "Ошибка сервера, попробуйте позже"}
+        return jsonify(body), r.status_code
+    except requests.exceptions.RequestException as e:
+        current_app.logger.warning("Login proxy request failed: %s", e)
+        return jsonify({"detail": "Ошибка сервера, попробуйте позже"}), 500
+
+
 @blueprint.route('/api/pages/create', methods=['POST'])
 def create_page():
     """
