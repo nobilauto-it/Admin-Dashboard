@@ -64,7 +64,9 @@
     .modal-entity-list .entity-group { margin-bottom: 16px; }
     .modal-entity-list .entity-group-title { font-weight: 700; margin-bottom: 8px; }
     .modal-entity-list .form-check { margin-bottom: 4px; }
-    .fields-modal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 16px; max-height: 400px; overflow-y: auto; }
+    .fields-modal-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 16px; max-height: 400px; overflow-y: auto; }
+    .fields-modal-grid .form-check { min-width: 0; }
+    .fields-modal-grid .form-check-label { white-space: normal; word-wrap: break-word; overflow-wrap: break-word; min-width: 0; }
     .fields-modal-nested { margin-bottom: 12px; }
     .fields-modal-nested .nested-title { font-weight: 600; margin-bottom: 6px; }
     #paginationBlock.datatable-bottom { padding: 8px 10px; margin-top: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
