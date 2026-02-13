@@ -15,8 +15,9 @@ body.page-dashboard-readonly #entityTableAdminToolbar,
 body.page-dashboard-readonly #btnAddTableBlock,
 body.page-dashboard-readonly .btnAddEntityInSection,
 body.page-dashboard-readonly .btnFieldsInSection { display: none !important; }
-/* Скрыть синюю кнопку «плюс» в блоках таблиц для залогиненных пользователей */
-body.page-user-logged-in .btnAddEntityInSection { display: none !important; }
+/* Скрыть кнопку «плюс» (добавить сущность) везде — во всех блоках таблиц */
+.btn.btn-primary.btn-plus-content.btnAddEntityInSection,
+.btnAddEntityInSection { display: none !important; }
 body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-2.mb-2:has(#btnAddTableBlock) { display: none !important; }
 </style>
 {% endblock styles %}
