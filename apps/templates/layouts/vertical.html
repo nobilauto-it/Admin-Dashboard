@@ -13,11 +13,9 @@
 .dashboard-toolbar-hidden,
 body.page-dashboard-readonly #entityTableAdminToolbar,
 body.page-dashboard-readonly #btnAddTableBlock,
-body.page-dashboard-readonly #btnSaveDashboard,
 body.page-dashboard-readonly .btnAddEntityInSection,
 body.page-dashboard-readonly .btnFieldsInSection { display: none !important; }
-body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-2.mb-2:has(#btnAddTableBlock),
-body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-2.mb-2:has(#btnSaveDashboard) { display: none !important; }
+body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-2.mb-2:has(#btnAddTableBlock) { display: none !important; }
 </style>
 {% endblock styles %}
 
@@ -59,8 +57,6 @@ body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-
         if (t) { t.style.setProperty('display', 'none', 'important'); t.classList.add('dashboard-toolbar-hidden'); }
         var b1 = document.getElementById('btnAddTableBlock');
         if (b1) { b1.style.setProperty('display', 'none', 'important'); b1.classList.add('dashboard-toolbar-hidden'); }
-        var b2 = document.getElementById('btnSaveDashboard');
-        if (b2) { b2.style.setProperty('display', 'none', 'important'); b2.classList.add('dashboard-toolbar-hidden'); }
         var c = document.getElementById('entityTablesContainer');
         if (c) c.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection').forEach(function(el) { el.style.setProperty('display', 'none', 'important'); el.classList.add('dashboard-toolbar-hidden'); });
     }

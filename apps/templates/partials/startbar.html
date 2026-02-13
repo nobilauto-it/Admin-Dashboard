@@ -58,15 +58,6 @@
                         </a>
                     </li>
                     <li class="menu-label mt-2">
-                        <span>Published Dashboards</span>
-                    </li>
-                    <li class="nav-item d-none" id="publishedDashboardsPlaceholder" aria-hidden="true">
-                        <a class="nav-link text-muted" href="javascript:void(0);">
-                            <i class="iconoir-dashboard-dots menu-icon"></i>
-                            <span>Пока нет опубликованных дэшбордов</span>
-                        </a>
-                    </li>
-                    <li class="menu-label mt-2">
                         <span>Templates</span>
                     </li>
                     <li class="nav-item">
@@ -635,9 +626,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // load custom pages and published dashboards into menu
+    // load custom pages into menu
     const pagesPlaceholder = document.getElementById('customPagesPlaceholder');
-    const dashboardsPlaceholder = document.getElementById('publishedDashboardsPlaceholder');
     const navList = document.querySelector('.navbar-nav.mb-auto.w-100');
     async function deletePage(slug) {
         try {
@@ -651,9 +641,9 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(err.message || 'Ошибка удаления страницы');
         }
     }
-    function createPageLi(page, isDashboard) {
+    function createPageLi(page) {
         const li = document.createElement('li');
-        li.className = isDashboard ? 'nav-item published-dashboard-item' : 'nav-item custom-page-item';
+        li.className = 'nav-item custom-page-item';
 
         const wrapper = document.createElement('div');
         wrapper.className = 'd-flex align-items-center justify-content-between';
@@ -661,8 +651,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const a = document.createElement('a');
         a.className = 'nav-link flex-grow-1';
         a.href = `/${page.slug}`;
-        const icon = isDashboard ? 'iconoir-dashboard-dots' : 'iconoir-page';
-        a.innerHTML = `<i class="${icon} menu-icon"></i> <span>${page.title || page.slug}</span>`;
+        a.innerHTML = `<i class="iconoir-page menu-icon"></i> <span>${page.title || page.slug}</span>`;
 
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -671,7 +660,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (confirm(isDashboard ? 'Удалить этот дэшборд?' : 'Удалить эту страницу?')) {
+            if (confirm('Удалить эту страницу?')) {
                 deletePage(page.slug);
             }
         });
@@ -690,13 +679,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!navList) return;
 
             const customPages = pages.filter(p => !(String(p.slug || '').toLowerCase().startsWith('dash-')));
-            const dashboards = pages.filter(p => String(p.slug || '').toLowerCase().startsWith('dash-'));
 
-            // Custom Pages: remove old, insert non-dashboard pages
             navList.querySelectorAll('.custom-page-item').forEach(n => n.remove());
             let insertRef = pagesPlaceholder || navList.querySelector('.menu-label');
             customPages.forEach(page => {
-                const li = createPageLi(page, false);
+                const li = createPageLi(page);
                 if (insertRef) {
                     insertRef.insertAdjacentElement('afterend', li);
                     insertRef = li;
@@ -704,22 +691,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     navList.prepend(li);
                 }
             });
-
-            // Published Dashboards: remove old, insert dashboard pages
-            navList.querySelectorAll('.published-dashboard-item').forEach(n => n.remove());
-            if (dashboardsPlaceholder) {
-                if (dashboards.length === 0) {
-                    dashboardsPlaceholder.classList.remove('d-none');
-                } else {
-                    dashboardsPlaceholder.classList.add('d-none');
-                    insertRef = dashboardsPlaceholder;
-                    dashboards.forEach(page => {
-                        const li = createPageLi(page, true);
-                        insertRef.insertAdjacentElement('afterend', li);
-                        insertRef = li;
-                    });
-                }
-            }
         } catch (err) {
             console.error(err);
         }

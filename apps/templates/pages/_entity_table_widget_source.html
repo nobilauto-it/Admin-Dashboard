@@ -110,9 +110,6 @@
                 <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddTableBlock" title="Добавить ещё одну таблицу на страницу">
                     <i class="iconoir-plus"></i> Добавить таблицу
                 </button>
-                <button type="button" class="btn btn-primary btn-sm" id="btnSaveDashboard" title="Создать дэшборд для просмотра (появится в меню)">
-                    <i class="iconoir-dashboard-dots"></i> Сохранить Дэшборд
-                </button>
             </div>
             <div id="entityTablesContainer">
                 <div class="entity-table-section" data-table-index="0">
@@ -242,25 +239,6 @@
     </div>
 </div>
 
-<div class="modal fade" id="modalSaveDashboard" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Сохранить Дэшборд</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <label class="form-label" for="dashboardNameInput">Введите имя, на кого создать дэшборд</label>
-                <input type="text" class="form-control" id="dashboardNameInput" placeholder="Например: Иван" autocomplete="off">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-primary" id="modalSaveDashboardCreate">Создать</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 {% endblock %}
 
 {% block javascripts %}
@@ -280,7 +258,6 @@ document.addEventListener('DOMContentLoaded', function() {
         metaData: '/api/entity-table/entity-meta-data/',
         config: '/api/entity-table/config',
         templates: '/api/entity-table/templates',
-        saveDashboard: '/api/entity-table/save-dashboard',
     };
 
     var isReadOnly = false;
@@ -298,9 +275,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         var b1 = document.getElementById('btnAddTableBlock');
-        var b2 = document.getElementById('btnSaveDashboard');
         if (b1) { if (hide) { b1.style.setProperty('display', 'none', 'important'); b1.classList.add(DASHBOARD_HIDE_CLASS); } else { b1.classList.remove(DASHBOARD_HIDE_CLASS); b1.style.display = ''; } }
-        if (b2) { if (hide) { b2.style.setProperty('display', 'none', 'important'); b2.classList.add(DASHBOARD_HIDE_CLASS); } else { b2.classList.remove(DASHBOARD_HIDE_CLASS); b2.style.display = ''; } }
         if (entityTablesContainer) {
             entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection').forEach(function(el) {
                 if (hide) { el.style.setProperty('display', 'none', 'important'); el.classList.add(DASHBOARD_HIDE_CLASS); } else { el.classList.remove(DASHBOARD_HIDE_CLASS); el.style.display = ''; }
@@ -1811,77 +1786,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             renderInsertModalGrid();
             modal.show();
-        });
-    })();
-
-    (function setupSaveDashboard() {
-        var btn = document.getElementById('btnSaveDashboard');
-        var modalEl = document.getElementById('modalSaveDashboard');
-        var inputEl = document.getElementById('dashboardNameInput');
-        var createBtn = document.getElementById('modalSaveDashboardCreate');
-        if (!btn || !modalEl || !createBtn) return;
-        var modal = new bootstrap.Modal(modalEl);
-        btn.addEventListener('click', function() {
-            if (inputEl) inputEl.value = '';
-            modal.show();
-        });
-        createBtn.addEventListener('click', function() {
-            var name = (inputEl && inputEl.value || '').trim();
-            if (!name) { alert('Введите имя.'); return; }
-            var slug = getPageSlug();
-            for (var i = 0; i < tableStates.length; i++) {
-                var st = tableStates[i];
-                if (st.fullData && st.fullData.length > 0) {
-                    var dk = Object.keys(st.fullData[0] || {});
-                    if (!st.allColumns || st.allColumns.length < dk.length) {
-                        rebuildAllColumnsFromSelectedFields(i);
-                        if (st.allColumns.length < dk.length) rebuildAllColumnsFromData(i);
-                    }
-                    rebuildAllColumnsFromData(i);
-                }
-            }
-            for (var i = 0; i < tableStates.length; i++) { renderGrid(i); }
-            var tablesPayload = tableStates.map(function(st, i) {
-                var keysFromDom = getColumnKeysFromSection(i);
-                if (!keysFromDom.length && st.allColumns && st.allColumns.length) keysFromDom = st.allColumns.map(function(c) { return c.key; });
-                var fieldsToSave = keysFromDom.length ? buildFieldsFromColumnKeys(keysFromDom) : buildFieldsFromAllColumns(st);
-                if (!fieldsToSave.length) fieldsToSave = st.selectedFields || [];
-                return {
-                    table_title: st.tableTitle,
-                    table_description: st.tableDescription,
-                    entities: st.selectedEntities,
-                    fields: fieldsToSave,
-                    column_order: keysFromDom.length ? keysFromDom : null,
-                    column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null
-                };
-            });
-            if (!tablesPayload.length || !tablesPayload[0].entities || !tablesPayload[0].entities.length) {
-                alert('Сначала добавьте таблицу и выберите сущности.');
-                return;
-            }
-            createBtn.disabled = true;
-            saveConfig()
-                .then(function() {
-                    return fetch(API.saveDashboard, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: name, source_page_slug: slug, tables: tablesPayload })
-                    });
-                })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    modal.hide();
-                    if (data && data.ok && data.url) {
-                        window.dispatchEvent(new Event('pages-updated'));
-                        alert('Дэшборд «' + (data.title || name) + '» создан. Он появится в меню. Откройте: ' + data.url);
-                    } else {
-                        alert('Ошибка: ' + (data && data.error ? data.error : 'не удалось создать'));
-                    }
-                })
-                .catch(function(err) {
-                    alert('Ошибка: ' + (err && err.message ? err.message : 'не удалось создать дэшборд. Сохраните настройки таблицы.'));
-                })
-                .finally(function() { createBtn.disabled = false; });
         });
     })();
 
