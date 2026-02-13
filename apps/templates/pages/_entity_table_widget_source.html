@@ -110,6 +110,8 @@
     .entity-insert-grid .insert-grid-cell .cell-placeholder { color: var(--bs-secondary); font-size: 1.25rem; }
     .entity-insert-grid .insert-grid-cell-occupied { border-style: solid; background: rgba(var(--bs-primary-rgb), 0.08); border-color: rgba(var(--bs-primary-rgb), 0.3); }
     .entity-insert-grid .insert-grid-cell-occupied .cell-occupied { font-weight: 600; color: var(--bs-primary); }
+    .entity-table-section-readonly .entity-table-toolbar,
+    .entity-table-section-readonly .btnFieldsInSection { display: none !important; }
 </style>
 {% endblock %}
 
@@ -117,7 +119,15 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="d-flex justify-content-end align-items-center gap-2 mb-2" id="entityTableAdminToolbar">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2" id="entityTableAdminToolbar">
+                <div class="d-flex align-items-center gap-2 component-modes-admin" id="componentModesAdmin" style="display: none !important;">
+                    <label class="small text-muted mb-0">Режим страницы:</label>
+                    <select class="form-select form-select-sm" id="pageModeSelect" style="width: auto; min-width: 140px;">
+                        <option value="edit">Редактирование</option>
+                        <option value="read_only">Только просмотр</option>
+                        <option value="hide">Скрыть</option>
+                    </select>
+                </div>
                 <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddTableBlock" title="Добавить ещё одну таблицу на страницу">
                     <i class="iconoir-plus"></i> Добавить таблицу
                 </button>
@@ -129,6 +139,13 @@
                             <i class="iconoir-plus"></i>
                         </button>
                         <span class="text-muted small selectedEntitiesLabelInSection ms-2"></span>
+                        <div class="table-mode-admin ms-2" style="display: none !important;">
+                            <select class="form-select form-select-sm tableModeSelect" title="Режим таблицы" data-table-index="0" style="width: auto; min-width: 120px;">
+                                <option value="edit">Редактирование</option>
+                                <option value="read_only">Только просмотр</option>
+                                <option value="hide">Скрыть</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="entity-table-loading loadingBlockInSection d-none">
                         <div class="spinner-border text-primary" role="status"></div>
@@ -269,9 +286,12 @@ document.addEventListener('DOMContentLoaded', function() {
         metaData: '/api/entity-table/entity-meta-data/',
         config: '/api/entity-table/config',
         templates: '/api/entity-table/templates',
+        componentModes: '/api/entity-table/component-modes',
     };
 
     var isReadOnly = false;
+    var currentPageMode = 'edit';
+    var currentTableModes = {};
     var DASHBOARD_HIDE_CLASS = 'dashboard-toolbar-hidden';
     function applyReadOnlyMode() {
         var hide = isReadOnly || isDashboardSlug() || isGuestUser();
@@ -298,6 +318,90 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     function isGuestUser() {
         try { return !localStorage.getItem('auth_user_id'); } catch (e) { return true; }
+    }
+
+    function applyTableModes(tableModes) {
+        if (!entityTablesContainer || !tableModes || typeof tableModes !== 'object') return;
+        entityTablesContainer.querySelectorAll('.entity-table-section').forEach(function(section) {
+            var idx = section.getAttribute('data-table-index');
+            var mode = (tableModes[idx] || tableModes[String(idx)] || 'edit').toLowerCase();
+            section.classList.remove('entity-table-section-readonly');
+            if (mode === 'hide') {
+                section.style.setProperty('display', 'none', 'important');
+            } else {
+                section.style.removeProperty('display');
+                if (mode === 'read_only') section.classList.add('entity-table-section-readonly');
+            }
+        });
+    }
+
+    function applyPageMode(pageMode) {
+        var mode = (pageMode || 'edit').toLowerCase();
+        if (mode !== 'hide') return;
+        var container = document.getElementById('entityTablesContainer');
+        var wrapper = container && container.closest('.row');
+        if (wrapper) wrapper.style.setProperty('display', 'none', 'important');
+        var toolbar = document.getElementById('entityTableAdminToolbar');
+        if (toolbar) toolbar.style.setProperty('display', 'none', 'important');
+    }
+
+    function renderComponentModesAdmin() {
+        if (isGuestUser()) return;
+        var adminEl = document.getElementById('componentModesAdmin');
+        if (adminEl) { adminEl.style.setProperty('display', 'flex', 'important'); adminEl.classList.add('align-items-center'); }
+        var pageSelect = document.getElementById('pageModeSelect');
+        if (pageSelect) pageSelect.value = currentPageMode;
+        entityTablesContainer && entityTablesContainer.querySelectorAll('.tableModeSelect').forEach(function(sel) {
+            var idx = sel.getAttribute('data-table-index');
+            sel.value = currentTableModes[idx] || currentTableModes[String(idx)] || 'edit';
+            var wrap = sel.closest('.table-mode-admin');
+            if (wrap) wrap.style.setProperty('display', 'block', 'important');
+        });
+    }
+
+    function saveComponentModesPageMode(mode) {
+        currentPageMode = (mode || 'edit').toLowerCase();
+        fetch(API.componentModes, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ page_modes: { [getPageSlug()]: currentPageMode } })
+        }).then(function() {
+            isReadOnly = (currentPageMode === 'read_only') || isDashboardSlug();
+            var wrapper = document.getElementById('entityTablesContainer') && document.getElementById('entityTablesContainer').closest('.row');
+            var toolbar = document.getElementById('entityTableAdminToolbar');
+            if (currentPageMode === 'hide') {
+                if (wrapper) wrapper.style.setProperty('display', 'none', 'important');
+                if (toolbar) toolbar.style.setProperty('display', 'none', 'important');
+            } else {
+                if (wrapper) wrapper.style.removeProperty('display');
+                if (toolbar) toolbar.style.removeProperty('display');
+            }
+            applyReadOnlyMode();
+        }).catch(function() {});
+    }
+
+    function saveComponentModesTableMode(tableIndex, mode) {
+        currentTableModes[String(tableIndex)] = (mode || 'edit').toLowerCase();
+        var payload = {};
+        payload[getPageSlug()] = currentTableModes;
+        fetch(API.componentModes, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table_modes: payload })
+        }).then(function() { applyTableModes(currentTableModes); }).catch(function() {});
+    }
+
+    var componentModesBound = false;
+    function bindComponentModesListeners() {
+        if (isGuestUser() || componentModesBound) return;
+        componentModesBound = true;
+        var pageSelect = document.getElementById('pageModeSelect');
+        if (pageSelect) pageSelect.addEventListener('change', function() { saveComponentModesPageMode(this.value); });
+        if (entityTablesContainer) entityTablesContainer.addEventListener('change', function(e) {
+            if (!e.target || !e.target.classList.contains('tableModeSelect')) return;
+            var idx = e.target.getAttribute('data-table-index');
+            saveComponentModesTableMode(idx, e.target.value);
+        });
     }
 
     function defaultTableState() {
@@ -682,7 +786,9 @@ document.addEventListener('DOMContentLoaded', function() {
         return '<div class="entity-table-section" data-table-index="' + tableIndex + '">' +
             '<div class="entity-table-toolbar d-flex align-items-center flex-wrap">' +
             '<button type="button" class="btn btn-primary btn-plus-content btnAddEntityInSection" title="Добавить сущность / настройки таблицы"><i class="iconoir-plus"></i></button>' +
-            '<span class="text-muted small selectedEntitiesLabelInSection ms-2"></span></div>' +
+            '<span class="text-muted small selectedEntitiesLabelInSection ms-2"></span>' +
+            '<div class="table-mode-admin ms-2" style="display:none!important"><select class="form-select form-select-sm tableModeSelect" title="Режим таблицы" data-table-index="' + tableIndex + '" style="width:auto;min-width:120px">' +
+            '<option value="edit">Редактирование</option><option value="read_only">Только просмотр</option><option value="hide">Скрыть</option></select></div></div>' +
             '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +
             '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div>' +
             '<button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none ms-auto flex-shrink-0" title="Настроить поля"><i class="iconoir-settings"></i></button></div>' +
@@ -703,6 +809,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var n = tableStates.length;
         entityTablesContainer.style.gridTemplateColumns = n === 1 ? '1fr' : 'repeat(' + n + ', 1fr)';
         bindSectionListeners();
+        renderComponentModesAdmin();
     }
 
     function bindSectionListeners() {
@@ -784,6 +891,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         };
                     });
                     ensureSections();
+                    applyTableModes(data.table_modes);
                     tableStates.forEach(function(st, i) {
                         if (!isDashboard && (!st.columnWidths || !Object.keys(st.columnWidths).length)) st.columnWidths = loadColumnWidths(i);
                         updateUI(i);
@@ -791,7 +899,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     saveConfigToStorage();
                     isReadOnly = !!(data.read_only || isDashboardSlug());
+                    currentPageMode = (data.page_mode || 'edit').toLowerCase();
+                    currentTableModes = data.table_modes && typeof data.table_modes === 'object' ? Object.assign({}, data.table_modes) : {};
+                    applyPageMode(data.page_mode);
                     applyReadOnlyMode();
+                    renderComponentModesAdmin();
+                    bindComponentModesListeners();
                     return;
                 }
                 if (data.entities && Array.isArray(data.entities) && data.entities.length > 0) {
@@ -808,11 +921,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         columnWidths: loadColumnWidths(0)
                     }];
                     ensureSections();
+                    applyTableModes(data.table_modes);
                     updateUI(0);
                     loadFieldsThenData(0, false);
                     saveConfigToStorage();
                     isReadOnly = !!(data.read_only || isDashboardSlug());
+                    currentPageMode = (data.page_mode || 'edit').toLowerCase();
+                    currentTableModes = data.table_modes && typeof data.table_modes === 'object' ? Object.assign({}, data.table_modes) : {};
+                    applyPageMode(data.page_mode);
                     applyReadOnlyMode();
+                    renderComponentModesAdmin();
+                    bindComponentModesListeners();
                     return;
                 }
                 if (isDashboardSlug()) {
@@ -821,9 +940,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 tableStates = [defaultTableState()];
                 ensureSections();
+                applyTableModes(data.table_modes);
                 updateUI(0);
                 isReadOnly = !!(data.read_only || isDashboardSlug());
+                currentPageMode = (data.page_mode || 'edit').toLowerCase();
+                currentTableModes = data.table_modes && typeof data.table_modes === 'object' ? Object.assign({}, data.table_modes) : {};
+                applyPageMode(data.page_mode);
                 applyReadOnlyMode();
+                renderComponentModesAdmin();
+                bindComponentModesListeners();
                 try { localStorage.removeItem(STORAGE_KEY_PREFIX + getPageSlug()); } catch (e) {}
                 return;
             })

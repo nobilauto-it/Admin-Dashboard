@@ -17,6 +17,34 @@ PAGES_DIR = Path(__file__).resolve().parent.parent / "templates" / "pages"
 PAGES_REGISTRY = PAGES_DIR / ".generated_pages.json"
 APPS_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 READ_ONLY_PAGES_FILE = APPS_DATA_DIR / "read_only_pages.json"
+COMPONENT_MODES_FILE = APPS_DATA_DIR / "component_modes.json"
+
+
+def _read_component_modes():
+    """Параметры компонентов: страницы и таблицы — edit, read_only, hide (для админки)."""
+    if not COMPONENT_MODES_FILE.exists():
+        return {"page_modes": {}, "table_modes": {}}
+    try:
+        with open(COMPONENT_MODES_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return {
+            "page_modes": data.get("page_modes") or {},
+            "table_modes": data.get("table_modes") or {},
+        }
+    except Exception:
+        return {"page_modes": {}, "table_modes": {}}
+
+
+def _get_page_mode(slug):
+    """Режим страницы: edit | read_only | hide. По умолчанию edit."""
+    modes = _read_component_modes()
+    return (modes["page_modes"].get(slug) or "edit").strip().lower()
+
+
+def _get_table_modes(slug):
+    """Режимы таблиц на странице: { "0": "edit", "1": "read_only", "2": "hide" }. По умолчанию {}."""
+    modes = _read_component_modes()
+    return modes["table_modes"].get(slug) or {}
 
 
 def _read_only_pages_list():
@@ -466,10 +494,16 @@ def entity_table_config():
             page_slug = (request.args.get('page_slug') or 'entity-table').strip()
             page_slug = unicodedata.normalize('NFC', page_slug)
             read_only_slugs = _read_only_pages_list()
-            read_only = page_slug in read_only_slugs
+            page_mode = _get_page_mode(page_slug)
+            table_modes = _get_table_modes(page_slug)
+            read_only = page_slug in read_only_slugs or page_mode == "read_only"
 
             def _resp(ok=True, tables=None, table_title="", table_description="", entities=None, fields=None):
-                out = {"ok": ok, "tables": tables or [], "table_title": table_title or "", "table_description": table_description or "", "entities": entities or [], "fields": fields or [], "read_only": read_only}
+                out = {
+                    "ok": ok, "tables": tables or [], "table_title": table_title or "", "table_description": table_description or "",
+                    "entities": entities or [], "fields": fields or [], "read_only": read_only,
+                    "page_mode": page_mode, "table_modes": table_modes,
+                }
                 return jsonify(out)
 
             rec = EntityTableConfig.query.filter(
@@ -479,7 +513,7 @@ def entity_table_config():
                 return _resp()
             tables = rec.get_tables()
             if isinstance(tables, list) and len(tables) > 0:
-                return jsonify({"ok": True, "tables": tables, "read_only": read_only})
+                return jsonify({"ok": True, "tables": tables, "read_only": read_only, "page_mode": page_mode, "table_modes": table_modes})
             entities = rec.get_entities()
             fields = rec.get_fields()
             if not isinstance(entities, list):
@@ -494,7 +528,7 @@ def entity_table_config():
             )
         except Exception as e:
             current_app.logger.exception("Entity table config GET: %s", e)
-            return jsonify({"ok": True, "tables": [], "table_title": "", "table_description": "", "entities": [], "fields": [], "read_only": False})
+            return jsonify({"ok": True, "tables": [], "table_title": "", "table_description": "", "entities": [], "fields": [], "read_only": False, "page_mode": "edit", "table_modes": {}})
 
     data = request.get_json(silent=True) or {}
     page_slug = (data.get('page_slug') or 'entity-table').strip()
@@ -528,6 +562,34 @@ def entity_table_config():
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception("Entity table config save: %s", e)
+        return make_response(jsonify({"ok": False, "error": str(e)}), 500)
+
+
+@blueprint.route('/api/entity-table/component-modes', methods=['GET', 'POST'])
+def entity_table_component_modes():
+    """Параметры страниц и таблиц: edit, read_only, hide. GET — вернуть, POST — сохранить (для админки)."""
+    if request.method == 'GET':
+        data = _read_component_modes()
+        return jsonify({"ok": True, "page_modes": data["page_modes"], "table_modes": data["table_modes"]})
+    data = request.get_json(silent=True) or {}
+    page_modes = data.get("page_modes")
+    table_modes = data.get("table_modes")
+    current = _read_component_modes()
+    if isinstance(page_modes, dict):
+        current["page_modes"].update(page_modes)
+    if isinstance(table_modes, dict):
+        for slug, modes in table_modes.items():
+            if isinstance(modes, dict):
+                current["table_modes"].setdefault(slug, {}).update(modes)
+            else:
+                current["table_modes"][slug] = modes if isinstance(modes, dict) else {}
+    try:
+        APPS_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        with open(COMPONENT_MODES_FILE, "w", encoding="utf-8") as f:
+            json.dump(current, f, ensure_ascii=False, indent=2)
+        return jsonify({"ok": True})
+    except Exception as e:
+        current_app.logger.exception("Component modes save: %s", e)
         return make_response(jsonify({"ok": False, "error": str(e)}), 500)
 
 
