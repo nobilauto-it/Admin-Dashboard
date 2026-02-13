@@ -25,16 +25,17 @@
                                 </div>
                             </div>
                             <div class="card-body">
-                                <form action="/" class="my-4">
+                                <div id="login-error" class="alert alert-danger d-none" role="alert"></div>
+                                <form id="login-form" action="/" class="my-4" method="post">
                                     <div class="form-group mb-2">
-                                        <label class="form-label" for="username">Username</label>
-                                        <input class="form-control" id="username" name="username"
-                                               placeholder="Enter username" type="text"/>
+                                        <label class="form-label" for="username">Username <span class="text-danger">*</span></label>
+                                        <input class="form-control" id="username" name="username" required
+                                               placeholder="Enter username" type="text" autocomplete="username"/>
                                     </div><!--end form-group-->
                                     <div class="form-group">
-                                        <label class="form-label" for="userpassword">Password</label>
-                                        <input class="form-control" id="userpassword" name="password"
-                                               placeholder="Enter password" type="password"/>
+                                        <label class="form-label" for="userpassword">Password <span class="text-danger">*</span></label>
+                                        <input class="form-control" id="userpassword" name="password" required
+                                               placeholder="Enter password" type="password" autocomplete="current-password"/>
                                     </div><!--end form-group-->
                                     <div class="form-group row mt-3">
                                         <div class="col-sm-6">
@@ -53,7 +54,7 @@
                                     <div class="form-group mb-0 row">
                                         <div class="col-12">
                                             <div class="d-grid mt-3">
-                                                <button class="btn btn-primary" type="button">Log In <i
+                                                <button class="btn btn-primary" type="submit" id="login-submit">Log In <i
                                                         class="fas fa-sign-in-alt ms-1"></i></button>
                                             </div>
                                         </div><!--end col-->
@@ -90,5 +91,73 @@
 {% endblock %}
 
 {% block javascripts %}
+<script>
+(function() {
+    var API_LOGIN_URL = 'http://194.33.40.197:7070/api/login';
+    var AUTH_USER_ID_KEY = 'auth_user_id';
 
+    function showError(msg) {
+        var el = document.getElementById('login-error');
+        if (!el) return;
+        el.textContent = msg || '';
+        el.classList.toggle('d-none', !msg);
+    }
+
+    function setSubmitting(loading) {
+        var btn = document.getElementById('login-submit');
+        if (btn) {
+            btn.disabled = loading;
+            btn.innerHTML = loading ? 'Logging in…' : 'Log In <i class="fas fa-sign-in-alt ms-1"></i>';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var form = document.getElementById('login-form');
+        if (!form) return;
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            showError('');
+            var username = (document.getElementById('username') && document.getElementById('username').value) || '';
+            var password = (document.getElementById('userpassword') && document.getElementById('userpassword').value) || '';
+            username = username.trim();
+            if (!username || !password) {
+                showError('Username and Password are required');
+                return;
+            }
+            setSubmitting(true);
+            fetch(API_LOGIN_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Username: username, Password: password })
+            })
+            .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, status: res.status, data: data }; }); })
+            .then(function(result) {
+                setSubmitting(false);
+                if (result.ok && result.data.success && result.data.user_id != null) {
+                    localStorage.setItem(AUTH_USER_ID_KEY, String(result.data.user_id));
+                    window.location.href = '/';
+                    return;
+                }
+                if (result.status === 400) {
+                    showError(result.data.detail || 'Username and Password are required');
+                    return;
+                }
+                if (result.status === 401) {
+                    showError(result.data.detail || 'Неверный логин или пароль');
+                    return;
+                }
+                if (result.status >= 500) {
+                    showError('Ошибка сервера, попробуйте позже');
+                    return;
+                }
+                showError(result.data.detail || 'Ошибка входа');
+            })
+            .catch(function(err) {
+                setSubmitting(false);
+                showError('Ошибка сети или сервера. Попробуйте позже.');
+            });
+        });
+    });
+})();
+</script>
 {% endblock javascripts %}

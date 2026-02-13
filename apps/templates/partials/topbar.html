@@ -228,21 +228,16 @@
 </div>
 <script>
 (function() {
-    var STUB_STORAGE_KEY = 'stub_user_logged_in';
+    var AUTH_USER_ID_KEY = 'auth_user_id';
 
-    function isStubLoggedIn() {
-        return localStorage.getItem(STUB_STORAGE_KEY) === '1';
-    }
-
-    function setStubLoggedIn(value) {
-        if (value) localStorage.setItem(STUB_STORAGE_KEY, '1');
-        else localStorage.removeItem(STUB_STORAGE_KEY);
+    function isLoggedIn() {
+        return !!localStorage.getItem(AUTH_USER_ID_KEY);
     }
 
     function renderUserBlock() {
         var block = document.getElementById('topbar-user-block');
         if (!block) return;
-        if (isStubLoggedIn()) {
+        if (isLoggedIn()) {
             block.className = 'dropdown topbar-item';
             block.innerHTML =
                 '<a class="nav-link dropdown-toggle arrow-none nav-icon" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="false" aria-expanded="false" data-bs-offset="0,19">' +
@@ -256,15 +251,13 @@
                 '  <div class="dropdown-divider mt-0"></div>' +
                 '  <a class="dropdown-item" href="/pages-profile"><i class="las la-user fs-18 me-1 align-text-bottom"></i> Profile</a>' +
                 '  <div class="dropdown-divider mb-0"></div>' +
-                '  <a class="dropdown-item text-danger" href="#" id="topbar-stub-logout"><i class="las la-power-off fs-18 me-1 align-text-bottom"></i> Log Out</a>' +
+                '  <a class="dropdown-item text-danger" href="#" id="topbar-logout"><i class="las la-power-off fs-18 me-1 align-text-bottom"></i> Log Out</a>' +
                 '</div>';
-            var logoutBtn = document.getElementById('topbar-stub-logout');
-            if (logoutBtn) logoutBtn.addEventListener('click', function(e) { e.preventDefault(); setStubLoggedIn(false); renderUserBlock(); });
+            var logoutBtn = document.getElementById('topbar-logout');
+            if (logoutBtn) logoutBtn.addEventListener('click', function(e) { e.preventDefault(); localStorage.removeItem(AUTH_USER_ID_KEY); renderUserBlock(); });
         } else {
             block.className = 'topbar-item';
-            block.innerHTML = '<a class="btn btn-sm btn-soft-primary" href="#" id="topbar-stub-login">Log In</a>';
-            var loginBtn = document.getElementById('topbar-stub-login');
-            if (loginBtn) loginBtn.addEventListener('click', function(e) { e.preventDefault(); setStubLoggedIn(true); renderUserBlock(); });
+            block.innerHTML = '<a class="btn btn-sm btn-soft-primary" href="/auth-login">Log In</a>';
         }
     }
 
