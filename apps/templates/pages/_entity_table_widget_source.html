@@ -109,6 +109,7 @@
     .entity-table-section .entity-table-section-table { width: 100%; margin-bottom: 0; }
     .entity-table-section .entity-table-cell-link { color: var(--bs-primary, #6f6af8); text-decoration: none; word-break: break-all; }
     .entity-table-section .entity-table-cell-link:hover { text-decoration: underline; }
+    .entity-table-section .entity-table-grid-wrap td.entity-table-cell-numeric { text-align: right; }
     .entity-table-section .emptyBlockInSection { cursor: pointer; padding: 1.5rem; border: 2px dashed var(--bs-border-color); border-radius: 8px; transition: border-color .15s, background-color .15s; }
     .entity-table-section .emptyBlockInSection:hover { border-color: var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.04); }
     .entity-insert-grid .insert-grid-cell { min-height: 72px; border: 2px dashed var(--bs-border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color .15s, background-color .15s; }
@@ -1739,7 +1740,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     cellHtml = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                 }
-                return '<td>' + cellHtml + '</td>';
+                var isNum = typeof row[c.key] === 'number' || (str && /^-?\d+([.,]\d+)?([eE][+-]?\d+)?%?$/.test(str.replace(/\s/g, '')));
+                return '<td' + (isNum ? ' class="entity-table-cell-numeric"' : '') + '>' + cellHtml + '</td>';
             }).join('') + '</tr>';
         }).join('');
         var totalPages = totalRows ? Math.ceil(totalRows / st.pageSize) : 0;
