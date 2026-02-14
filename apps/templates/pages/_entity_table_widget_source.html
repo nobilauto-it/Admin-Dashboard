@@ -1192,6 +1192,13 @@ document.addEventListener('DOMContentLoaded', function() {
         return t;
     }
 
+    function fieldLabelShort(full) {
+        full = (full || '').trim();
+        if (!full) return { display: '', title: '' };
+        var idx = full.indexOf(' ');
+        var display = idx >= 0 ? full.substring(0, idx) + '...' : full;
+        return { display: display, title: full };
+    }
     function openFieldsModal() {
         var st = tableStates[currentTableIndex];
         if (!st || !st.selectedEntities.length) return;
@@ -1251,7 +1258,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     var id = 'f_' + key + '_main_' + (f.human_title || f.column_name || f.id).replace(/\s/g, '_');
                     var checked = titles.indexOf(f.human_title) >= 0 ? ' checked' : '';
                     var nestAttr = ' data-nested-type=""';
-                    div.innerHTML = '<input class="form-check-input field-cb" type="checkbox" id="' + id + '" data-entitykey="' + key + '" data-human-title="' + (f.human_title || '').replace(/"/g, '&quot;') + '"' + nestAttr + checked + '><label class="form-check-label" for="' + id + '">' + (f.human_title || f.column_name || '') + '</label>';
+                    var lab = fieldLabelShort(f.human_title || f.column_name || '');
+                    var labDisp = (lab.display || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                    var labTitle = (lab.title || '').replace(/"/g, '&quot;');
+                    div.innerHTML = '<input class="form-check-input field-cb" type="checkbox" id="' + id + '" data-entitykey="' + key + '" data-human-title="' + (f.human_title || '').replace(/"/g, '&quot;') + '"' + nestAttr + checked + '><label class="form-check-label" for="' + id + '" title="' + labTitle + '">' + labDisp + '</label>';
                     fieldsList.appendChild(div);
                 });
 
@@ -1279,7 +1289,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         var id = 'f_' + key + '_' + typ.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + (n.human_title || n.column_name || n.id).replace(/\s/g, '_');
                         var checked = titlesNested.indexOf(n.human_title) >= 0 ? ' checked' : '';
                         var nestAttr = ' data-nested-type="' + String(typ).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"';
-                        div.innerHTML = '<input class="form-check-input field-cb" type="checkbox" id="' + id + '" data-entitykey="' + key + '" data-human-title="' + (n.human_title || '').replace(/"/g, '&quot;') + '"' + nestAttr + checked + '><label class="form-check-label" for="' + id + '">' + (n.human_title || n.column_name || '') + '</label>';
+                        var lab = fieldLabelShort(n.human_title || n.column_name || '');
+                        var labDisp = (lab.display || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                        var labTitle = (lab.title || '').replace(/"/g, '&quot;');
+                        div.innerHTML = '<input class="form-check-input field-cb" type="checkbox" id="' + id + '" data-entitykey="' + key + '" data-human-title="' + (n.human_title || '').replace(/"/g, '&quot;') + '"' + nestAttr + checked + '><label class="form-check-label" for="' + id + '" title="' + labTitle + '">' + labDisp + '</label>';
                         fieldsList.appendChild(div);
                     });
                 });
