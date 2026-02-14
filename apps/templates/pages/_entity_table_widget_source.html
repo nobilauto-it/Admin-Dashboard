@@ -1199,6 +1199,15 @@ document.addEventListener('DOMContentLoaded', function() {
         var display = idx >= 0 ? full.substring(0, idx) + '...' : full;
         return { display: display, title: full };
     }
+    function updateThLabelByWidth(th) {
+        var full = th.getAttribute('data-full-label');
+        if (full == null || full === '') return;
+        var span = th.querySelector('.entity-table-th-label');
+        if (!span) return;
+        var short = fieldLabelShort(full).display;
+        span.textContent = full;
+        if (th.scrollWidth > th.clientWidth) span.textContent = short;
+    }
     function openFieldsModal() {
         var st = tableStates[currentTableIndex];
         if (!st || !st.selectedEntities.length) return;
@@ -1697,13 +1706,17 @@ document.addEventListener('DOMContentLoaded', function() {
         var slice = st.fullData.slice(start, start + st.pageSize);
         var totalRows = st.fullData.length;
         els.gridHead.innerHTML = '<tr>' + st.allColumns.map(function(c, i) {
-            var labelEsc = (c.label || c.key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            var fullLabel = c.label || c.key || '';
+            var lab = fieldLabelShort(fullLabel);
+            var labelEsc = (lab.display || fullLabel).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
             var keyEsc = (c.key || '').replace(/"/g, '&quot;');
-            var titleEsc = (c.label || c.key).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+            var titleEsc = (fullLabel || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+            var fullLabelAttr = (fullLabel || '').replace(/"/g, '&quot;');
             var w = st.columnWidths[c.key];
             var style = (w && w >= MIN_CONTENT_SAFE_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
-            return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '" title="' + titleEsc + '"' + style + '><span class="entity-table-th-label">' + labelEsc + '</span><span class="entity-table-col-resize" title="Изменить ширину"></span></th>';
+            return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '" data-full-label="' + fullLabelAttr + '" title="' + titleEsc + '"' + style + '><span class="entity-table-th-label">' + labelEsc + '</span><span class="entity-table-col-resize" title="Изменить ширину"></span></th>';
         }).join('') + '</tr>';
+        requestAnimationFrame(function() { els.gridHead.querySelectorAll('th').forEach(function(th) { updateThLabelByWidth(th); }); });
         els.gridBody.innerHTML = slice.map(function(row) {
             return '<tr>' + st.allColumns.map(function(c) {
                 var val = row[c.key];
@@ -1785,6 +1798,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.body.style.userSelect = '';
                     document.body.style.cursor = '';
                     saveColumnWidths();
+                    updateThLabelByWidth(th);
                 }
                 document.body.style.userSelect = 'none';
                 document.body.style.cursor = 'col-resize';
