@@ -9,6 +9,9 @@
     .entity-table-toolbar .btn-plus-content { width: 48px; height: 48px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; }
     /* Скрыть кнопку «плюс» (добавить сущность) везде в блоках таблиц */
     .entity-table-toolbar .btnAddEntityInSection { display: none !important; }
+    /* Заглушка: скрыть настройки режимов (Редактирование / Просмотр / Скрыть) — логика в коде сохранена */
+    .component-modes-admin,
+    .table-mode-admin { display: none !important; }
     .entity-table-toolbar .btn-gear { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
     .entity-table-loading { padding: 24px; text-align: center; color: #64748b; }
     .entity-table-grid-wrap { min-width: 0; overflow: auto; max-height: 70vh; }
@@ -308,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var currentTableModes = {};
     var DASHBOARD_HIDE_CLASS = 'dashboard-toolbar-hidden';
     function applyReadOnlyMode() {
-        var hide = isGuestUser() && (isReadOnly || isDashboardSlug());
+        var hide = isGuestUser();
         var toolbar = document.getElementById('entityTableAdminToolbar');
         if (toolbar) {
             if (hide) {
@@ -335,46 +338,33 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function applyTableModes(tableModes) {
-        if (!entityTablesContainer || !tableModes || typeof tableModes !== 'object') return;
-        var guest = isGuestUser();
+        /* Заглушка: правила режимов таблиц не влияют на интерфейс; только гость/админ определяют readonly */
+        if (!entityTablesContainer) return;
         entityTablesContainer.querySelectorAll('.entity-table-section').forEach(function(section) {
-            var idx = section.getAttribute('data-table-index');
-            var mode = (tableModes[idx] || tableModes[String(idx)] || 'edit').toLowerCase();
             section.classList.remove('entity-table-section-readonly', 'entity-table-section-hidden', 'entity-table-section-plus-hidden');
-            if (mode === 'hide') {
-                section.classList.add('entity-table-section-plus-hidden');
-                if (guest) section.classList.add('entity-table-section-hidden');
-                section.style.removeProperty('display');
-            } else {
-                section.style.removeProperty('display');
-                if (guest && mode === 'read_only') section.classList.add('entity-table-section-readonly');
-            }
+            section.style.removeProperty('display');
         });
     }
 
     function applyPageMode(pageMode) {
-        if (!isGuestUser()) return;
-        var mode = (pageMode || 'edit').toLowerCase();
+        /* Заглушка: режим страницы не влияет на интерфейс; только гость/админ определяют readonly */
         var container = document.getElementById('entityTablesContainer');
         var wrapper = container && container.closest('.row');
-        if (mode === 'hide') {
-            if (wrapper) wrapper.style.setProperty('display', 'none', 'important');
-        } else {
-            if (wrapper) wrapper.style.removeProperty('display');
-        }
+        if (wrapper) wrapper.style.removeProperty('display');
     }
 
     function renderComponentModesAdmin() {
         if (isGuestUser()) return;
+        /* Заглушка: блоки режимов скрыты в UI (CSS), логика ниже сохранена для возможного повторного включения */
         var adminEl = document.getElementById('componentModesAdmin');
-        if (adminEl) { adminEl.style.setProperty('display', 'flex', 'important'); adminEl.classList.add('align-items-center'); }
+        if (adminEl) { /* adminEl.style.setProperty('display', 'flex', 'important'); */ }
         var pageSelect = document.getElementById('pageModeSelect');
         if (pageSelect) pageSelect.value = currentPageMode;
         entityTablesContainer && entityTablesContainer.querySelectorAll('.tableModeSelect').forEach(function(sel) {
             var idx = sel.getAttribute('data-table-index');
             sel.value = currentTableModes[idx] || currentTableModes[String(idx)] || 'edit';
             var wrap = sel.closest('.table-mode-admin');
-            if (wrap) wrap.style.setProperty('display', 'block', 'important');
+            if (wrap) { /* wrap.style.setProperty('display', 'block', 'important'); — скрыто заглушкой */ }
         });
     }
 
@@ -385,7 +375,7 @@ document.addEventListener('DOMContentLoaded', function() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ page_modes: { [getPageSlug()]: currentPageMode } })
         }).then(function() {
-            isReadOnly = (currentPageMode === 'read_only') || isDashboardSlug();
+            isReadOnly = isGuestUser();
             applyPageMode(currentPageMode);
             applyReadOnlyMode();
         }).catch(function() {});
@@ -435,8 +425,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let fieldsCache = {};
 
     const entityTablesContainer = document.getElementById('entityTablesContainer');
-    isReadOnly = isDashboardSlug();
-    if (isReadOnly) applyReadOnlyMode();
+    isReadOnly = isGuestUser();
+    applyReadOnlyMode();
     const modalEntity = new bootstrap.Modal(document.getElementById('modalEntity'));
     const modalEntityBody = document.getElementById('modalEntityBody');
     const modalEntitySave = document.getElementById('modalEntitySave');
@@ -910,7 +900,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         loadFieldsThenData(i, false);
                     });
                     saveConfigToStorage();
-                    isReadOnly = !!(data.read_only || isDashboardSlug());
+                    isReadOnly = isGuestUser();
                     currentPageMode = (data.page_mode || 'edit').toLowerCase();
                     currentTableModes = data.table_modes && typeof data.table_modes === 'object' ? Object.assign({}, data.table_modes) : {};
                     applyPageMode(data.page_mode);
@@ -937,7 +927,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     updateUI(0);
                     loadFieldsThenData(0, false);
                     saveConfigToStorage();
-                    isReadOnly = !!(data.read_only || isDashboardSlug());
+                    isReadOnly = isGuestUser();
                     currentPageMode = (data.page_mode || 'edit').toLowerCase();
                     currentTableModes = data.table_modes && typeof data.table_modes === 'object' ? Object.assign({}, data.table_modes) : {};
                     applyPageMode(data.page_mode);
@@ -954,7 +944,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ensureSections();
                 applyTableModes(data.table_modes);
                 updateUI(0);
-                isReadOnly = !!(data.read_only || isDashboardSlug());
+                isReadOnly = isGuestUser();
                 currentPageMode = (data.page_mode || 'edit').toLowerCase();
                 currentTableModes = data.table_modes && typeof data.table_modes === 'object' ? Object.assign({}, data.table_modes) : {};
                 applyPageMode(data.page_mode);
@@ -970,7 +960,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tableStates = [defaultTableState()];
             ensureSections();
             updateUI(0);
-            isReadOnly = true;
+            isReadOnly = isGuestUser();
             applyReadOnlyMode();
             var msg = document.querySelector('.emptyBlockInSection p');
             if (msg) msg.textContent = 'Не удалось загрузить дэшборд. Проверьте подключение или обновите страницу.';
@@ -987,7 +977,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ensureSections();
                 updateUI(0);
             }
-            isReadOnly = isDashboardSlug();
+            isReadOnly = isGuestUser();
             applyReadOnlyMode();
         }
     }
@@ -2041,7 +2031,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (modalFieldsEl) modalFieldsEl.addEventListener('shown.bs.modal', loadTemplates);
     })();
 
-    if (isDashboardSlug()) { isReadOnly = true; applyReadOnlyMode(); }
+    isReadOnly = isGuestUser();
+    applyReadOnlyMode();
     loadConfig();
     ensureSections();
 

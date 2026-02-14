@@ -8,8 +8,7 @@
 
 {% block styles %}
 <style>
-/* Скрытие кнопок редактирования на страницах дашбордов (только просмотр).
-   Класс .dashboard-toolbar-hidden перебивает Bootstrap .d-flex (display: flex). */
+/* Для гостей (не залогинен): скрыть тулбар, «Добавить таблицу», шестерёнки, плюс. Залогиненный админ видит всё. */
 .dashboard-toolbar-hidden,
 body.page-dashboard-readonly #entityTableAdminToolbar,
 body.page-dashboard-readonly #btnAddTableBlock,
@@ -52,13 +51,12 @@ body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-
 {% block javascripts %} {% endblock javascripts %}
 <script>
 (function() {
-    var isDashboard = window.location.pathname.indexOf('dash-') !== -1;
     var isGuest = false;
     try { isGuest = !localStorage.getItem('auth_user_id'); } catch (e) { isGuest = true; }
-    if (isDashboard || isGuest) document.body.classList.add('page-dashboard-readonly');
-    if (!isGuest) document.body.classList.add('page-user-logged-in');
+    if (isGuest) document.body.classList.add('page-dashboard-readonly');
+    else { document.body.classList.remove('page-dashboard-readonly'); document.body.classList.add('page-user-logged-in'); }
     function hideDashboardToolbar() {
-        if (!document.body.classList.contains('page-dashboard-readonly') && !isDashboard) return;
+        if (!document.body.classList.contains('page-dashboard-readonly')) return;
         var t = document.getElementById('entityTableAdminToolbar');
         if (t) { t.style.setProperty('display', 'none', 'important'); t.classList.add('dashboard-toolbar-hidden'); }
         var b1 = document.getElementById('btnAddTableBlock');
