@@ -291,9 +291,10 @@
 document.addEventListener('DOMContentLoaded', function() {
     var PAGE_SLUG = '{% if page_slug is defined %}{{ page_slug }}{% else %}__PAGE_SLUG__{% endif %}';
     var pathMatch = window.location.pathname.match(/^\/([^\/]+)/);
-    if (pathMatch && pathMatch[1]) {
+    if (pathMatch && pathMatch[1] && (PAGE_SLUG === '__PAGE_SLUG__' || !PAGE_SLUG)) {
         PAGE_SLUG = pathMatch[1];
-    } else if (PAGE_SLUG === '__PAGE_SLUG__' || !PAGE_SLUG) {
+    }
+    if (PAGE_SLUG === '__PAGE_SLUG__' || !PAGE_SLUG) {
         PAGE_SLUG = 'entity-table';
     }
     const API = {

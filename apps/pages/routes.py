@@ -1,3 +1,4 @@
+import base64
 import json
 import re
 import traceback
@@ -18,6 +19,27 @@ PAGES_REGISTRY = PAGES_DIR / ".generated_pages.json"
 APPS_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 READ_ONLY_PAGES_FILE = APPS_DATA_DIR / "read_only_pages.json"
 COMPONENT_MODES_FILE = APPS_DATA_DIR / "component_modes.json"
+
+
+def _encode_slug_page(slug):
+    """Закодировать slug для URL (base64url), чтобы в адресе не светилось название страницы."""
+    if not slug:
+        return ""
+    raw = base64.urlsafe_b64encode(slug.encode("utf-8")).decode("ascii")
+    return raw.rstrip("=")
+
+
+def _decode_slug_page(encoded):
+    """Декодировать segment из URL в slug. При ошибке возвращает None."""
+    if not encoded or not isinstance(encoded, str):
+        return None
+    try:
+        pad = 4 - len(encoded) % 4
+        if pad != 4:
+            encoded = encoded + ("=" * pad)
+        return base64.urlsafe_b64decode(encoded.encode("ascii")).decode("utf-8")
+    except Exception:
+        return None
 
 
 def _read_component_modes():
@@ -151,6 +173,8 @@ def _list_pages_with_fallback():
     registry = _read_registry()
     by_slug = {item.get("slug"): item for item in registry if item.get("slug")}
     if not PAGES_DIR.exists():
+        for item in registry:
+            item.setdefault("url", "/" + _encode_slug_page(item.get("slug") or ""))
         return registry
     try:
         for p in PAGES_DIR.iterdir():
@@ -162,11 +186,15 @@ def _list_pages_with_fallback():
             if slug not in by_slug:
                 by_slug[slug] = {"slug": slug, "title": slug}
         merged = list(by_slug.values())
+        for item in merged:
+            item["url"] = "/" + _encode_slug_page(item.get("slug") or "")
         if len(merged) != len(registry):
             _write_registry(merged)
         return merged
     except Exception as exc:
         current_app.logger.warning(f"Скан папки страниц: {exc}")
+    for item in registry:
+        item.setdefault("url", "/" + _encode_slug_page(item.get("slug") or ""))
     return registry
 
 
@@ -333,7 +361,7 @@ def create_page():
     _write_registry(registry)
 
     current_app.logger.info(f"Создана страница {filename}")
-    return jsonify({"ok": True, "slug": slug, "url": f"/{slug}"}), 201
+    return jsonify({"ok": True, "slug": slug, "url": "/" + _encode_slug_page(slug)}), 201
 
 
 @blueprint.route('/api/pages/list')
@@ -800,10 +828,15 @@ def route_template(template):
         if not template.endswith('.html'):
             template += '.html'
 
-        # Detect the current page
+        # Detect the current page: поддержка закодированного slug в URL (base64url)
         segment = get_segment(request)
-        template_name = template if template.endswith('.html') else template + '.html'
-        page_slug = template_name.replace('.html', '')
+        decoded = _decode_slug_page(segment)
+        if decoded and (PAGES_DIR / (decoded + ".html")).exists():
+            template_name = decoded + ".html"
+            page_slug = decoded
+        else:
+            template_name = template if template.endswith('.html') else template + '.html'
+            page_slug = template_name.replace('.html', '')
         is_dashboard_page = page_slug.lower().startswith('dash-')
 
         # Дашборды отдаём из исходного шаблона с контекстом (актуальная логика скрытия кнопок)

@@ -642,7 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage('Страница создана, открываю...', 'success');
             setTimeout(() => {
                 if (modalInstance) modalInstance.hide();
-                window.location.href = data.url || `/${data.slug}`;
+                window.location.href = data.url || '/';
             }, 500);
         } catch (err) {
             showMessage(err.message, 'danger');
@@ -683,7 +683,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isGuest = !localStorage.getItem('auth_user_id');
         const a = document.createElement('a');
         a.className = 'nav-link flex-grow-1';
-        a.href = `/${page.slug}`;
+        a.href = page.url || `/${page.slug}`;
         a.innerHTML = `<i class="iconoir-page menu-icon"></i> <span>${escapeHtml(page.title || page.slug)}</span>`;
         if (isGuest) {
             li.appendChild(a);
