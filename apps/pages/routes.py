@@ -310,15 +310,18 @@ def create_page():
     try:
         from apps.models import EntityTableConfig
         from apps import db
-        EntityTableConfig.query.filter(
+        deleted = EntityTableConfig.query.filter(
             db.func.lower(EntityTableConfig.page_slug) == slug.lower()
         ).delete(synchronize_session=False)
         db.session.commit()
-    except Exception:
+        if deleted:
+            current_app.logger.info("При создании страницы %s удалён старый конфиг таблицы (записей: %s)", slug, deleted)
+    except Exception as exc:
         try:
             db.session.rollback()
         except Exception:
             pass
+        current_app.logger.warning("При создании страницы %s не удалось сбросить конфиг таблицы: %s", slug, exc)
 
     page_title = raw_name
     # Шаблон с виджетом таблицы сущностей (кнопка «+», модалки, грид) или пустая страница
