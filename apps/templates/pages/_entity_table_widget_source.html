@@ -1194,11 +1194,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return t;
     }
 
+    var FIELD_LABEL_MAX_CHARS = 15;
     function fieldLabelShort(full) {
         full = (full || '').trim();
         if (!full) return { display: '', title: '' };
-        var idx = full.indexOf(' ');
-        var display = idx >= 0 ? full.substring(0, idx) + '...' : full;
+        var display = full.length <= FIELD_LABEL_MAX_CHARS ? full : full.substring(0, FIELD_LABEL_MAX_CHARS) + '...';
         return { display: display, title: full };
     }
     function updateThLabelByWidth(th) {
