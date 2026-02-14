@@ -2,6 +2,10 @@
     <style>
     .startbar-guest .startbar-auth-only { display: none !important; }
     .startbar-guest .custom-page-item { display: none !important; }
+    /* Гость: скрыть весь startbar и растянуть контент на всю ширину */
+    body.startbar-guest .startbar { display: none !important; }
+    body.startbar-guest .topbar { width: 100% !important; }
+    body.startbar-guest .page-wrapper .page-content { margin-left: 0 !important; }
     @media (max-width: 1199.98px) {
         .startbar {
             transform: translateX(-100%);
@@ -562,19 +566,21 @@
 (function() {
     var AUTH_USER_ID_KEY = 'auth_user_id';
     function isLoggedIn() { return !!localStorage.getItem(AUTH_USER_ID_KEY); }
+    if (!isLoggedIn()) document.body.classList.add('startbar-guest');
     function applyStartbarAuthMode() {
         var startbar = document.querySelector('.startbar');
         var templatesLabel = document.getElementById('templatesLabel');
-        if (!startbar) return;
         if (isLoggedIn()) {
-            startbar.classList.remove('startbar-guest');
+            document.body.classList.remove('startbar-guest');
+            if (startbar) startbar.classList.remove('startbar-guest');
             if (templatesLabel) {
                 templatesLabel.classList.remove('startbar-auth-only');
                 var el = templatesLabel.nextElementSibling;
                 while (el) { el.classList.remove('startbar-auth-only'); el = el.nextElementSibling; }
             }
         } else {
-            startbar.classList.add('startbar-guest');
+            document.body.classList.add('startbar-guest');
+            if (startbar) startbar.classList.add('startbar-guest');
             if (templatesLabel) {
                 templatesLabel.classList.add('startbar-auth-only');
                 var el = templatesLabel.nextElementSibling;
