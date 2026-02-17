@@ -1067,7 +1067,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (modalFilterSaveEl) modalFilterSaveEl.onclick = function() {
             if (filterModalTableIndex != null && tableStates[filterModalTableIndex]) {
                 tableStates[filterModalTableIndex].currentPage = 1;
-                renderGrid(filterModalTableIndex);
+                loadData(filterModalTableIndex);
             }
             modalFilter.hide();
         };
@@ -1717,12 +1717,27 @@ document.addEventListener('DOMContentLoaded', function() {
         showLoading(tableIndex, true, 'Загрузка данных...');
         var columnsByKey = [];
         var FUNNEL_FIELD = 'Воронка';
+        var filterTitlesByEntityKey = {};
+        (st.filterFields || []).forEach(function(f) {
+            var k = (f && f.key) ? String(f.key) : '';
+            var sep = k.indexOf('::');
+            if (sep <= 0) return;
+            var ek = k.slice(0, sep);
+            var title = k.slice(sep + 2);
+            if (!ek || !title) return;
+            if (!filterTitlesByEntityKey[ek]) filterTitlesByEntityKey[ek] = [];
+            if (filterTitlesByEntityKey[ek].indexOf(title) < 0) filterTitlesByEntityKey[ek].push(title);
+        });
         st.selectedEntities.forEach(function(ent) {
             var key = entityKey(ent);
             var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
             var displayTitles = (sel && sel.human_titles) ? sel.human_titles : [];
             if (!displayTitles.length) return;
             var fetchTitles = displayTitles.slice();
+            var extraFilterTitles = filterTitlesByEntityKey[key] || [];
+            extraFilterTitles.forEach(function(t) {
+                if (fetchTitles.indexOf(t) < 0) fetchTitles.push(t);
+            });
             if (ent.type === 'deal' && ent.category_id != null && displayTitles.indexOf(FUNNEL_FIELD) < 0) {
                 fetchTitles.push(FUNNEL_FIELD);
             }
@@ -1978,10 +1993,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var st = tableStates[tableIndex];
         if (!st) return;
         if (st.fullData && st.fullData.length > 0) {
-            var dataKeys = Object.keys(st.fullData[0] || {});
-            if (!st.allColumns || st.allColumns.length === 0 || st.allColumns.length < dataKeys.length) {
+            if (!st.allColumns || st.allColumns.length === 0) {
                 rebuildAllColumnsFromSelectedFields(tableIndex);
-                if (st.allColumns.length < dataKeys.length) rebuildAllColumnsFromData(tableIndex);
+                if (st.allColumns.length === 0) rebuildAllColumnsFromData(tableIndex);
             }
         }
         var els = getSectionEls(tableIndex);
@@ -2224,10 +2238,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             for (var i = 0; i < tableStates.length; i++) {
                                 var s = tableStates[i];
                                 if (s.fullData && s.fullData.length > 0) {
-                                    var dk = Object.keys(s.fullData[0] || {});
-                                    if (!s.allColumns || s.allColumns.length < dk.length) {
+                                    if (!s.allColumns || s.allColumns.length === 0) {
                                         rebuildAllColumnsFromSelectedFields(i);
-                                        if (s.allColumns.length < dk.length) rebuildAllColumnsFromData(i);
+                                        if (s.allColumns.length === 0) rebuildAllColumnsFromData(i);
                                     }
                                 }
                                 renderGrid(i);
