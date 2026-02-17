@@ -847,6 +847,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var filterModalTableIndex = null;
 
+    function isStageLikeField(label, key) {
+        var sample = ((label || '') + ' ' + (key || '')).toLowerCase();
+        return sample.indexOf('стад') >= 0
+            || sample.indexOf('stage') >= 0
+            || sample.indexOf('status') >= 0
+            || sample.indexOf('воронк') >= 0
+            || sample.indexOf('pipeline') >= 0;
+    }
+
+    function multiselectCaption(selected) {
+        if (!selected || !selected.length) return 'Выберите...';
+        if (selected.length <= 2) return selected.join(', ');
+        return 'Выбрано: ' + selected.length;
+    }
+
     function renderFilterRows(tableIndex, rowsContainer) {
         var st = tableStates[tableIndex];
         var container = rowsContainer || filterModalRowsContainerEl;
@@ -860,14 +875,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         container.innerHTML = '';
         st.filterFields.forEach(function(f, rowIdx) {
-            var isStage = (f.label || '').toLowerCase().indexOf('стади') >= 0;
-            var type = f.type || (isStage ? 'multiselect' : 'text');
+            var isStage = isStageLikeField(f.label, f.key);
+            var type = (f.type === 'multiselect' || (!f.type && isStage)) ? 'multiselect' : 'text';
             var row = document.createElement('div');
             row.className = 'filter-row-item';
             row.setAttribute('data-filter-row-index', rowIdx);
+            var head = document.createElement('div');
+            head.className = 'd-flex align-items-center justify-content-between mb-1';
             var label = document.createElement('label');
             label.textContent = f.label || '';
-            row.appendChild(label);
+            head.appendChild(label);
+            var removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-link btn-sm text-danger p-0 ms-2';
+            removeBtn.textContent = 'Удалить';
+            removeBtn.addEventListener('click', function() {
+                st.filterFields.splice(rowIdx, 1);
+                if (!st.filterFields.length) st.filterFields = [{ label: 'Название', key: '', type: 'text' }];
+                renderFilterRows(tableIndex, container);
+            });
+            head.appendChild(removeBtn);
+            row.appendChild(head);
             if (type === 'multiselect') {
                 var colKey = f.key || '';
                 var options = [];
@@ -886,16 +914,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 var tagsDiv = document.createElement('div');
                 tagsDiv.className = 'filter-multiselect-tags';
                 tagsDiv.setAttribute('data-column-key', colKey);
-                if (selected.length === 0) {
-                    tagsDiv.innerHTML = '<span class="text-muted small">Выберите…</span>';
-                } else {
-                    selected.forEach(function(val) {
-                        var tag = document.createElement('span');
-                        tag.className = 'tag';
-                        tag.innerHTML = String(val).replace(/</g, '&lt;') + ' <span class="tag-remove" data-value="' + String(val).replace(/"/g, '&quot;') + '">&times;</span>';
-                        tagsDiv.appendChild(tag);
-                    });
-                }
+                tagsDiv.innerHTML = '<span class="filter-multiselect-caption">' + multiselectCaption(selected).replace(/</g, '&lt;') + '</span><i class="iconoir-nav-arrow-down ms-auto"></i>';
                 var drop = document.createElement('div');
                 drop.className = 'filter-multiselect-dropdown';
                 options.forEach(function(opt) {
@@ -905,10 +924,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     cb.innerHTML = '<input class="form-check-input filter-multiselect-option" type="checkbox" value="' + String(opt).replace(/"/g, '&quot;') + '"' + (checked ? ' checked' : '') + '><label class="form-check-label">' + String(opt).replace(/</g, '&lt;') + '</label>';
                     drop.appendChild(cb);
                 });
+                if (!options.length) {
+                    var empty = document.createElement('div');
+                    empty.className = 'small text-muted px-3 py-2';
+                    empty.textContent = 'Нет значений';
+                    drop.appendChild(empty);
+                }
                 wrap.appendChild(tagsDiv);
                 wrap.appendChild(drop);
                 tagsDiv.addEventListener('click', function(e) {
-                    if (e.target.closest('.tag-remove')) return;
                     drop.classList.toggle('open');
                     if (drop.classList.contains('open')) setTimeout(function() { document.addEventListener('click', function closeDrop() { drop.classList.remove('open'); document.removeEventListener('click', closeDrop); }); }, 0);
                 });
@@ -921,20 +945,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             selected.splice(selected.indexOf(val), 1);
                         }
                         st.filterFields[rowIdx].selectedValues = selected.slice();
-                        renderFilterRows(tableIndex);
+                        renderFilterRows(tableIndex, container);
                     });
                 });
                 wrap.addEventListener('click', function(e) { e.stopPropagation(); });
-                tagsDiv.querySelectorAll('.tag-remove').forEach(function(span) {
-                    span.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        var v = this.getAttribute('data-value');
-                        selected.splice(selected.indexOf(v), 1);
-                        st.filterFields[rowIdx].selectedValues = selected.slice();
-                        renderFilterRows(tableIndex);
-                    });
-                });
                 row.appendChild(wrap);
             } else {
                 var inp = document.createElement('input');
@@ -1544,7 +1558,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (existingLabels.indexOf(ht.toLowerCase()) >= 0) return;
                 existingLabels.push(ht.toLowerCase());
                 var key = k + '::' + ht;
-                var type = (ht.toLowerCase().indexOf('стади') >= 0) ? 'multiselect' : 'text';
+                var type = isStageLikeField(ht, key) ? 'multiselect' : 'text';
                 st.filterFields = st.filterFields || [];
                 st.filterFields.push({ label: ht, key: key, type: type });
             });
