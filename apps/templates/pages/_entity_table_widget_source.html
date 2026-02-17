@@ -105,6 +105,8 @@
     .entity-table-section { min-width: 0; margin-bottom: 0; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; padding: 1rem; background: var(--bs-body-bg, #fff); display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
     .entity-table-section .entity-table-toolbar { margin-bottom: 12px; }
     .entity-table-section .gridTopRowInSection { margin-bottom: 12px; }
+    .entity-table-section .searchFilterRowInSection { margin-bottom: 12px; }
+    .entity-table-section .searchFilterRowInSection .btn-search-filter-gear { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .entity-table-section .entity-table-grid-wrap { flex: 1 1 auto; min-height: 0; border-radius: 6px; border: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,.08)); }
     .entity-table-section .entity-table-section-table { width: 100%; margin-bottom: 0; }
     .entity-table-section .entity-table-cell-link { color: var(--bs-primary, #6f6af8); text-decoration: none; word-break: break-all; }
@@ -126,6 +128,7 @@
     .entity-table-section-hidden .entity-table-toolbar .entity-table-section-hidden-label { display: none !important; }
     .entity-table-section-hidden .entity-table-loading.loadingBlockInSection,
     .entity-table-section-hidden .gridTopRowInSection,
+    .entity-table-section-hidden .searchFilterRowInSection,
     .entity-table-section-hidden .entity-table-grid-wrap,
     .entity-table-section-hidden .emptyBlockInSection,
     .entity-table-section-hidden .datatable-bottom.paginationBlockInSection { display: none !important; }
@@ -175,6 +178,15 @@
                             <p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p>
                         </div>
                         <button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none ms-auto flex-shrink-0" title="Настроить поля">
+                            <i class="iconoir-settings"></i>
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2">
+                        <div class="input-group input-group-sm flex-grow-1" style="min-width: 180px;">
+                            <span class="input-group-text"><i class="iconoir-search"></i></span>
+                            <input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице">
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска">
                             <i class="iconoir-settings"></i>
                         </button>
                     </div>
@@ -446,6 +458,7 @@ document.addEventListener('DOMContentLoaded', function() {
             loadingText: section.querySelector('.loadingTextInSection'),
             gridTopRow: section.querySelector('.gridTopRowInSection'),
             gridBlock: section.querySelector('.gridBlockInSection'),
+            searchFilterRow: section.querySelector('.searchFilterRowInSection'),
             emptyBlock: section.querySelector('.emptyBlockInSection'),
             gridHead: section.querySelector('.entity-table-grid-head'),
             gridBody: section.querySelector('.entity-table-grid-body'),
@@ -796,6 +809,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +
             '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div>' +
             '<button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none ms-auto flex-shrink-0" title="Настроить поля"><i class="iconoir-settings"></i></button></div>' +
+            '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm flex-grow-1" style="min-width:180px"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button></div>' +
             '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">' +
             '<thead class="table-light entity-table-grid-head"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
             '<div class="entity-table-loading emptyBlockInSection" role="button" tabindex="0" title="Нажмите, чтобы выбрать сущности и поля"><p class="text-muted mb-0">Нажмите, чтобы выбрать сущности и поля</p></div>' +
@@ -1399,6 +1413,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (els.emptyBlock) els.emptyBlock.classList.remove('d-none');
             if (els.gridBlock) els.gridBlock.classList.add('d-none');
             if (els.gridTopRow) els.gridTopRow.classList.add('d-none');
+            if (els.searchFilterRow) els.searchFilterRow.classList.add('d-none');
             return;
         }
         var hasAnyFields = st.selectedFields.some(function(f) { return f.human_titles && f.human_titles.length; });
@@ -1408,6 +1423,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (els.emptyBlock) els.emptyBlock.classList.remove('d-none');
                 if (els.gridBlock) els.gridBlock.classList.add('d-none');
                 if (els.gridTopRow) els.gridTopRow.classList.add('d-none');
+                if (els.searchFilterRow) els.searchFilterRow.classList.add('d-none');
             }
             return;
         }
@@ -1467,6 +1483,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (els.emptyBlock) els.emptyBlock.classList.remove('d-none');
             if (els.gridBlock) els.gridBlock.classList.add('d-none');
             if (els.gridTopRow) els.gridTopRow.classList.add('d-none');
+            if (els.searchFilterRow) els.searchFilterRow.classList.add('d-none');
             if (els.paginationBlock) els.paginationBlock.classList.add('d-none');
             renderGrid(tableIndex);
             return;
@@ -1537,6 +1554,7 @@ document.addEventListener('DOMContentLoaded', function() {
             renderGrid(tableIndex);
             if (els.emptyBlock) els.emptyBlock.classList.add('d-none');
             if (els.gridTopRow) els.gridTopRow.classList.remove('d-none');
+            if (els.searchFilterRow) els.searchFilterRow.classList.remove('d-none');
             if (els.gridBlock) els.gridBlock.classList.remove('d-none');
             if (els.paginationBlock) els.paginationBlock.classList.remove('d-none');
             updateTableTitleBlock(tableIndex);
