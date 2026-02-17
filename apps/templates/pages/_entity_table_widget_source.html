@@ -113,8 +113,8 @@
     .entity-table-section .filterPanelInSection .filter-row-item label { font-size: 0.875rem; margin-bottom: 4px; display: block; }
     .entity-table-section .filterPanelInSection .filter-multiselect-wrap { position: relative; }
     .entity-table-section .filterPanelInSection .filter-multiselect-tags { display: flex; flex-wrap: wrap; gap: 6px; min-height: 38px; padding: 6px 12px; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); cursor: pointer; }
-    .entity-table-section .filterPanelInSection .filter-multiselect-tags .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--bs-primary); color: #fff; font-size: 0.8rem; }
-    .entity-table-section .filterPanelInSection .filter-multiselect-tags .tag-remove { cursor: pointer; opacity: 0.9; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-tags .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; background: #eaf3ff; color: #35528f; font-size: 0.86rem; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-tags .tag-remove { cursor: pointer; opacity: 0.7; }
     .entity-table-section .filterPanelInSection .filter-multiselect-dropdown { display: none; position: absolute; left: 0; right: 0; top: 100%; margin-top: 2px; max-height: 200px; overflow-y: auto; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1050; }
     .entity-table-section .filterPanelInSection .filter-multiselect-dropdown.open { display: block; }
     .entity-table-section .filterPanelInSection .filter-multiselect-dropdown .form-check { padding: 8px 12px; margin: 0; }
@@ -122,8 +122,8 @@
     #modalFilter .filterPanelInSection .filter-row-item label { font-size: 0.875rem; margin-bottom: 4px; display: block; }
     #modalFilter .filterPanelInSection .filter-multiselect-wrap { position: relative; }
     #modalFilter .filterPanelInSection .filter-multiselect-tags { display: flex; flex-wrap: wrap; gap: 6px; min-height: 38px; padding: 6px 12px; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); cursor: pointer; }
-    #modalFilter .filterPanelInSection .filter-multiselect-tags .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--bs-primary); color: #fff; font-size: 0.8rem; }
-    #modalFilter .filterPanelInSection .filter-multiselect-tags .tag-remove { cursor: pointer; opacity: 0.9; }
+    #modalFilter .filterPanelInSection .filter-multiselect-tags .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; background: #eaf3ff; color: #35528f; font-size: 0.86rem; }
+    #modalFilter .filterPanelInSection .filter-multiselect-tags .tag-remove { cursor: pointer; opacity: 0.7; }
     #modalFilter .filterPanelInSection .filter-multiselect-dropdown { display: none; position: absolute; left: 0; right: 0; top: 100%; margin-top: 2px; max-height: 200px; overflow-y: auto; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1050; }
     #modalFilter .filterPanelInSection .filter-multiselect-dropdown.open { display: block; }
     #modalFilter .filterPanelInSection .filter-multiselect-dropdown .form-check { padding: 8px 12px; margin: 0; }
@@ -883,6 +883,39 @@ document.addEventListener('DOMContentLoaded', function() {
         return options;
     }
 
+    function normalizeFieldLabel(s) {
+        return String(s || '')
+            .toLowerCase()
+            .replace(/\s*\([^)]*\)\s*$/, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function resolveFilterColumnKey(st, f) {
+        if (!st || !f) return '';
+        var candidate = String(f.key || '').trim();
+        if (candidate) {
+            var hasCandidate = (st.allColumns || []).some(function(c) { return c && c.key === candidate; });
+            if (hasCandidate) return candidate;
+        }
+        var labelNorm = normalizeFieldLabel(f.label || '');
+        if (!labelNorm) return candidate;
+        var byLabel = (st.allColumns || []).find(function(c) { return normalizeFieldLabel(c && c.label) === labelNorm; });
+        if (byLabel && byLabel.key) return byLabel.key;
+        var byKeyTitle = (st.allColumns || []).find(function(c) {
+            var key = String((c && c.key) || '');
+            var idx = key.indexOf('::');
+            var title = idx >= 0 ? key.slice(idx + 2) : key;
+            return normalizeFieldLabel(title) === labelNorm;
+        });
+        if (byKeyTitle && byKeyTitle.key) return byKeyTitle.key;
+        return candidate;
+    }
+
+    function updateMultiselectCaption(tagsDiv, selected) {
+        renderMultiselectTags(tagsDiv, selected);
+    }
+
     function shouldRenderAsMultiselect(st, f, options) {
         if (f && f.type === 'multiselect') return true;
         if (isStageLikeField(f && f.label, f && f.key)) return true;
@@ -893,10 +926,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return uniqCount <= 60 && uniqCount < Math.max(3, Math.floor(totalRows * 0.7));
     }
 
-    function multiselectCaption(selected) {
-        if (!selected || !selected.length) return 'Выберите...';
-        if (selected.length <= 2) return selected.join(', ');
-        return 'Выбрано: ' + selected.length;
+    function renderMultiselectTags(tagsDiv, selected) {
+        if (!tagsDiv) return;
+        var values = Array.isArray(selected) ? selected : [];
+        var arrowHtml = '<i class="iconoir-nav-arrow-down ms-auto"></i>';
+        if (!values.length) {
+            tagsDiv.innerHTML = '<span class="filter-multiselect-caption text-muted small">Выберите...</span>' + arrowHtml;
+            return;
+        }
+        var tagsHtml = values.map(function(v) {
+            var txt = String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            return '<span class="tag">' + txt + ' <span class="tag-remove" data-value="' + txt + '">&times;</span></span>';
+        }).join('');
+        tagsDiv.innerHTML = tagsHtml + arrowHtml;
     }
 
     function getFilterKeysForSearch(st) {
@@ -942,7 +984,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         container.innerHTML = '';
         st.filterFields.forEach(function(f, rowIdx) {
-            var colKey = f.key || '';
+            var colKey = resolveFilterColumnKey(st, f);
+            if (colKey) f.key = colKey;
             var options = collectFieldOptions(st, colKey);
             var type = shouldRenderAsMultiselect(st, f, options) ? 'multiselect' : 'text';
             var row = document.createElement('div');
@@ -972,14 +1015,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 var tagsDiv = document.createElement('div');
                 tagsDiv.className = 'filter-multiselect-tags';
                 tagsDiv.setAttribute('data-column-key', colKey);
-                tagsDiv.innerHTML = '<span class="filter-multiselect-caption">' + multiselectCaption(selected).replace(/</g, '&lt;') + '</span><i class="iconoir-nav-arrow-down ms-auto"></i>';
+                renderMultiselectTags(tagsDiv, selected);
                 var drop = document.createElement('div');
                 drop.className = 'filter-multiselect-dropdown';
                 options.forEach(function(opt) {
-                    var cb = document.createElement('div');
-                    cb.className = 'form-check';
+                    var cb = document.createElement('label');
+                    cb.className = 'form-check d-flex align-items-center gap-2';
                     var checked = selected.indexOf(opt) >= 0;
-                    cb.innerHTML = '<input class="form-check-input filter-multiselect-option" type="checkbox" value="' + String(opt).replace(/"/g, '&quot;') + '"' + (checked ? ' checked' : '') + '><label class="form-check-label">' + String(opt).replace(/</g, '&lt;') + '</label>';
+                    cb.innerHTML = '<input class="form-check-input filter-multiselect-option" type="checkbox" value="' + String(opt).replace(/"/g, '&quot;') + '"' + (checked ? ' checked' : '') + '><span class="form-check-label">' + String(opt).replace(/</g, '&lt;') + '</span>';
                     drop.appendChild(cb);
                 });
                 if (!options.length) {
@@ -991,6 +1034,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 wrap.appendChild(tagsDiv);
                 wrap.appendChild(drop);
                 tagsDiv.addEventListener('click', function(e) {
+                    var removeEl = e.target.closest('.tag-remove');
+                    if (removeEl) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var valToRemove = removeEl.getAttribute('data-value');
+                        var idxSel = selected.indexOf(valToRemove);
+                        if (idxSel >= 0) selected.splice(idxSel, 1);
+                        st.filterFields[rowIdx].selectedValues = selected.slice();
+                        drop.querySelectorAll('.filter-multiselect-option').forEach(function(ch) {
+                            if (ch.value === valToRemove) ch.checked = false;
+                        });
+                        updateMultiselectCaption(tagsDiv, selected);
+                        return;
+                    }
                     drop.classList.toggle('open');
                     if (drop.classList.contains('open')) setTimeout(function() { document.addEventListener('click', function closeDrop() { drop.classList.remove('open'); document.removeEventListener('click', closeDrop); }); }, 0);
                 });
@@ -1000,10 +1057,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (this.checked) {
                             if (selected.indexOf(val) < 0) selected.push(val);
                         } else {
-                            selected.splice(selected.indexOf(val), 1);
+                            var idx = selected.indexOf(val);
+                            if (idx >= 0) selected.splice(idx, 1);
                         }
                         st.filterFields[rowIdx].selectedValues = selected.slice();
-                        renderFilterRows(tableIndex, container);
+                        updateMultiselectCaption(tagsDiv, selected);
                     });
                 });
                 wrap.addEventListener('click', function(e) { e.stopPropagation(); });
