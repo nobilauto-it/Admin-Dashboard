@@ -107,6 +107,17 @@
     .entity-table-section .gridTopRowInSection { margin-bottom: 12px; }
     .entity-table-section .searchFilterRowInSection { margin-bottom: 12px; }
     .entity-table-section .searchFilterRowInSection .btn-search-filter-gear { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .entity-table-section .filterPanelInSection { border: 1px solid var(--bs-border-color); border-radius: 8px; padding: 1rem; margin-bottom: 12px; background: var(--bs-body-bg); }
+    .entity-table-section .filterPanelInSection .filter-panel-title { font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .entity-table-section .filterPanelInSection .filter-row-item { margin-bottom: 10px; }
+    .entity-table-section .filterPanelInSection .filter-row-item label { font-size: 0.875rem; margin-bottom: 4px; display: block; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-wrap { position: relative; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-tags { display: flex; flex-wrap: wrap; gap: 6px; min-height: 38px; padding: 6px 12px; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); cursor: pointer; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-tags .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--bs-primary); color: #fff; font-size: 0.8rem; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-tags .tag-remove { cursor: pointer; opacity: 0.9; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-dropdown { display: none; position: absolute; left: 0; right: 0; top: 100%; margin-top: 2px; max-height: 200px; overflow-y: auto; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1050; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-dropdown.open { display: block; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-dropdown .form-check { padding: 8px 12px; margin: 0; }
     .entity-table-section .entity-table-grid-wrap { flex: 1 1 auto; min-height: 0; border-radius: 6px; border: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,.08)); }
     .entity-table-section .entity-table-section-table { width: 100%; margin-bottom: 0; }
     .entity-table-section .entity-table-cell-link { color: var(--bs-primary, #6f6af8); text-decoration: none; word-break: break-all; }
@@ -129,6 +140,7 @@
     .entity-table-section-hidden .entity-table-loading.loadingBlockInSection,
     .entity-table-section-hidden .gridTopRowInSection,
     .entity-table-section-hidden .searchFilterRowInSection,
+    .entity-table-section-hidden .filterPanelInSection,
     .entity-table-section-hidden .entity-table-grid-wrap,
     .entity-table-section-hidden .emptyBlockInSection,
     .entity-table-section-hidden .datatable-bottom.paginationBlockInSection { display: none !important; }
@@ -189,6 +201,15 @@
                         <button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска">
                             <i class="iconoir-settings"></i>
                         </button>
+                    </div>
+                    <div class="filterPanelInSection d-none" data-table-index="0">
+                        <div class="filter-panel-title">Фильтр + поиск <i class="iconoir-settings ms-1"></i></div>
+                        <div class="filterRowsContainerInSection"></div>
+                        <a href="javascript:void(0)" class="addFilterFieldInSection text-primary small">Добавить поле</a>
+                        <div class="d-flex gap-2 mt-3">
+                            <button type="button" class="btn btn-danger btn-sm filterPanelCloseInSection">Закрыть</button>
+                            <button type="button" class="btn btn-primary btn-sm filterPanelSaveInSection">Сохранить</button>
+                        </div>
                     </div>
                     <div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none">
                         <table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">
@@ -429,7 +450,8 @@ document.addEventListener('DOMContentLoaded', function() {
             allColumns: [],
             currentPage: 1,
             pageSize: 25,
-            columnWidths: {}
+            columnWidths: {},
+            filterFields: [{ label: 'Название', key: '', type: 'text' }]
         };
     }
 
@@ -459,6 +481,8 @@ document.addEventListener('DOMContentLoaded', function() {
             gridTopRow: section.querySelector('.gridTopRowInSection'),
             gridBlock: section.querySelector('.gridBlockInSection'),
             searchFilterRow: section.querySelector('.searchFilterRowInSection'),
+            filterPanel: section.querySelector('.filterPanelInSection'),
+            filterRowsContainer: section.querySelector('.filterRowsContainerInSection'),
             emptyBlock: section.querySelector('.emptyBlockInSection'),
             gridHead: section.querySelector('.entity-table-grid-head'),
             gridBody: section.querySelector('.entity-table-grid-body'),
@@ -765,7 +789,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     currentPage: 1,
                     pageSize: 25,
                     columnOrderFromServer: orderFromServer,
-                    columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : {}
+                    columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : {},
+                    filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                 };
             });
             ensureSections();
@@ -790,12 +815,118 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentPage: 1,
                 pageSize: 25,
                 columnOrderFromServer: orderFromServer,
-                columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : loadColumnWidths(0)
+                columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : loadColumnWidths(0),
+                filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
             }];
             ensureSections();
             updateUI(0);
             loadFieldsThenData(0, openModalIfNoFields);
         }
+    }
+
+    var fieldsModalForFilterTableIndex = null;
+
+    function renderFilterRows(tableIndex) {
+        var st = tableStates[tableIndex];
+        var els = getSectionEls(tableIndex);
+        if (!st || !els.filterRowsContainer) return;
+        if (!st.filterFields || !st.filterFields.length) st.filterFields = [{ label: 'Название', key: '', type: 'text' }];
+        st.filterFields.forEach(function(f) {
+            if ((f.key === '' || !f.key) && f.label === 'Название' && st.allColumns && st.allColumns.length) {
+                var col = st.allColumns.find(function(c) { return (c.label === 'Название') || (c.key && String(c.key).indexOf('Название') >= 0); });
+                if (col && col.key) f.key = col.key;
+            }
+        });
+        els.filterRowsContainer.innerHTML = '';
+        st.filterFields.forEach(function(f, rowIdx) {
+            var isStage = (f.label || '').toLowerCase().indexOf('стади') >= 0;
+            var type = f.type || (isStage ? 'multiselect' : 'text');
+            var row = document.createElement('div');
+            row.className = 'filter-row-item';
+            row.setAttribute('data-filter-row-index', rowIdx);
+            var label = document.createElement('label');
+            label.textContent = f.label || '';
+            row.appendChild(label);
+            if (type === 'multiselect') {
+                var colKey = f.key || '';
+                var options = [];
+                if (st.fullData && st.fullData.length && colKey) {
+                    var seen = {};
+                    st.fullData.forEach(function(r) {
+                        var v = r[colKey];
+                        if (v != null && v !== '') { var s = String(v).trim(); if (!seen[s]) { seen[s] = true; options.push(s); } }
+                    });
+                    options.sort();
+                }
+                if (!f.selectedValues || !Array.isArray(f.selectedValues)) f.selectedValues = [];
+                var selected = f.selectedValues;
+                var wrap = document.createElement('div');
+                wrap.className = 'filter-multiselect-wrap';
+                var tagsDiv = document.createElement('div');
+                tagsDiv.className = 'filter-multiselect-tags';
+                tagsDiv.setAttribute('data-column-key', colKey);
+                if (selected.length === 0) {
+                    tagsDiv.innerHTML = '<span class="text-muted small">Выберите…</span>';
+                } else {
+                    selected.forEach(function(val) {
+                        var tag = document.createElement('span');
+                        tag.className = 'tag';
+                        tag.innerHTML = String(val).replace(/</g, '&lt;') + ' <span class="tag-remove" data-value="' + String(val).replace(/"/g, '&quot;') + '">&times;</span>';
+                        tagsDiv.appendChild(tag);
+                    });
+                }
+                var drop = document.createElement('div');
+                drop.className = 'filter-multiselect-dropdown';
+                options.forEach(function(opt) {
+                    var cb = document.createElement('div');
+                    cb.className = 'form-check';
+                    var checked = selected.indexOf(opt) >= 0;
+                    cb.innerHTML = '<input class="form-check-input filter-multiselect-option" type="checkbox" value="' + String(opt).replace(/"/g, '&quot;') + '"' + (checked ? ' checked' : '') + '><label class="form-check-label">' + String(opt).replace(/</g, '&lt;') + '</label>';
+                    drop.appendChild(cb);
+                });
+                wrap.appendChild(tagsDiv);
+                wrap.appendChild(drop);
+                tagsDiv.addEventListener('click', function(e) {
+                    if (e.target.closest('.tag-remove')) return;
+                    drop.classList.toggle('open');
+                    if (drop.classList.contains('open')) setTimeout(function() { document.addEventListener('click', function closeDrop() { drop.classList.remove('open'); document.removeEventListener('click', closeDrop); }); }, 0);
+                });
+                drop.querySelectorAll('.filter-multiselect-option').forEach(function(cb) {
+                    cb.addEventListener('change', function() {
+                        var val = this.value;
+                        if (this.checked) {
+                            if (selected.indexOf(val) < 0) selected.push(val);
+                        } else {
+                            selected.splice(selected.indexOf(val), 1);
+                        }
+                        st.filterFields[rowIdx].selectedValues = selected.slice();
+                        renderFilterRows(tableIndex);
+                    });
+                });
+                wrap.addEventListener('click', function(e) { e.stopPropagation(); });
+                tagsDiv.querySelectorAll('.tag-remove').forEach(function(span) {
+                    span.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var v = this.getAttribute('data-value');
+                        selected.splice(selected.indexOf(v), 1);
+                        st.filterFields[rowIdx].selectedValues = selected.slice();
+                        renderFilterRows(tableIndex);
+                    });
+                });
+                row.appendChild(wrap);
+            } else {
+                var inp = document.createElement('input');
+                inp.type = 'text';
+                inp.className = 'form-control form-control-sm filter-text-input';
+                inp.placeholder = '';
+                inp.value = f.value != null ? String(f.value) : '';
+                inp.setAttribute('data-filter-row-index', rowIdx);
+                inp.addEventListener('input', function() { st.filterFields[rowIdx].value = this.value; });
+                row.appendChild(inp);
+            }
+            els.filterRowsContainer.appendChild(row);
+        });
     }
 
     function createSectionHtml(tableIndex) {
@@ -810,6 +941,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div>' +
             '<button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none ms-auto flex-shrink-0" title="Настроить поля"><i class="iconoir-settings"></i></button></div>' +
             '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm flex-grow-1" style="min-width:180px"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button></div>' +
+            '<div class="filterPanelInSection d-none" data-table-index="' + tableIndex + '"><div class="filter-panel-title">Фильтр + поиск <i class="iconoir-settings ms-1"></i></div><div class="filterRowsContainerInSection"></div><a href="javascript:void(0)" class="addFilterFieldInSection text-primary small">Добавить поле</a><div class="d-flex gap-2 mt-3"><button type="button" class="btn btn-danger btn-sm filterPanelCloseInSection">Закрыть</button><button type="button" class="btn btn-primary btn-sm filterPanelSaveInSection">Сохранить</button></div></div>' +
             '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">' +
             '<thead class="table-light entity-table-grid-head"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
             '<div class="entity-table-loading emptyBlockInSection" role="button" tabindex="0" title="Нажмите, чтобы выбрать сущности и поля"><p class="text-muted mb-0">Нажмите, чтобы выбрать сущности и поля</p></div>' +
@@ -847,6 +979,45 @@ document.addEventListener('DOMContentLoaded', function() {
             var section = btn.closest('.entity-table-section');
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
             btn.onclick = function() { currentTableIndex = idx; openFieldsModal(); };
+        });
+        entityTablesContainer.querySelectorAll('.btn-search-filter-gear').forEach(function(btn) {
+            var section = btn.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            btn.onclick = function() {
+                var els = getSectionEls(idx);
+                if (els.filterPanel) {
+                    els.filterPanel.classList.toggle('d-none');
+                    if (!els.filterPanel.classList.contains('d-none')) renderFilterRows(idx);
+                }
+            };
+        });
+        entityTablesContainer.querySelectorAll('.addFilterFieldInSection').forEach(function(link) {
+            var section = link.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            link.onclick = function(e) {
+                e.preventDefault();
+                fieldsModalForFilterTableIndex = idx;
+                currentTableIndex = idx;
+                openFieldsModal();
+            };
+        });
+        entityTablesContainer.querySelectorAll('.filterPanelCloseInSection').forEach(function(btn) {
+            var section = btn.closest('.entity-table-section');
+            if (!section) return;
+            btn.onclick = function() {
+                var panel = section.querySelector('.filterPanelInSection');
+                if (panel) panel.classList.add('d-none');
+            };
+        });
+        entityTablesContainer.querySelectorAll('.filterPanelSaveInSection').forEach(function(btn) {
+            var section = btn.closest('.entity-table-section');
+            if (!section) return;
+            btn.onclick = function() {
+                var panel = section.querySelector('.filterPanelInSection');
+                if (panel) panel.classList.add('d-none');
+            };
         });
         entityTablesContainer.querySelectorAll('.pageSizeInSection').forEach(function(sel) {
             var section = sel.closest('.entity-table-section');
@@ -1359,6 +1530,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     modalFieldsSave.addEventListener('click', function() {
+        if (fieldsModalForFilterTableIndex != null) {
+            var st = tableStates[fieldsModalForFilterTableIndex];
+            if (!st) { fieldsModalForFilterTableIndex = null; return; }
+            var existingLabels = (st.filterFields || []).map(function(f) { return (f.label || '').toLowerCase(); });
+            fieldsList.querySelectorAll('.field-cb:checked').forEach(function(cb) {
+                var k = (cb.getAttribute('data-entitykey') || '').trim();
+                var ht = (cb.getAttribute('data-human-title') || '').trim();
+                var nt = (cb.getAttribute('data-nested-type') || '').trim();
+                if (!k || !ht || nt) return;
+                if (existingLabels.indexOf(ht.toLowerCase()) >= 0) return;
+                existingLabels.push(ht.toLowerCase());
+                var key = k + '::' + ht;
+                var type = (ht.toLowerCase().indexOf('стади') >= 0) ? 'multiselect' : 'text';
+                st.filterFields = st.filterFields || [];
+                st.filterFields.push({ label: ht, key: key, type: type });
+            });
+            renderFilterRows(fieldsModalForFilterTableIndex);
+            modalFields.hide();
+            fieldsModalForFilterTableIndex = null;
+            return;
+        }
         var st = tableStates[currentTableIndex];
         if (!st) return;
         var byKey = {};
