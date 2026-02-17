@@ -856,6 +856,43 @@ document.addEventListener('DOMContentLoaded', function() {
             || sample.indexOf('pipeline') >= 0;
     }
 
+    function isDropdownFieldType(fieldType) {
+        var ft = String(fieldType || '').toLowerCase();
+        if (!ft) return false;
+        return ft.indexOf('enum') >= 0
+            || ft.indexOf('list') >= 0
+            || ft.indexOf('select') >= 0
+            || ft.indexOf('status') >= 0
+            || ft.indexOf('stage') >= 0
+            || ft.indexOf('bool') >= 0;
+    }
+
+    function collectFieldOptions(st, colKey) {
+        var options = [];
+        if (!st || !st.fullData || !st.fullData.length || !colKey) return options;
+        var seen = {};
+        st.fullData.forEach(function(r) {
+            var v = r[colKey];
+            if (v == null || v === '') return;
+            var s = String(v).trim();
+            if (!s || seen[s]) return;
+            seen[s] = true;
+            options.push(s);
+        });
+        options.sort();
+        return options;
+    }
+
+    function shouldRenderAsMultiselect(st, f, options) {
+        if (f && f.type === 'multiselect') return true;
+        if (isStageLikeField(f && f.label, f && f.key)) return true;
+        if (isDropdownFieldType(f && f.sourceFieldType)) return true;
+        var totalRows = (st && st.fullData && st.fullData.length) ? st.fullData.length : 0;
+        var uniqCount = options ? options.length : 0;
+        if (!totalRows || !uniqCount) return false;
+        return uniqCount <= 60 && uniqCount < Math.max(3, Math.floor(totalRows * 0.7));
+    }
+
     function multiselectCaption(selected) {
         if (!selected || !selected.length) return 'Выберите...';
         if (selected.length <= 2) return selected.join(', ');
@@ -905,8 +942,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         container.innerHTML = '';
         st.filterFields.forEach(function(f, rowIdx) {
-            var isStage = isStageLikeField(f.label, f.key);
-            var type = (f.type === 'multiselect' || (!f.type && isStage)) ? 'multiselect' : 'text';
+            var colKey = f.key || '';
+            var options = collectFieldOptions(st, colKey);
+            var type = shouldRenderAsMultiselect(st, f, options) ? 'multiselect' : 'text';
             var row = document.createElement('div');
             row.className = 'filter-row-item';
             row.setAttribute('data-filter-row-index', rowIdx);
@@ -927,16 +965,6 @@ document.addEventListener('DOMContentLoaded', function() {
             head.appendChild(removeBtn);
             row.appendChild(head);
             if (type === 'multiselect') {
-                var colKey = f.key || '';
-                var options = [];
-                if (st.fullData && st.fullData.length && colKey) {
-                    var seen = {};
-                    st.fullData.forEach(function(r) {
-                        var v = r[colKey];
-                        if (v != null && v !== '') { var s = String(v).trim(); if (!seen[s]) { seen[s] = true; options.push(s); } }
-                    });
-                    options.sort();
-                }
                 if (!f.selectedValues || !Array.isArray(f.selectedValues)) f.selectedValues = [];
                 var selected = f.selectedValues;
                 var wrap = document.createElement('div');
@@ -1528,7 +1556,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var lab = fieldLabelShort(f.human_title || f.column_name || '');
                     var labDisp = (lab.display || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
                     var labTitle = (lab.title || '').replace(/"/g, '&quot;');
-                    div.innerHTML = '<input class="form-check-input field-cb" type="checkbox" id="' + id + '" data-entitykey="' + key + '" data-human-title="' + (f.human_title || '').replace(/"/g, '&quot;') + '"' + nestAttr + checked + '><label class="form-check-label" for="' + id + '" title="' + labTitle + '">' + labDisp + '</label>';
+                    div.innerHTML = '<input class="form-check-input field-cb" type="checkbox" id="' + id + '" data-entitykey="' + key + '" data-human-title="' + (f.human_title || '').replace(/"/g, '&quot;') + '" data-field-type="' + String(f.field_type || '').replace(/"/g, '&quot;') + '"' + nestAttr + checked + '><label class="form-check-label" for="' + id + '" title="' + labTitle + '">' + labDisp + '</label>';
                     fieldsList.appendChild(div);
                 });
 
@@ -1599,14 +1627,15 @@ document.addEventListener('DOMContentLoaded', function() {
             fieldsList.querySelectorAll('.field-cb:checked').forEach(function(cb) {
                 var k = (cb.getAttribute('data-entitykey') || '').trim();
                 var ht = (cb.getAttribute('data-human-title') || '').trim();
+                var fType = (cb.getAttribute('data-field-type') || '').trim();
                 var nt = (cb.getAttribute('data-nested-type') || '').trim();
                 if (!k || !ht || nt) return;
                 if (existingLabels.indexOf(ht.toLowerCase()) >= 0) return;
                 existingLabels.push(ht.toLowerCase());
                 var key = k + '::' + ht;
-                var type = isStageLikeField(ht, key) ? 'multiselect' : 'text';
+                var type = (isStageLikeField(ht, key) || isDropdownFieldType(fType)) ? 'multiselect' : 'text';
                 st.filterFields = st.filterFields || [];
-                st.filterFields.push({ label: ht, key: key, type: type });
+                st.filterFields.push({ label: ht, key: key, type: type, sourceFieldType: fType });
             });
             renderFilterRows(fieldsModalForFilterTableIndex, filterModalRowsContainerEl);
             modalFields.hide();
