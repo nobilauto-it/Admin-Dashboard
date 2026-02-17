@@ -862,6 +862,36 @@ document.addEventListener('DOMContentLoaded', function() {
         return 'Выбрано: ' + selected.length;
     }
 
+    function getFilterKeysForSearch(st) {
+        var keys = (st && st.filterFields && Array.isArray(st.filterFields))
+            ? st.filterFields.map(function(f) { return (f && f.key) ? String(f.key).trim() : ''; }).filter(Boolean)
+            : [];
+        if (keys.length) return keys;
+        return (st && st.allColumns && Array.isArray(st.allColumns))
+            ? st.allColumns.map(function(c) { return c && c.key ? c.key : ''; }).filter(Boolean)
+            : [];
+    }
+
+    function applyConfiguredFieldFilters(rows, st) {
+        if (!rows || !rows.length || !st || !st.filterFields || !st.filterFields.length) return rows || [];
+        return rows.filter(function(row) {
+            return st.filterFields.every(function(f) {
+                if (!f || !f.key) return true;
+                var raw = row[f.key];
+                var cell = raw == null ? '' : String(raw).toLowerCase();
+                var type = f.type || (isStageLikeField(f.label, f.key) ? 'multiselect' : 'text');
+                if (type === 'multiselect') {
+                    var selected = Array.isArray(f.selectedValues) ? f.selectedValues : [];
+                    if (!selected.length) return true;
+                    return selected.some(function(v) { return String(v).toLowerCase() === cell; });
+                }
+                var q = (f.value != null) ? String(f.value).trim().toLowerCase() : '';
+                if (!q) return true;
+                return cell.indexOf(q) >= 0;
+            });
+        });
+    }
+
     function renderFilterRows(tableIndex, rowsContainer) {
         var st = tableStates[tableIndex];
         var container = rowsContainer || filterModalRowsContainerEl;
@@ -1034,12 +1064,28 @@ document.addEventListener('DOMContentLoaded', function() {
             openFieldsModal();
         };
         var modalFilterSaveEl = document.getElementById('modalFilterSave');
-        if (modalFilterSaveEl) modalFilterSaveEl.onclick = function() { modalFilter.hide(); };
+        if (modalFilterSaveEl) modalFilterSaveEl.onclick = function() {
+            if (filterModalTableIndex != null && tableStates[filterModalTableIndex]) {
+                tableStates[filterModalTableIndex].currentPage = 1;
+                renderGrid(filterModalTableIndex);
+            }
+            modalFilter.hide();
+        };
         entityTablesContainer.querySelectorAll('.pageSizeInSection').forEach(function(sel) {
             var section = sel.closest('.entity-table-section');
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
             sel.onchange = function() {
                 tableStates[idx].pageSize = parseInt(this.value, 10) || 25;
+                tableStates[idx].currentPage = 1;
+                renderGrid(idx);
+            };
+        });
+        entityTablesContainer.querySelectorAll('.searchFilterInputInSection').forEach(function(inp) {
+            var section = inp.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            inp.oninput = function() {
+                if (!tableStates[idx]) return;
                 tableStates[idx].currentPage = 1;
                 renderGrid(idx);
             };
@@ -1940,9 +1986,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         var els = getSectionEls(tableIndex);
         if (!els.gridHead || !els.gridBody) return;
+        var searchInput = els.section ? els.section.querySelector('.searchFilterInputInSection') : null;
+        var searchQuery = (searchInput && searchInput.value) ? String(searchInput.value).trim().toLowerCase() : '';
+        var filteredRows = applyConfiguredFieldFilters(st.fullData, st);
+        if (searchQuery) {
+            var searchKeys = getFilterKeysForSearch(st);
+            filteredRows = filteredRows.filter(function(row) {
+                return searchKeys.some(function(k) {
+                    var v = row[k];
+                    if (v == null) return false;
+                    return String(v).toLowerCase().indexOf(searchQuery) >= 0;
+                });
+            });
+        }
+        var totalRows = filteredRows.length;
+        var totalPages = totalRows ? Math.ceil(totalRows / st.pageSize) : 0;
+        if (totalPages > 0 && st.currentPage > totalPages) st.currentPage = totalPages;
+        if (totalPages === 0) st.currentPage = 1;
         var start = (st.currentPage - 1) * st.pageSize;
-        var slice = st.fullData.slice(start, start + st.pageSize);
-        var totalRows = st.fullData.length;
+        var slice = filteredRows.slice(start, start + st.pageSize);
         els.gridHead.innerHTML = '<tr>' + st.allColumns.map(function(c, i) {
             var fullLabel = c.label || c.key || '';
             var lab = fieldLabelShort(fullLabel);
@@ -1971,7 +2033,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 return '<td' + (isNum ? ' class="entity-table-cell-numeric"' : '') + '>' + cellHtml + '</td>';
             }).join('') + '</tr>';
         }).join('');
-        var totalPages = totalRows ? Math.ceil(totalRows / st.pageSize) : 0;
         if (els.paginationInfo) els.paginationInfo.textContent = 'Показано ' + (totalRows ? (start + 1) : 0) + ' — ' + (start + slice.length) + ' из ' + totalRows + ' записей';
         if (els.paginationNav) {
             var ul = document.createElement('ul');
