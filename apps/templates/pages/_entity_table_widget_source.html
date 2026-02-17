@@ -867,7 +867,7 @@ document.addEventListener('DOMContentLoaded', function() {
             || ft.indexOf('bool') >= 0;
     }
 
-    function collectFieldOptions(st, colKey) {
+    function collectFieldOptions(st, colKey, filterField) {
         var options = [];
         if (!st || !st.fullData || !st.fullData.length || !colKey) return options;
         var seen = {};
@@ -878,6 +878,30 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!s || seen[s]) return;
             seen[s] = true;
             options.push(s);
+        });
+        options.sort();
+        if (options.length) return options;
+        if (!isStageLikeField(filterField && filterField.label, filterField && filterField.key)) return options;
+        var idx = String(colKey).indexOf('::');
+        if (idx <= 0) return options;
+        var entityPrefix = String(colKey).slice(0, idx);
+        var first = st.fullData[0] || {};
+        var siblingKeys = Object.keys(first).filter(function(k) {
+            if (k.indexOf(entityPrefix + '::') !== 0) return false;
+            var s = k.toLowerCase();
+            return s.indexOf('stage') >= 0 || s.indexOf('status') >= 0 || s.indexOf('стад') >= 0 || s.indexOf('воронк') >= 0;
+        });
+        if (!siblingKeys.length) return options;
+        var seen2 = {};
+        st.fullData.forEach(function(r) {
+            siblingKeys.forEach(function(sk) {
+                var vv = r[sk];
+                if (vv == null || vv === '') return;
+                var ss = String(vv).trim();
+                if (!ss || seen2[ss]) return;
+                seen2[ss] = true;
+                options.push(ss);
+            });
         });
         options.sort();
         return options;
@@ -986,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', function() {
         st.filterFields.forEach(function(f, rowIdx) {
             var colKey = resolveFilterColumnKey(st, f);
             if (colKey) f.key = colKey;
-            var options = collectFieldOptions(st, colKey);
+            var options = collectFieldOptions(st, colKey, f);
             var type = shouldRenderAsMultiselect(st, f, options) ? 'multiselect' : 'text';
             var row = document.createElement('div');
             row.className = 'filter-row-item';
@@ -1614,7 +1638,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var lab = fieldLabelShort(f.human_title || f.column_name || '');
                     var labDisp = (lab.display || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
                     var labTitle = (lab.title || '').replace(/"/g, '&quot;');
-                    div.innerHTML = '<input class="form-check-input field-cb" type="checkbox" id="' + id + '" data-entitykey="' + key + '" data-human-title="' + (f.human_title || '').replace(/"/g, '&quot;') + '" data-field-type="' + String(f.field_type || '').replace(/"/g, '&quot;') + '"' + nestAttr + checked + '><label class="form-check-label" for="' + id + '" title="' + labTitle + '">' + labDisp + '</label>';
+                    div.innerHTML = '<input class="form-check-input field-cb" type="checkbox" id="' + id + '" data-entitykey="' + key + '" data-human-title="' + (f.human_title || '').replace(/"/g, '&quot;') + '" data-field-type="' + String(f.field_type || '').replace(/"/g, '&quot;') + '" data-b24-field="' + String(f.b24_field || '').replace(/"/g, '&quot;') + '" data-column-name="' + String(f.column_name || '').replace(/"/g, '&quot;') + '"' + nestAttr + checked + '><label class="form-check-label" for="' + id + '" title="' + labTitle + '">' + labDisp + '</label>';
                     fieldsList.appendChild(div);
                 });
 
@@ -1686,6 +1710,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 var k = (cb.getAttribute('data-entitykey') || '').trim();
                 var ht = (cb.getAttribute('data-human-title') || '').trim();
                 var fType = (cb.getAttribute('data-field-type') || '').trim();
+                var b24Field = (cb.getAttribute('data-b24-field') || '').trim();
+                var columnName = (cb.getAttribute('data-column-name') || '').trim();
                 var nt = (cb.getAttribute('data-nested-type') || '').trim();
                 if (!k || !ht || nt) return;
                 if (existingLabels.indexOf(ht.toLowerCase()) >= 0) return;
@@ -1693,7 +1719,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 var key = k + '::' + ht;
                 var type = (isStageLikeField(ht, key) || isDropdownFieldType(fType)) ? 'multiselect' : 'text';
                 st.filterFields = st.filterFields || [];
-                st.filterFields.push({ label: ht, key: key, type: type, sourceFieldType: fType });
+                st.filterFields.push({ label: ht, key: key, type: type, sourceFieldType: fType, sourceB24Field: b24Field, sourceColumnName: columnName });
             });
             renderFilterRows(fieldsModalForFilterTableIndex, filterModalRowsContainerEl);
             modalFields.hide();
@@ -1773,7 +1799,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     var FIRST_BATCH_SIZE = 2000;
-    function fetchPage(ent, titles, key, offset, limit) {
+    function fetchPage(ent, titles, key, offset, limit, filterFieldMaps) {
         var url = API.metaData + '?type=' + encodeURIComponent(ent.type) + '&limit=' + limit + '&offset=' + offset;
         if (ent.entity_key && ent.type === 'smart_process') url += '&entity_key=' + encodeURIComponent(ent.entity_key);
         if (ent.category_id != null && ent.category_id !== '') url += '&category_id=' + encodeURIComponent(String(ent.category_id));
@@ -1788,6 +1814,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     var val = row[t];
                     if (val !== null && typeof val === 'object' && !Array.isArray(val)) val = JSON.stringify(val);
                     o[key + '::' + t] = val != null ? val : '';
+                });
+                (filterFieldMaps || []).forEach(function(m) {
+                    if (!m || !m.title) return;
+                    var targetKey = key + '::' + m.title;
+                    if (o[targetKey] != null && String(o[targetKey]).trim() !== '') return;
+                    var aliases = m.aliases || [];
+                    for (var i = 0; i < aliases.length; i++) {
+                        var a = aliases[i];
+                        if (!a) continue;
+                        var vv = row[a];
+                        if (vv == null || vv === '') continue;
+                        if (vv !== null && typeof vv === 'object' && !Array.isArray(vv)) vv = JSON.stringify(vv);
+                        o[targetKey] = vv;
+                        break;
+                    }
                 });
                 out.push(o);
             });
@@ -1805,6 +1846,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var columnsByKey = [];
         var FUNNEL_FIELD = 'Воронка';
         var filterTitlesByEntityKey = {};
+        var filterFieldMapsByEntityKey = {};
         (st.filterFields || []).forEach(function(f) {
             var k = (f && f.key) ? String(f.key) : '';
             var sep = k.indexOf('::');
@@ -1814,6 +1856,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!ek || !title) return;
             if (!filterTitlesByEntityKey[ek]) filterTitlesByEntityKey[ek] = [];
             if (filterTitlesByEntityKey[ek].indexOf(title) < 0) filterTitlesByEntityKey[ek].push(title);
+            var aliases = [];
+            if (f && f.sourceB24Field) aliases.push(String(f.sourceB24Field).trim());
+            if (f && f.sourceColumnName) aliases.push(String(f.sourceColumnName).trim());
+            if (aliases.length) {
+                if (!filterFieldMapsByEntityKey[ek]) filterFieldMapsByEntityKey[ek] = [];
+                filterFieldMapsByEntityKey[ek].push({ title: title, aliases: aliases });
+            }
         });
         st.selectedEntities.forEach(function(ent) {
             var key = entityKey(ent);
@@ -1825,13 +1874,18 @@ document.addEventListener('DOMContentLoaded', function() {
             extraFilterTitles.forEach(function(t) {
                 if (fetchTitles.indexOf(t) < 0) fetchTitles.push(t);
             });
+            (filterFieldMapsByEntityKey[key] || []).forEach(function(m) {
+                (m.aliases || []).forEach(function(a) {
+                    if (a && fetchTitles.indexOf(a) < 0) fetchTitles.push(a);
+                });
+            });
             if (ent.type === 'deal' && ent.category_id != null && displayTitles.indexOf(FUNNEL_FIELD) < 0) {
                 fetchTitles.push(FUNNEL_FIELD);
             }
             displayTitles.forEach(function(t) {
                 st.allColumns.push({ key: key + '::' + t, label: t, entityKey: key, entityTitle: ent.title || entityTitleForNested(ent) });
             });
-            columnsByKey.push({ ent: ent, titles: fetchTitles, key: key, displayTitles: displayTitles });
+            columnsByKey.push({ ent: ent, titles: fetchTitles, key: key, displayTitles: displayTitles, filterFieldMaps: filterFieldMapsByEntityKey[key] || [] });
         });
         if (columnsByKey.length === 0) {
             showLoading(tableIndex, false);
@@ -1864,7 +1918,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!st.columnWidths || !Object.keys(st.columnWidths).length) st.columnWidths = loadColumnWidths(tableIndex);
 
         var firstBatchPromises = columnsByKey.map(function(obj) {
-            return fetchPage(obj.ent, obj.titles, obj.key, 0, FIRST_BATCH_SIZE);
+            return fetchPage(obj.ent, obj.titles, obj.key, 0, FIRST_BATCH_SIZE, obj.filterFieldMaps);
         });
         Promise.all(firstBatchPromises).then(function(firstResults) {
             if (firstResults.length === 1) {
@@ -1928,7 +1982,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var funnelTitleF = funnelKeyF ? String(obj.ent.title || '').trim() : '';
                     var funnelCatIdF = funnelKeyF ? String(obj.ent.category_id).trim() : '';
                     function fetchMore() {
-                        fetchPage(obj.ent, obj.titles, obj.key, offset, 10000).then(function(nextRes) {
+                        fetchPage(obj.ent, obj.titles, obj.key, offset, 10000, obj.filterFieldMaps).then(function(nextRes) {
                             var rows = nextRes.rows;
                             if (funnelKeyF) {
                                 rows = rows.filter(function(row) {
@@ -1952,7 +2006,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var nextOffset = st.fullData.length;
                     if (nextOffset >= primaryTotal) return;
                     Promise.all(columnsByKey.map(function(obj, idx) {
-                        return fetchPage(obj.ent, obj.titles, obj.key, nextOffset, 10000);
+                        return fetchPage(obj.ent, obj.titles, obj.key, nextOffset, 10000, obj.filterFieldMaps);
                     })).then(function(nextResults) {
                         var primaryRows = nextResults[0].rows;
                         if (!primaryRows.length) return;
