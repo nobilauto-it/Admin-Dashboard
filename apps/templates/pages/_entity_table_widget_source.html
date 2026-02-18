@@ -1580,6 +1580,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function openFieldsModal() {
         var st = tableStates[currentTableIndex];
         if (!st || !st.selectedEntities.length) return;
+        var isFilterMode = (fieldsModalForFilterTableIndex != null);
         var nestedRow = document.getElementById('nestedCheckboxesRow');
         if (nestedRow) nestedRow.innerHTML = '';
         fieldsList.innerHTML = '';
@@ -1607,7 +1608,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (Object.keys(nestedByGroup).length && nestedRow) {
                     var wrap = document.createElement('div');
                     wrap.className = 'd-flex flex-wrap gap-2 align-items-center';
-                    var activeNestedRaw = (sel && sel.activeNestedTypes && Array.isArray(sel.activeNestedTypes)) ? sel.activeNestedTypes : [];
+                    var activeNestedRaw = (!isFilterMode && sel && sel.activeNestedTypes && Array.isArray(sel.activeNestedTypes)) ? sel.activeNestedTypes : [];
                     var activeNested = activeNestedRaw.filter(function(typ) { return Object.prototype.hasOwnProperty.call(nestedByGroup, typ); });
                     Object.keys(nestedByGroup).forEach(function(typ) {
                         var group = nestedByGroup[typ];
@@ -1634,7 +1635,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     div.setAttribute('data-nested-type', '');
                     div.setAttribute('data-search-text', ((f.human_title || f.column_name || '') + '').toLowerCase());
                     var id = 'f_' + key + '_main_' + (f.human_title || f.column_name || f.id).replace(/\s/g, '_');
-                    var checked = titles.indexOf(f.human_title) >= 0 ? ' checked' : '';
+                    var checked = (!isFilterMode && titles.indexOf(f.human_title) >= 0) ? ' checked' : '';
                     var nestAttr = ' data-nested-type=""';
                     var lab = fieldLabelShort(f.human_title || f.column_name || '');
                     var labDisp = (lab.display || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -1647,7 +1648,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 Object.keys(nestedByGroup).forEach(function(typ) {
                     var group = nestedByGroup[typ];
                     var hasSelectedLabel = activeNestedForLabels.indexOf(typ) >= 0;
-                    var titlesNested = (sel && sel.nestedFields && sel.nestedFields[typ] && Array.isArray(sel.nestedFields[typ])) ? sel.nestedFields[typ] : [];
+                    var titlesNested = (!isFilterMode && sel && sel.nestedFields && sel.nestedFields[typ] && Array.isArray(sel.nestedFields[typ])) ? sel.nestedFields[typ] : [];
                     var groupLabel = document.createElement('div');
                     groupLabel.className = 'form-check fields-modal-group-label field-row';
                     groupLabel.setAttribute('data-entitykey', key);
@@ -1665,7 +1666,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         div.style.display = hasSelectedLabel ? '' : 'none';
                         div.setAttribute('data-search-text', ((n.human_title || n.column_name || '') + '').toLowerCase());
                         var id = 'f_' + key + '_' + typ.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + (n.human_title || n.column_name || n.id).replace(/\s/g, '_');
-                        var checked = titlesNested.indexOf(n.human_title) >= 0 ? ' checked' : '';
+                        var checked = (!isFilterMode && titlesNested.indexOf(n.human_title) >= 0) ? ' checked' : '';
                         var nestAttr = ' data-nested-type="' + String(typ).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"';
                         var lab = fieldLabelShort(n.human_title || n.column_name || '');
                         var labDisp = (lab.display || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
