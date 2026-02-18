@@ -146,7 +146,7 @@
     .entity-table-section .gridTopRowInSection { margin-bottom: 12px; }
     .entity-table-section .searchFilterRowInSection { margin-bottom: 12px; }
     .entity-table-section .searchFilterRowInSection { position: relative; overflow: visible; }
-    .entity-table-section .filterDropdownInSection { position: absolute; left: 0; top: calc(100% + 6px); width: min(760px, 96vw); display: none; z-index: 1070; }
+    .entity-table-section .filterDropdownInSection { position: absolute; left: 0; top: calc(100% + 6px); width: min(380px, 96vw); display: none; z-index: 1070; }
     .entity-table-section .filterDropdownInSection.open { display: block; }
     .entity-table-section .filterDropdownCardInSection { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; background: var(--bs-body-bg, #fff); box-shadow: 0 10px 24px rgba(0,0,0,.12); padding: 12px; max-height: 65vh; overflow: auto; }
     .entity-table-section .filterPanelInSection { border: 1px solid var(--bs-border-color); border-radius: 8px; padding: 1rem; margin-bottom: 12px; background: var(--bs-body-bg); }
@@ -568,6 +568,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (modalFieldsEl) {
         modalFieldsEl.addEventListener('hidden.bs.modal', function() {
             fieldsModalForFilterTableIndex = null;
+            fieldsModalForFilterSource = null;
         });
     }
 
@@ -979,6 +980,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     var fieldsModalForFilterTableIndex = null;
+    var fieldsModalForFilterSource = null; // 'dropdown' | 'modal'
 
     var filterModalTableIndex = null;
 
@@ -1379,9 +1381,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!els || !els.filterDropdown || !els.filterDropdownRowsContainer) return;
         closeAllFilterDropdowns(tableIndex);
         filterModalTableIndex = tableIndex;
+        fieldsModalForFilterSource = 'dropdown';
         renderFilterRows(tableIndex, els.filterDropdownRowsContainer);
         if (els.filterDropdownAdd) els.filterDropdownAdd.classList.toggle('d-none', isGuestUser());
         els.filterDropdown.classList.add('open');
+    }
+
+    function openFilterModal(tableIndex) {
+        closeAllFilterDropdowns();
+        filterModalTableIndex = tableIndex;
+        fieldsModalForFilterSource = 'modal';
+        renderFilterRows(tableIndex, filterModalRowsContainerEl);
+        modalFilter.show();
     }
 
     function createSectionHtml(tableIndex) {
@@ -1456,7 +1467,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!section) return;
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
             btn.onclick = function() {
-                openFilterDropdown(idx);
+                openFilterModal(idx);
             };
         });
         entityTablesContainer.querySelectorAll('.addFilterFieldInDropdownInSection').forEach(function(btn) {
@@ -1467,6 +1478,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 if (isGuestUser()) return;
                 fieldsModalForFilterTableIndex = idx;
+                fieldsModalForFilterSource = 'dropdown';
                 currentTableIndex = idx;
                 closeFilterDropdown(idx);
                 openFieldsModal();
@@ -1498,6 +1510,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isGuestUser()) return;
             if (filterModalTableIndex == null) return;
             fieldsModalForFilterTableIndex = filterModalTableIndex;
+            fieldsModalForFilterSource = 'modal';
             currentTableIndex = filterModalTableIndex;
             modalFilter.hide();
             openFieldsModal();
@@ -1525,6 +1538,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
             inp.onfocus = function() { openFilterDropdown(idx); };
             inp.onclick = function() { openFilterDropdown(idx); };
+            inp.oninput = function() { closeFilterDropdown(idx); };
             inp.onkeydown = function(e) {
                 if (e.key !== 'Enter') return;
                 e.preventDefault();
@@ -2064,7 +2078,7 @@ document.addEventListener('DOMContentLoaded', function() {
     modalFieldsSave.addEventListener('click', function() {
         if (fieldsModalForFilterTableIndex != null) {
             var st = tableStates[fieldsModalForFilterTableIndex];
-            if (!st) { fieldsModalForFilterTableIndex = null; return; }
+            if (!st) { fieldsModalForFilterTableIndex = null; fieldsModalForFilterSource = null; return; }
             var existingLabels = (st.filterFields || []).map(function(f) { return (f.label || '').toLowerCase(); });
             fieldsList.querySelectorAll('.field-cb:checked').forEach(function(cb) {
                 var k = (cb.getAttribute('data-entitykey') || '').trim();
@@ -2084,8 +2098,13 @@ document.addEventListener('DOMContentLoaded', function() {
             modalFields.hide();
             filterModalTableIndex = fieldsModalForFilterTableIndex;
             loadData(fieldsModalForFilterTableIndex);
-            openFilterDropdown(fieldsModalForFilterTableIndex);
+            if (fieldsModalForFilterSource === 'modal') {
+                openFilterModal(fieldsModalForFilterTableIndex);
+            } else {
+                openFilterDropdown(fieldsModalForFilterTableIndex);
+            }
             fieldsModalForFilterTableIndex = null;
+            fieldsModalForFilterSource = null;
             return;
         }
         var st = tableStates[currentTableIndex];
