@@ -145,6 +145,10 @@
     .entity-table-section .entity-table-toolbar { margin-bottom: 12px; }
     .entity-table-section .gridTopRowInSection { margin-bottom: 12px; }
     .entity-table-section .searchFilterRowInSection { margin-bottom: 12px; }
+    .entity-table-section .searchFilterRowInSection { position: relative; overflow: visible; }
+    .entity-table-section .filterDropdownInSection { position: absolute; left: 0; top: calc(100% + 6px); width: min(760px, 96vw); display: none; z-index: 1070; }
+    .entity-table-section .filterDropdownInSection.open { display: block; }
+    .entity-table-section .filterDropdownCardInSection { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; background: var(--bs-body-bg, #fff); box-shadow: 0 10px 24px rgba(0,0,0,.12); padding: 12px; max-height: 65vh; overflow: auto; }
     .entity-table-section .filterPanelInSection { border: 1px solid var(--bs-border-color); border-radius: 8px; padding: 1rem; margin-bottom: 12px; background: var(--bs-body-bg); }
     .entity-table-section .filterPanelInSection .filter-panel-title { font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
     .entity-table-section .filterPanelInSection .filter-row-item { margin-bottom: 10px; }
@@ -263,6 +267,16 @@
                         <button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы">
                             <i class="iconoir-settings"></i>
                         </button>
+                        <div class="filterDropdownInSection">
+                            <div class="filterDropdownCardInSection filterPanelInSection">
+                                <div class="filterDropdownRowsContainerInSection"></div>
+                                <a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a>
+                                <div class="d-flex justify-content-end gap-2 mt-3">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button>
+                                    <button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none">
                         <table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">
@@ -577,6 +591,11 @@ document.addEventListener('DOMContentLoaded', function() {
             paginationNav: section.querySelector('.paginationNavInSection'),
             selectedEntitiesLabel: section.querySelector('.selectedEntitiesLabelInSection'),
             btnFields: section.querySelector('.btnFieldsInSection'),
+            filterDropdown: section.querySelector('.filterDropdownInSection'),
+            filterDropdownRowsContainer: section.querySelector('.filterDropdownRowsContainerInSection'),
+            filterDropdownAdd: section.querySelector('.addFilterFieldInDropdownInSection'),
+            filterDropdownSave: section.querySelector('.filterDropdownSaveInSection'),
+            filterDropdownClose: section.querySelector('.filterDropdownCloseInSection'),
             tableTitleBlock: section.querySelector('.tableTitleBlockInSection'),
             tableTitleText: section.querySelector('.tableTitleTextInSection'),
             tableDescriptionText: section.querySelector('.tableDescriptionTextInSection')
@@ -1340,6 +1359,31 @@ document.addEventListener('DOMContentLoaded', function() {
         renderFilterRows(tableIndex, filterModalRowsContainerEl);
     }
 
+    function closeFilterDropdown(tableIndex) {
+        var els = getSectionEls(tableIndex);
+        if (els && els.filterDropdown) els.filterDropdown.classList.remove('open');
+    }
+
+    function closeAllFilterDropdowns(exceptTableIndex) {
+        if (!entityTablesContainer) return;
+        entityTablesContainer.querySelectorAll('.entity-table-section').forEach(function(section) {
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            if (exceptTableIndex != null && !isNaN(idx) && idx === exceptTableIndex) return;
+            var drop = section.querySelector('.filterDropdownInSection');
+            if (drop) drop.classList.remove('open');
+        });
+    }
+
+    function openFilterDropdown(tableIndex) {
+        var els = getSectionEls(tableIndex);
+        if (!els || !els.filterDropdown || !els.filterDropdownRowsContainer) return;
+        closeAllFilterDropdowns(tableIndex);
+        filterModalTableIndex = tableIndex;
+        renderFilterRows(tableIndex, els.filterDropdownRowsContainer);
+        if (els.filterDropdownAdd) els.filterDropdownAdd.classList.toggle('d-none', isGuestUser());
+        els.filterDropdown.classList.add('open');
+    }
+
     function createSectionHtml(tableIndex) {
         return '<div class="entity-table-section" data-table-index="' + tableIndex + '">' +
             '<div class="entity-table-toolbar d-flex align-items-center flex-wrap">' +
@@ -1350,7 +1394,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '<option value="edit">Редактирование</option><option value="read_only">Только просмотр</option><option value="hide">Скрыть</option></select></div></div>' +
             '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +
             '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div><button type="button" class="btn btn-outline-danger btnDeleteTableInSection d-none ms-auto" title="Удалить таблицу" aria-label="Удалить таблицу"><i class="iconoir-trash"></i></button></div>' +
-            '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button></div>' +
+            '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button><div class="filterDropdownInSection"><div class="filterDropdownCardInSection filterPanelInSection"><div class="filterDropdownRowsContainerInSection"></div><a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a><div class="d-flex justify-content-end gap-2 mt-3"><button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button><button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button></div></div></div></div>' +
             '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">' +
             '<thead class="table-light entity-table-grid-head"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
             '<div class="entity-table-loading emptyBlockInSection" role="button" tabindex="0" title="Нажмите, чтобы выбрать сущности и поля"><p class="text-muted mb-0">Нажмите, чтобы выбрать сущности и поля</p></div>' +
@@ -1412,9 +1456,40 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!section) return;
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
             btn.onclick = function() {
-                filterModalTableIndex = idx;
-                renderFilterRows(idx, filterModalRowsContainerEl);
-                modalFilter.show();
+                openFilterDropdown(idx);
+            };
+        });
+        entityTablesContainer.querySelectorAll('.addFilterFieldInDropdownInSection').forEach(function(btn) {
+            var section = btn.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            btn.onclick = function(e) {
+                e.preventDefault();
+                if (isGuestUser()) return;
+                fieldsModalForFilterTableIndex = idx;
+                currentTableIndex = idx;
+                closeFilterDropdown(idx);
+                openFieldsModal();
+            };
+        });
+        entityTablesContainer.querySelectorAll('.filterDropdownSaveInSection').forEach(function(btn) {
+            var section = btn.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            btn.onclick = function() {
+                if (tableStates[idx]) {
+                    tableStates[idx].currentPage = 1;
+                    loadData(idx);
+                }
+                closeFilterDropdown(idx);
+            };
+        });
+        entityTablesContainer.querySelectorAll('.filterDropdownCloseInSection').forEach(function(btn) {
+            var section = btn.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            btn.onclick = function() {
+                closeFilterDropdown(idx);
             };
         });
         var addFilterFieldInModalEl = document.getElementById('addFilterFieldInModal');
@@ -1448,6 +1523,8 @@ document.addEventListener('DOMContentLoaded', function() {
             var section = inp.closest('.entity-table-section');
             if (!section) return;
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            inp.onfocus = function() { openFilterDropdown(idx); };
+            inp.onclick = function() { openFilterDropdown(idx); };
             inp.onkeydown = function(e) {
                 if (e.key !== 'Enter') return;
                 e.preventDefault();
@@ -1456,6 +1533,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderGrid(idx);
             };
         });
+        if (!document._entityFilterDropdownHandlersBound) {
+            document._entityFilterDropdownHandlersBound = true;
+            document.addEventListener('click', function(e) {
+                var t = e.target;
+                if (!t || !t.closest) { closeAllFilterDropdowns(); return; }
+                if (t.closest('.filterDropdownInSection')) return;
+                if (t.closest('.searchFilterInputInSection')) return;
+                if (t.closest('.btn-search-filter-gear')) return;
+                closeAllFilterDropdowns();
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeAllFilterDropdowns();
+            });
+        }
     }
 
     /** Делегирование: клики по кнопкам пагинации (prev/next/номер страницы) — привязывается один раз. */
@@ -1990,11 +2081,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 st.filterFields = st.filterFields || [];
                 st.filterFields.push({ label: ht, key: key, type: type, sourceFieldType: fType, sourceB24Field: b24Field, sourceColumnName: columnName });
             });
-            renderFilterRows(fieldsModalForFilterTableIndex, filterModalRowsContainerEl);
             modalFields.hide();
-            modalFilter.show();
             filterModalTableIndex = fieldsModalForFilterTableIndex;
             loadData(fieldsModalForFilterTableIndex);
+            openFilterDropdown(fieldsModalForFilterTableIndex);
             fieldsModalForFilterTableIndex = null;
             return;
         }
