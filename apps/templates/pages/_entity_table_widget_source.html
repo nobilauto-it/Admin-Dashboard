@@ -14,6 +14,7 @@
     .table-mode-admin { display: none !important; }
     .entity-table-section .searchFilterRowInSection .btnFieldsInSection,
     .entity-table-section .searchFilterRowInSection .btn-search-filter-gear { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .entity-table-section .searchFilterRowInSection .searchFilterGearStack { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
     .entity-table-loading { padding: 24px; text-align: center; color: #64748b; }
     .entity-table-grid-wrap { min-width: 0; overflow: auto; max-height: 70vh; }
     /* Те же стили, что у шаблонных table.datatable.datatable-table (simple-datatables + _tables.scss) */
@@ -204,12 +205,14 @@
                             <span class="input-group-text"><i class="iconoir-search"></i></span>
                             <input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице">
                         </div>
-                        <button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none flex-shrink-0" title="Настроить поля">
-                            <i class="iconoir-settings"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска">
-                            <i class="iconoir-settings"></i>
-                        </button>
+                        <div class="searchFilterGearStack">
+                            <button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска">
+                                <i class="iconoir-settings"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы">
+                                <i class="iconoir-settings"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none">
                         <table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">
@@ -1114,7 +1117,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '<option value="edit">Редактирование</option><option value="read_only">Только просмотр</option><option value="hide">Скрыть</option></select></div></div>' +
             '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +
             '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div></div>' +
-            '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm flex-grow-1" style="min-width:180px"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none flex-shrink-0" title="Настроить поля"><i class="iconoir-settings"></i></button><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button></div>' +
+            '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm flex-grow-1" style="min-width:180px"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><div class="searchFilterGearStack"><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button></div></div>' +
             '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">' +
             '<thead class="table-light entity-table-grid-head"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
             '<div class="entity-table-loading emptyBlockInSection" role="button" tabindex="0" title="Нажмите, чтобы выбрать сущности и поля"><p class="text-muted mb-0">Нажмите, чтобы выбрать сущности и поля</p></div>' +
