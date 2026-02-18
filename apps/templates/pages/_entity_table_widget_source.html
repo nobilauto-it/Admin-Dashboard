@@ -941,6 +941,12 @@ document.addEventListener('DOMContentLoaded', function() {
             .trim();
     }
 
+    function normalizeSearchText(s) {
+        var out = String(s || '').toLowerCase().trim();
+        if (out.normalize) out = out.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return out;
+    }
+
     function resolveFilterColumnKey(st, f) {
         if (!st || !f) return '';
         var candidate = String(f.key || '').trim();
@@ -1145,21 +1151,34 @@ document.addEventListener('DOMContentLoaded', function() {
                         updateMultiselectCaption(tagsDiv, selected);
                     });
                 });
-                searchInput.addEventListener('input', function() {
-                    var q = String(this.value || '').trim().toLowerCase();
+                function applyDropdownSearch() {
+                    var q = normalizeSearchText(searchInput.value || '');
                     var visibleCount = 0;
-                    drop.querySelectorAll('.form-check[data-option-text]').forEach(function(item) {
-                        var text = item.getAttribute('data-option-text') || '';
+                    drop.querySelectorAll('.filter-multiselect-option').forEach(function(ch) {
+                        var host = ch.closest('.form-check');
+                        if (!host) return;
+                        var labelTextEl = host.querySelector('.form-check-label');
+                        var text = normalizeSearchText(labelTextEl ? labelTextEl.textContent : '');
                         var show = !q || text.indexOf(q) >= 0;
-                        item.style.display = show ? '' : 'none';
+                        host.style.display = show ? '' : 'none';
                         if (show) visibleCount++;
                     });
                     var emptyEl = drop.querySelector('.filter-multiselect-empty');
                     if (emptyEl) {
-                        emptyEl.textContent = visibleCount ? 'Нет значений' : 'Ничего не найдено';
-                        emptyEl.style.display = (options.length === 0 || visibleCount === 0) ? '' : 'none';
+                        if (options.length === 0) {
+                            emptyEl.textContent = 'Нет значений';
+                            emptyEl.style.display = '';
+                        } else if (visibleCount === 0) {
+                            emptyEl.textContent = 'Ничего не найдено';
+                            emptyEl.style.display = '';
+                        } else {
+                            emptyEl.style.display = 'none';
+                        }
                     }
-                });
+                }
+                searchInput.addEventListener('input', applyDropdownSearch);
+                searchInput.addEventListener('keyup', applyDropdownSearch);
+                searchInput.addEventListener('change', applyDropdownSearch);
                 wrap.addEventListener('click', function(e) { e.stopPropagation(); });
                 row.appendChild(wrap);
             } else {
