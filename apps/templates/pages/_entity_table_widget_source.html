@@ -14,6 +14,8 @@
     .table-mode-admin { display: none !important; }
     .entity-table-section .searchFilterRowInSection .btnFieldsInSection,
     .entity-table-section .searchFilterRowInSection .btn-search-filter-gear { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .entity-table-section .gridTopRowInSection .btnDeleteTableInSection { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-color: rgba(220,53,69,.35); color: var(--bs-danger, #dc3545); }
+    .entity-table-section .gridTopRowInSection .btnDeleteTableInSection:hover { background: rgba(220,53,69,.08); border-color: rgba(220,53,69,.5); }
     .entity-table-section .searchFilterRowInSection .searchFilterInputWrap { width: min(560px, 60%); min-width: 240px; }
     .entity-table-loading { padding: 24px; text-align: center; color: #64748b; }
     .entity-table-grid-wrap { min-width: 0; overflow: auto; max-height: 70vh; }
@@ -151,7 +153,9 @@
     .entity-insert-grid .insert-grid-cell-occupied { border-style: solid; background: rgba(var(--bs-primary-rgb), 0.08); border-color: rgba(var(--bs-primary-rgb), 0.3); }
     .entity-insert-grid .insert-grid-cell-occupied .cell-occupied { font-weight: 600; color: var(--bs-primary); }
     .entity-table-section-readonly .entity-table-toolbar,
-    .entity-table-section-readonly .btnFieldsInSection { display: none !important; }
+    .entity-table-section-readonly .btnFieldsInSection,
+    .entity-table-section-readonly .btnDeleteTableInSection,
+    .entity-table-section-readonly .searchFilterRowInSection { display: none !important; }
     .entity-table-section-plus-hidden .entity-table-toolbar .btnAddEntityInSection { display: none !important; }
     .entity-table-section-plus-hidden .entity-table-toolbar .entity-table-section-hidden-label { display: none !important; }
     .entity-table-section-hidden .entity-table-toolbar .btnAddEntityInSection { display: none !important; }
@@ -208,6 +212,9 @@
                             <h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4>
                             <p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p>
                         </div>
+                        <button type="button" class="btn btn-outline-danger btnDeleteTableInSection d-none ms-auto" title="Удалить таблицу" aria-label="Удалить таблицу">
+                            <i class="iconoir-trash"></i>
+                        </button>
                     </div>
                     <div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2">
                         <div class="input-group input-group-sm searchFilterInputWrap">
@@ -390,7 +397,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var b1 = document.getElementById('btnAddTableBlock');
         if (b1) { if (hide) { b1.style.setProperty('display', 'none', 'important'); b1.classList.add(DASHBOARD_HIDE_CLASS); } else { b1.classList.remove(DASHBOARD_HIDE_CLASS); b1.style.display = ''; } }
         if (entityTablesContainer) {
-            entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection').forEach(function(el) {
+            entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection, .btnDeleteTableInSection, .searchFilterRowInSection').forEach(function(el) {
                 if (hide) { el.style.setProperty('display', 'none', 'important'); el.classList.add(DASHBOARD_HIDE_CLASS); } else { el.classList.remove(DASHBOARD_HIDE_CLASS); el.style.display = ''; }
             });
         }
@@ -518,6 +525,7 @@ document.addEventListener('DOMContentLoaded', function() {
             loadingBlock: section.querySelector('.loadingBlockInSection'),
             loadingText: section.querySelector('.loadingTextInSection'),
             gridTopRow: section.querySelector('.gridTopRowInSection'),
+            btnDeleteTable: section.querySelector('.btnDeleteTableInSection'),
             gridBlock: section.querySelector('.gridBlockInSection'),
             searchFilterRow: section.querySelector('.searchFilterRowInSection'),
             emptyBlock: section.querySelector('.emptyBlockInSection'),
@@ -636,11 +644,42 @@ document.addEventListener('DOMContentLoaded', function() {
         var els = getSectionEls(tableIndex);
         var hasEntities = st.selectedEntities.length > 0;
         if (els.btnFields) els.btnFields.classList.toggle('d-none', !hasEntities);
+        if (els.btnDeleteTable) els.btnDeleteTable.classList.toggle('d-none', !hasEntities);
         if (els.selectedEntitiesLabel) els.selectedEntitiesLabel.textContent = hasEntities
             ? 'Сущности: ' + st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ')
             : '';
         var plusBtn = els.section && els.section.querySelector('.btnAddEntityInSection');
         if (plusBtn) plusBtn.classList.toggle('d-none', !hasEntities);
+    }
+
+    function saveTemplateSnapshot(preferredIndex) {
+        var st = tableStates[preferredIndex] || tableStates[0];
+        if (!st) return;
+        var tablesPayload = tableStates.map(function(t) {
+            return { table_title: t.tableTitle || '', table_description: t.tableDescription || '', entities: t.selectedEntities || [], fields: t.selectedFields || [] };
+        });
+        if (!tablesPayload.some(function(t) { return t.entities && t.entities.length > 0 && t.fields && t.fields.length > 0; })) return;
+        var templateName = (st.tableTitle && String(st.tableTitle).trim()) || ('Шаблон ' + new Date().toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
+        fetch(API.templates, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: templateName, tables: tablesPayload })
+        }).then(function(r) { return r.json(); }).then(function(data) { if (data && data.ok) loadTemplates(); }).catch(function() {});
+    }
+
+    function deleteTableAtIndex(index) {
+        if (index == null || isNaN(index) || index < 0 || index >= tableStates.length) return;
+        tableStates.splice(index, 1);
+        if (!tableStates.length) tableStates = [defaultTableState()];
+        currentTableIndex = Math.min(Math.max(0, currentTableIndex), tableStates.length - 1);
+        ensureSections();
+        for (var i = 0; i < tableStates.length; i++) {
+            updateUI(i);
+            loadFieldsThenData(i, false);
+        }
+        saveConfigToStorage();
+        saveConfig();
+        saveTemplateSnapshot(index > 0 ? index - 1 : 0);
     }
 
     function getPageSlug() {
@@ -1213,7 +1252,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="table-mode-admin ms-2" style="display:none!important"><select class="form-select form-select-sm tableModeSelect" title="Режим таблицы" data-table-index="' + tableIndex + '" style="width:auto;min-width:120px">' +
             '<option value="edit">Редактирование</option><option value="read_only">Только просмотр</option><option value="hide">Скрыть</option></select></div></div>' +
             '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +
-            '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div></div>' +
+            '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div><button type="button" class="btn btn-outline-danger btnDeleteTableInSection d-none ms-auto" title="Удалить таблицу" aria-label="Удалить таблицу"><i class="iconoir-trash"></i></button></div>' +
             '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button></div>' +
             '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">' +
             '<thead class="table-light entity-table-grid-head"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
@@ -1229,6 +1268,16 @@ document.addEventListener('DOMContentLoaded', function() {
             div.innerHTML = createSectionHtml(i);
             entityTablesContainer.appendChild(div.firstElementChild);
         }
+        while (entityTablesContainer.querySelectorAll('.entity-table-section').length > tableStates.length) {
+            var allSections = entityTablesContainer.querySelectorAll('.entity-table-section');
+            var last = allSections[allSections.length - 1];
+            if (last && last.parentNode) last.parentNode.removeChild(last);
+        }
+        entityTablesContainer.querySelectorAll('.entity-table-section').forEach(function(section, idx) {
+            section.setAttribute('data-table-index', String(idx));
+            var modeSel = section.querySelector('.tableModeSelect');
+            if (modeSel) modeSel.setAttribute('data-table-index', String(idx));
+        });
         var n = tableStates.length;
         entityTablesContainer.style.gridTemplateColumns = n === 1 ? '1fr' : 'repeat(' + n + ', 1fr)';
         bindSectionListeners();
@@ -1237,6 +1286,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function bindSectionListeners() {
         if (!entityTablesContainer) return;
+        entityTablesContainer.querySelectorAll('.btnDeleteTableInSection').forEach(function(btn) {
+            var section = btn.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            btn.onclick = function() {
+                deleteTableAtIndex(idx);
+            };
+        });
         entityTablesContainer.querySelectorAll('.btnAddEntityInSection').forEach(function(btn) {
             var section = btn.closest('.entity-table-section');
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
@@ -1861,17 +1918,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadData(currentTableIndex);
         modalFields.hide();
         // Автосохранение шаблона на сервере (общий для всех пользователей) после выбора полей
-        var tablesPayload = tableStates.map(function(t) {
-            return { table_title: t.tableTitle || '', table_description: t.tableDescription || '', entities: t.selectedEntities || [], fields: t.selectedFields || [] };
-        });
-        if (tablesPayload.some(function(t) { return t.entities && t.entities.length > 0 && t.fields && t.fields.length > 0; })) {
-            var templateName = (st.tableTitle && String(st.tableTitle).trim()) || ('Шаблон ' + new Date().toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
-            fetch(API.templates, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: templateName, tables: tablesPayload })
-            }).then(function(r) { return r.json(); }).then(function(data) { if (data && data.ok) loadTemplates(); }).catch(function() {});
-        }
+        saveTemplateSnapshot(currentTableIndex);
     });
 
     function loadFieldsThenData(tableIndex, openModalIfNoFields) {
