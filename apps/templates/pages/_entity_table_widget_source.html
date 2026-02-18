@@ -119,6 +119,7 @@
     .entity-table-section .filterPanelInSection .filter-multiselect-dropdown { display: none; position: absolute; left: 0; right: 0; top: 100%; margin-top: 2px; max-height: 200px; overflow-y: auto; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1050; }
     .entity-table-section .filterPanelInSection .filter-multiselect-dropdown.open { display: block; }
     .entity-table-section .filterPanelInSection .filter-multiselect-dropdown .form-check { padding: 8px 12px; margin: 0; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-dropdown .filter-option-item { display: flex; align-items: center; gap: 8px; }
     .entity-table-section .filterPanelInSection .filter-multiselect-dropdown .filter-multiselect-search-wrap { position: sticky; top: 0; background: var(--bs-body-bg); padding: 8px; border-bottom: 1px solid var(--bs-border-color); z-index: 1; }
     .entity-table-section .filterPanelInSection .filter-multiselect-dropdown .filter-multiselect-search { font-size: 0.85rem; }
     #modalFilter .modal-dialog { max-width: min(1200px, 96vw); }
@@ -133,6 +134,7 @@
     #modalFilter .filterPanelInSection .filter-multiselect-dropdown { display: none; position: absolute; left: 0; right: 0; top: 100%; margin-top: 2px; max-height: 200px; overflow-y: auto; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1050; }
     #modalFilter .filterPanelInSection .filter-multiselect-dropdown.open { display: block; }
     #modalFilter .filterPanelInSection .filter-multiselect-dropdown .form-check { padding: 8px 12px; margin: 0; }
+    #modalFilter .filterPanelInSection .filter-multiselect-dropdown .filter-option-item { display: flex; align-items: center; gap: 8px; }
     #modalFilter .filterPanelInSection .filter-multiselect-dropdown .filter-multiselect-search-wrap { position: sticky; top: 0; background: var(--bs-body-bg); padding: 8px; border-bottom: 1px solid var(--bs-border-color); z-index: 1; }
     #modalFilter .filterPanelInSection .filter-multiselect-dropdown .filter-multiselect-search { font-size: 0.85rem; }
     .entity-table-section .entity-table-grid-wrap { flex: 1 1 auto; min-height: 0; border-radius: 6px; border: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,.08)); }
@@ -1103,7 +1105,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 drop.appendChild(searchWrap);
                 options.forEach(function(opt) {
                     var cb = document.createElement('label');
-                    cb.className = 'form-check d-flex align-items-center gap-2';
+                    cb.className = 'form-check filter-option-item';
                     cb.setAttribute('data-option-text', String(opt).toLowerCase());
                     var checked = selected.indexOf(opt) >= 0;
                     cb.innerHTML = '<input class="form-check-input filter-multiselect-option" type="checkbox" value="' + String(opt).replace(/"/g, '&quot;') + '"' + (checked ? ' checked' : '') + '><span class="form-check-label">' + String(opt).replace(/</g, '&lt;') + '</span>';
@@ -1160,7 +1162,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         var labelTextEl = host.querySelector('.form-check-label');
                         var text = normalizeSearchText(labelTextEl ? labelTextEl.textContent : '');
                         var show = !q || text.indexOf(q) >= 0;
-                        host.style.display = show ? '' : 'none';
+                        host.style.display = show ? 'flex' : 'none';
                         if (show) visibleCount++;
                     });
                     var emptyEl = drop.querySelector('.filter-multiselect-empty');
