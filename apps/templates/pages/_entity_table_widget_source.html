@@ -1055,16 +1055,6 @@ document.addEventListener('DOMContentLoaded', function() {
         tagsDiv.innerHTML = tagsHtml + arrowHtml;
     }
 
-    function getFilterKeysForSearch(st) {
-        var keys = (st && st.filterFields && Array.isArray(st.filterFields))
-            ? st.filterFields.map(function(f) { return (f && f.key) ? String(f.key).trim() : ''; }).filter(Boolean)
-            : [];
-        if (keys.length) return keys;
-        return (st && st.allColumns && Array.isArray(st.allColumns))
-            ? st.allColumns.map(function(c) { return c && c.key ? c.key : ''; }).filter(Boolean)
-            : [];
-    }
-
     function applyConfiguredFieldFilters(rows, st) {
         if (!rows || !rows.length || !st || !st.filterFields || !st.filterFields.length) return rows || [];
         return rows.filter(function(row) {
@@ -2299,7 +2289,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var searchQuery = (searchInput && searchInput.value) ? String(searchInput.value).trim().toLowerCase() : '';
         var filteredRows = applyConfiguredFieldFilters(st.fullData, st);
         if (searchQuery) {
-            var searchKeys = getFilterKeysForSearch(st);
+            var searchKeys = (st && st.allColumns && Array.isArray(st.allColumns))
+                ? st.allColumns.map(function(c) { return c && c.key ? c.key : ''; }).filter(Boolean)
+                : [];
             filteredRows = filteredRows.filter(function(row) {
                 return searchKeys.some(function(k) {
                     var v = row[k];
