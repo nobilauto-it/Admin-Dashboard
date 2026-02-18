@@ -2324,6 +2324,28 @@ document.addEventListener('DOMContentLoaded', function() {
         return null;
     }
 
+    function formatDateTimeDisplay(value) {
+        if (value == null) return '';
+        var s = String(value).trim();
+        if (!s) return '';
+        var m;
+        // yyyy-mm-dd[ T]hh:mm[:ss][.ms][Z]
+        m = s.match(/^(\d{4})[./-](\d{2})[./-](\d{2})(?:[ T](\d{2}):(\d{2})(?::\d{2})?)?(?:\.\d+)?(?:Z)?$/);
+        if (m) {
+            var y = m[1], mo = m[2], d = m[3], h = m[4], mi = m[5];
+            if (h != null && mi != null) return d + '.' + mo + '.' + y + ' ' + h + ':' + mi;
+            return d + '.' + mo + '.' + y;
+        }
+        // dd-mm-yyyy[ T]hh:mm[:ss]
+        m = s.match(/^(\d{2})[./-](\d{2})[./-](\d{4})(?:[ T](\d{2}):(\d{2})(?::\d{2})?)?$/);
+        if (m) {
+            var dd = m[1], mm = m[2], yy = m[3], hh = m[4], mii = m[5];
+            if (hh != null && mii != null) return dd + '.' + mm + '.' + yy + ' ' + hh + ':' + mii;
+            return dd + '.' + mm + '.' + yy;
+        }
+        return '';
+    }
+
     function toSortableValue(v) {
         if (v == null) return '';
         if (typeof v === 'number') return v;
@@ -2402,13 +2424,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 var val = row[c.key];
                 if (val !== null && typeof val === 'object') val = JSON.stringify(val);
                 var str = val != null ? String(val).trim() : '';
+                var dtFmt = formatDateTimeDisplay(str);
+                var displayStr = dtFmt || str;
                 var cellHtml = '';
                 if (str && (str.indexOf('http://') === 0 || str.indexOf('https://') === 0)) {
                     var hrefEsc = str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     var textEsc = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                     cellHtml = '<a href="' + hrefEsc + '" target="_blank" rel="noopener noreferrer" class="entity-table-cell-link">' + textEsc + '</a>';
                 } else {
-                    cellHtml = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                    cellHtml = displayStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                 }
                 var isNum = typeof row[c.key] === 'number' || (str && /^-?\d+([.,]\d+)?([eE][+-]?\d+)?%?$/.test(str.replace(/\s/g, '')));
                 return '<td' + (isNum ? ' class="entity-table-cell-numeric"' : '') + '>' + cellHtml + '</td>';
