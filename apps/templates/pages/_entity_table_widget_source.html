@@ -488,11 +488,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalEntityBody = document.getElementById('modalEntityBody');
     const modalEntitySave = document.getElementById('modalEntitySave');
     const modalFields = new bootstrap.Modal(document.getElementById('modalFields'));
+    const modalFieldsEl = document.getElementById('modalFields');
     const modalFilter = new bootstrap.Modal(document.getElementById('modalFilter'));
     const filterModalRowsContainerEl = document.getElementById('filterModalRowsContainer');
     const fieldsList = document.getElementById('fieldsList');
     const modalFieldsSave = document.getElementById('modalFieldsSave');
     const nestedCheckboxesRow = document.getElementById('nestedCheckboxesRow');
+
+    if (modalFieldsEl) {
+        modalFieldsEl.addEventListener('hidden.bs.modal', function() {
+            fieldsModalForFilterTableIndex = null;
+        });
+    }
 
     function getSectionEls(tableIndex) {
         var section = entityTablesContainer && entityTablesContainer.querySelector('.entity-table-section[data-table-index="' + tableIndex + '"]');
