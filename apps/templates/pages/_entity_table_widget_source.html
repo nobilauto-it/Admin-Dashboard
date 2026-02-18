@@ -14,6 +14,7 @@
     .table-mode-admin { display: none !important; }
     .entity-table-section .searchFilterRowInSection .btnFieldsInSection,
     .entity-table-section .searchFilterRowInSection .btn-search-filter-gear { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .entity-table-section .searchFilterRowInSection .btnToggleTimeInSection { height: 40px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; white-space: nowrap; }
     .entity-table-section .gridTopRowInSection .btnDeleteTableInSection { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-color: rgba(220,53,69,.35); color: var(--bs-danger, #dc3545); }
     .entity-table-section .gridTopRowInSection .btnDeleteTableInSection:hover { background: rgba(220,53,69,.08); border-color: rgba(220,53,69,.5); }
     .entity-table-section .searchFilterRowInSection .searchFilterInputWrap { width: min(560px, 60%); min-width: 240px; }
@@ -222,6 +223,7 @@
                             <span class="input-group-text"><i class="iconoir-search"></i></span>
                             <input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице">
                         </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm btnToggleTimeInSection" title="Вкл/выкл отображение времени (чч:мм)">чч:мм</button>
                         <button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска">
                             <i class="iconoir-settings"></i>
                         </button>
@@ -491,6 +493,7 @@ document.addEventListener('DOMContentLoaded', function() {
             columnWidths: {},
             sortKey: '',
             sortDir: '',
+            showTime: true,
             filterFields: [{ label: 'Название', key: '', type: 'text' }]
         };
     }
@@ -653,13 +656,26 @@ document.addEventListener('DOMContentLoaded', function() {
             : '';
         var plusBtn = els.section && els.section.querySelector('.btnAddEntityInSection');
         if (plusBtn) plusBtn.classList.toggle('d-none', !hasEntities);
+        var toggleBtn = els.section && els.section.querySelector('.btnToggleTimeInSection');
+        if (toggleBtn) {
+            var enabled = st.showTime !== false;
+            toggleBtn.classList.toggle('btn-primary', enabled);
+            toggleBtn.classList.toggle('btn-outline-secondary', !enabled);
+            toggleBtn.textContent = enabled ? 'чч:мм ON' : 'чч:мм OFF';
+        }
     }
 
     function saveTemplateSnapshot(preferredIndex) {
         var st = tableStates[preferredIndex] || tableStates[0];
         if (!st) return;
         var tablesPayload = tableStates.map(function(t) {
-            return { table_title: t.tableTitle || '', table_description: t.tableDescription || '', entities: t.selectedEntities || [], fields: t.selectedFields || [] };
+            return {
+                table_title: t.tableTitle || '',
+                table_description: t.tableDescription || '',
+                entities: t.selectedEntities || [],
+                fields: t.selectedFields || [],
+                show_time: (t.showTime !== false)
+            };
         });
         if (!tablesPayload.some(function(t) { return t.entities && t.entities.length > 0 && t.fields && t.fields.length > 0; })) return;
         var templateName = (st.tableTitle && String(st.tableTitle).trim()) || ('Шаблон ' + new Date().toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
@@ -836,7 +852,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     column_order: keys.length ? keys : null,
                     column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
                     sort_key: st.sortKey || null,
-                    sort_dir: st.sortDir || null
+                    sort_dir: st.sortDir || null,
+                    show_time: (st.showTime !== false)
                 };
             });
             localStorage.setItem(key, JSON.stringify({ tables: tables }));
@@ -873,6 +890,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : {},
                     sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
                     sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
+                    showTime: (t.show_time !== false),
                     filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                 };
             });
@@ -901,6 +919,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : loadColumnWidths(0),
                 sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
                 sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
+                showTime: (data.show_time !== false),
                 filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
             }];
             ensureSections();
@@ -1252,7 +1271,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '<option value="edit">Редактирование</option><option value="read_only">Только просмотр</option><option value="hide">Скрыть</option></select></div></div>' +
             '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +
             '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div><button type="button" class="btn btn-outline-danger btnDeleteTableInSection d-none ms-auto" title="Удалить таблицу" aria-label="Удалить таблицу"><i class="iconoir-trash"></i></button></div>' +
-            '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button></div>' +
+            '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-sm btnToggleTimeInSection" title="Вкл/выкл отображение времени (чч:мм)">чч:мм</button><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button></div>' +
             '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">' +
             '<thead class="table-light entity-table-grid-head"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
             '<div class="entity-table-loading emptyBlockInSection" role="button" tabindex="0" title="Нажмите, чтобы выбрать сущности и поля"><p class="text-muted mb-0">Нажмите, чтобы выбрать сущности и поля</p></div>' +
@@ -1357,6 +1376,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderGrid(idx);
             };
         });
+        entityTablesContainer.querySelectorAll('.btnToggleTimeInSection').forEach(function(btn) {
+            var section = btn.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            btn.onclick = function() {
+                var st = tableStates[idx];
+                if (!st) return;
+                st.showTime = !(st.showTime !== false);
+                renderGrid(idx);
+                updateUI(idx);
+                saveConfigToStorage();
+                saveConfig();
+            };
+        });
     }
 
     /** Делегирование: клики по кнопкам пагинации (prev/next/номер страницы) — привязывается один раз. */
@@ -1407,7 +1440,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             columnOrderFromServer: orderFromServer,
                             columnWidths: isDashboard ? {} : (Object.keys(widthsFromServer).length ? widthsFromServer : {}),
                             sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
-                            sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : ''
+                            sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
+                            showTime: (t.show_time !== false)
                         };
                     });
                     ensureSections();
@@ -1440,7 +1474,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         pageSize: 25,
                         columnWidths: loadColumnWidths(0),
                         sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
-                        sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : ''
+                        sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
+                        showTime: (data.show_time !== false)
                     }];
                     ensureSections();
                     applyTableModes(data.table_modes);
@@ -1516,7 +1551,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 column_order: keys.length ? keys : null,
                 column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
                 sort_key: st.sortKey || null,
-                sort_dir: st.sortDir || null
+                sort_dir: st.sortDir || null,
+                show_time: (st.showTime !== false)
             };
         });
         var payload = { page_slug: slug, tables: tables };
@@ -2324,7 +2360,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return null;
     }
 
-    function formatDateTimeDisplay(value) {
+    function formatDateTimeDisplay(value, includeTime) {
         if (value == null) return '';
         var s = String(value).trim();
         if (!s) return '';
@@ -2333,14 +2369,14 @@ document.addEventListener('DOMContentLoaded', function() {
         m = s.match(/^(\d{4})[./-](\d{2})[./-](\d{2})(?:[ T](\d{2}):(\d{2})(?::\d{2})?)?(?:\.\d+)?(?:Z)?$/);
         if (m) {
             var y = m[1], mo = m[2], d = m[3], h = m[4], mi = m[5];
-            if (h != null && mi != null) return d + '.' + mo + '.' + y + ' ' + h + ':' + mi;
+            if (includeTime !== false && h != null && mi != null) return d + '.' + mo + '.' + y + ' ' + h + ':' + mi;
             return d + '.' + mo + '.' + y;
         }
         // dd-mm-yyyy[ T]hh:mm[:ss]
         m = s.match(/^(\d{2})[./-](\d{2})[./-](\d{4})(?:[ T](\d{2}):(\d{2})(?::\d{2})?)?$/);
         if (m) {
             var dd = m[1], mm = m[2], yy = m[3], hh = m[4], mii = m[5];
-            if (hh != null && mii != null) return dd + '.' + mm + '.' + yy + ' ' + hh + ':' + mii;
+            if (includeTime !== false && hh != null && mii != null) return dd + '.' + mm + '.' + yy + ' ' + hh + ':' + mii;
             return dd + '.' + mm + '.' + yy;
         }
         return '';
@@ -2424,7 +2460,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 var val = row[c.key];
                 if (val !== null && typeof val === 'object') val = JSON.stringify(val);
                 var str = val != null ? String(val).trim() : '';
-                var dtFmt = formatDateTimeDisplay(str);
+                var dtFmt = formatDateTimeDisplay(str, st.showTime !== false);
                 var displayStr = dtFmt || str;
                 var cellHtml = '';
                 if (str && (str.indexOf('http://') === 0 || str.indexOf('https://') === 0)) {
