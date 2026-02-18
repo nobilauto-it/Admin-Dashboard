@@ -1931,6 +1931,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (els.gridBlock) els.gridBlock.classList.add('d-none');
             if (els.gridTopRow) els.gridTopRow.classList.add('d-none');
             if (els.searchFilterRow) els.searchFilterRow.classList.add('d-none');
+            if (els.paginationBlock) els.paginationBlock.classList.add('d-none');
             return;
         }
         var hasAnyFields = st.selectedFields.some(function(f) { return f.human_titles && f.human_titles.length; });
@@ -1941,6 +1942,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (els.gridBlock) els.gridBlock.classList.add('d-none');
                 if (els.gridTopRow) els.gridTopRow.classList.add('d-none');
                 if (els.searchFilterRow) els.searchFilterRow.classList.add('d-none');
+                if (els.paginationBlock) els.paginationBlock.classList.add('d-none');
             }
             return;
         }
