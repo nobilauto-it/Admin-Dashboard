@@ -100,6 +100,7 @@
     .entity-table-grid-wrap th.entity-table-th-draggable:active { cursor: grabbing; }
     .entity-table-grid-wrap th.dragging { opacity: 0.5; }
     .entity-table-grid-wrap th.drag-over { border-left: 2px solid var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.08); }
+    .entity-table-grid-wrap .entity-table-sort-indicator { margin-left: 4px; font-size: 0.72rem; opacity: 0.85; }
     /* auto — ширина колонок по содержимому; при ручном ресайзе сохраняем width в columnWidths */
     .entity-table-grid-wrap .datatable-table { table-layout: auto; }
     .entity-table-grid-wrap th.entity-table-th-wrap { position: relative; padding-right: 10px; }
@@ -488,6 +489,8 @@ document.addEventListener('DOMContentLoaded', function() {
             currentPage: 1,
             pageSize: 25,
             columnWidths: {},
+            sortKey: '',
+            sortDir: '',
             filterFields: [{ label: 'Название', key: '', type: 'text' }]
         };
     }
@@ -831,7 +834,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     entities: st.selectedEntities,
                     fields: st.selectedFields,
                     column_order: keys.length ? keys : null,
-                    column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null
+                    column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
+                    sort_key: st.sortKey || null,
+                    sort_dir: st.sortDir || null
                 };
             });
             localStorage.setItem(key, JSON.stringify({ tables: tables }));
@@ -866,6 +871,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     pageSize: 25,
                     columnOrderFromServer: orderFromServer,
                     columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : {},
+                    sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
+                    sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
                     filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                 };
             });
@@ -892,6 +899,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 pageSize: 25,
                 columnOrderFromServer: orderFromServer,
                 columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : loadColumnWidths(0),
+                sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
+                sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
                 filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
             }];
             ensureSections();
@@ -1396,7 +1405,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             currentPage: 1,
                             pageSize: 25,
                             columnOrderFromServer: orderFromServer,
-                            columnWidths: isDashboard ? {} : (Object.keys(widthsFromServer).length ? widthsFromServer : {})
+                            columnWidths: isDashboard ? {} : (Object.keys(widthsFromServer).length ? widthsFromServer : {}),
+                            sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
+                            sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : ''
                         };
                     });
                     ensureSections();
@@ -1427,7 +1438,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         allColumns: [],
                         currentPage: 1,
                         pageSize: 25,
-                        columnWidths: loadColumnWidths(0)
+                        columnWidths: loadColumnWidths(0),
+                        sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
+                        sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : ''
                     }];
                     ensureSections();
                     applyTableModes(data.table_modes);
@@ -1501,7 +1514,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 entities: st.selectedEntities,
                 fields: st.selectedFields,
                 column_order: keys.length ? keys : null,
-                column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null
+                column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
+                sort_key: st.sortKey || null,
+                sort_dir: st.sortDir || null
             };
         });
         var payload = { page_slug: slug, tables: tables };
@@ -2276,6 +2291,66 @@ document.addEventListener('DOMContentLoaded', function() {
         st.allColumns = applyColumnOrder(cols, getColumnOrderForTable(tableIndex));
     }
 
+    function tryParseDateValue(v) {
+        if (v == null) return null;
+        var s = String(v).trim();
+        if (!s) return null;
+        var m;
+        // yyyy-mm-dd / yyyy.mm.dd / yyyy/mm/dd [+ time]
+        m = s.match(/^(\d{4})[./-](\d{2})[./-](\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?(?:\.\d+)?(?:Z)?$/);
+        if (m) {
+            var y = parseInt(m[1], 10);
+            var mo = parseInt(m[2], 10) - 1;
+            var d = parseInt(m[3], 10);
+            var h = parseInt(m[4] || '0', 10);
+            var mi = parseInt(m[5] || '0', 10);
+            var se = parseInt(m[6] || '0', 10);
+            return new Date(y, mo, d, h, mi, se).getTime();
+        }
+        // dd-mm-yyyy / dd.mm.yyyy / dd/mm/yyyy [+ time]
+        m = s.match(/^(\d{2})[./-](\d{2})[./-](\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+        if (m) {
+            var dd = parseInt(m[1], 10);
+            var mm = parseInt(m[2], 10) - 1;
+            var yy = parseInt(m[3], 10);
+            var hh = parseInt(m[4] || '0', 10);
+            var mii = parseInt(m[5] || '0', 10);
+            var ss = parseInt(m[6] || '0', 10);
+            return new Date(yy, mm, dd, hh, mii, ss).getTime();
+        }
+        // Generic parse for ISO-like strings
+        var parsed = Date.parse(s);
+        if (!isNaN(parsed) && /[-/T:]/.test(s)) return parsed;
+        return null;
+    }
+
+    function toSortableValue(v) {
+        if (v == null) return '';
+        if (typeof v === 'number') return v;
+        var s = String(v).trim();
+        if (!s) return '';
+        var dateValue = tryParseDateValue(s);
+        if (dateValue != null) return dateValue;
+        var compact = s.replace(/\s/g, '').replace(',', '.');
+        if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?%?$/.test(compact)) {
+            var num = parseFloat(compact.replace('%', ''));
+            if (!isNaN(num)) return num;
+        }
+        return s.toLowerCase();
+    }
+
+    function sortRowsByColumn(rows, sortKey, sortDir) {
+        if (!rows || !rows.length || !sortKey || (sortDir !== 'asc' && sortDir !== 'desc')) return rows || [];
+        var factor = sortDir === 'asc' ? 1 : -1;
+        return rows.map(function(row, idx) { return { row: row, idx: idx }; }).sort(function(a, b) {
+            var av = toSortableValue(a.row[sortKey]);
+            var bv = toSortableValue(b.row[sortKey]);
+            if (av < bv) return -1 * factor;
+            if (av > bv) return 1 * factor;
+            return a.idx - b.idx;
+        }).map(function(x) { return x.row; });
+    }
+
     function renderGrid(tableIndex) {
         var st = tableStates[tableIndex];
         if (!st) return;
@@ -2302,12 +2377,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         }
-        var totalRows = filteredRows.length;
+        var sortedRows = sortRowsByColumn(filteredRows, st.sortKey, st.sortDir);
+        var totalRows = sortedRows.length;
         var totalPages = totalRows ? Math.ceil(totalRows / st.pageSize) : 0;
         if (totalPages > 0 && st.currentPage > totalPages) st.currentPage = totalPages;
         if (totalPages === 0) st.currentPage = 1;
         var start = (st.currentPage - 1) * st.pageSize;
-        var slice = filteredRows.slice(start, start + st.pageSize);
+        var slice = sortedRows.slice(start, start + st.pageSize);
         els.gridHead.innerHTML = '<tr>' + st.allColumns.map(function(c, i) {
             var fullLabel = c.label || c.key || '';
             var lab = fieldLabelShort(fullLabel);
@@ -2315,9 +2391,11 @@ document.addEventListener('DOMContentLoaded', function() {
             var keyEsc = (c.key || '').replace(/"/g, '&quot;');
             var titleEsc = (fullLabel || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
             var fullLabelAttr = (fullLabel || '').replace(/"/g, '&quot;');
+            var sortIcon = '';
+            if (st.sortKey === c.key) sortIcon = (st.sortDir === 'asc') ? '&#9650;' : (st.sortDir === 'desc' ? '&#9660;' : '');
             var w = st.columnWidths[c.key];
             var style = (w && w >= MIN_CONTENT_SAFE_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
-            return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '" data-full-label="' + fullLabelAttr + '" title="' + titleEsc + '"' + style + '><span class="entity-table-th-label">' + labelEsc + '</span><span class="entity-table-col-resize" title="Изменить ширину"></span></th>';
+            return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '" data-full-label="' + fullLabelAttr + '" title="' + titleEsc + '"' + style + '><span class="entity-table-th-label">' + labelEsc + '</span><span class="entity-table-sort-indicator">' + sortIcon + '</span><span class="entity-table-col-resize" title="Изменить ширину"></span></th>';
         }).join('') + '</tr>';
         els.gridBody.innerHTML = slice.map(function(row) {
             return '<tr>' + st.allColumns.map(function(c) {
@@ -2376,6 +2454,30 @@ document.addEventListener('DOMContentLoaded', function() {
             els.paginationNav.appendChild(ul);
         }
         updateTableTitleBlock(tableIndex);
+
+        els.gridHead.querySelectorAll('th[data-column-key]').forEach(function(th) {
+            th.onclick = null;
+            th.onclick = function(e) {
+                if (e.target && e.target.closest && e.target.closest('.entity-table-col-resize')) return;
+                var key = th.getAttribute('data-column-key');
+                if (!key) return;
+                if (st.sortKey !== key) {
+                    st.sortKey = key;
+                    st.sortDir = 'asc';
+                } else if (st.sortDir === 'asc') {
+                    st.sortDir = 'desc';
+                } else if (st.sortDir === 'desc') {
+                    st.sortKey = '';
+                    st.sortDir = '';
+                } else {
+                    st.sortDir = 'asc';
+                }
+                st.currentPage = 1;
+                saveConfigToStorage();
+                saveConfig();
+                renderGrid(tableIndex);
+            };
+        });
 
         els.gridHead.querySelectorAll('.entity-table-col-resize').forEach(function(handle) {
             handle.onmousedown = null;
