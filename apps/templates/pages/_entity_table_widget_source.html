@@ -527,6 +527,7 @@ document.addEventListener('DOMContentLoaded', function() {
             sortDir: '',
             showTime: true,
             dateTimeDisplayByColumn: {},
+            guestFilterInitialized: false,
             filterFields: [{ label: 'Название', key: '', type: 'text' }]
         };
     }
@@ -1140,10 +1141,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!st) return;
         var cols = (st.allColumns || []).filter(function(c) { return c && c.key && !isSystemColumn(c.key); });
         if (!cols.length) return;
+        var firstGuestSync = !st.guestFilterInitialized;
         var existingByKey = {};
-        (st.filterFields || []).forEach(function(f) {
-            if (f && f.key) existingByKey[f.key] = f;
-        });
+        if (!firstGuestSync) {
+            (st.filterFields || []).forEach(function(f) {
+                if (f && f.key) existingByKey[f.key] = f;
+            });
+        }
         st.filterFields = cols.map(function(c) {
             var prev = existingByKey[c.key] || {};
             var probe = {
@@ -1171,6 +1175,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             return next;
         });
+        st.guestFilterInitialized = true;
     }
 
     function renderFilterRows(tableIndex, rowsContainer) {
