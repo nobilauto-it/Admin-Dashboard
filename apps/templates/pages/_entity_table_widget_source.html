@@ -119,6 +119,9 @@
     .entity-table-section .filterPanelInSection .filter-multiselect-dropdown { display: none; position: absolute; left: 0; right: 0; top: 100%; margin-top: 2px; max-height: 200px; overflow-y: auto; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1050; }
     .entity-table-section .filterPanelInSection .filter-multiselect-dropdown.open { display: block; }
     .entity-table-section .filterPanelInSection .filter-multiselect-dropdown .form-check { padding: 8px 12px; margin: 0; }
+    #modalFilter .modal-dialog { max-width: min(1200px, 96vw); }
+    #modalFilter .modal-content { min-height: 80vh; }
+    #modalFilter .modal-body { max-height: calc(80vh - 130px); overflow-y: auto; }
     #modalFilter .filterPanelInSection .filter-row-item { margin-bottom: 10px; }
     #modalFilter .filterPanelInSection .filter-row-item label { font-size: 0.875rem; margin-bottom: 4px; display: block; }
     #modalFilter .filterPanelInSection .filter-multiselect-wrap { position: relative; }
@@ -304,7 +307,7 @@
 </div>
 
 <div class="modal fade" id="modalFilter" tabindex="-1">
-    <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-scrollable modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Фильтр + поиск</h5>
@@ -865,6 +868,14 @@ document.addEventListener('DOMContentLoaded', function() {
             || sample.indexOf('pipeline') >= 0;
     }
 
+    function isFunnelLikeField(label, key) {
+        var sample = ((label || '') + ' ' + (key || '')).toLowerCase();
+        return sample.indexOf('воронк') >= 0
+            || sample.indexOf('funnel') >= 0
+            || sample.indexOf('category') >= 0
+            || sample.indexOf('pipeline') >= 0;
+    }
+
     function isDropdownFieldType(fieldType) {
         var ft = String(fieldType || '').toLowerCase();
         if (!ft) return false;
@@ -894,11 +905,13 @@ document.addEventListener('DOMContentLoaded', function() {
         var idx = String(colKey).indexOf('::');
         if (idx <= 0) return options;
         var entityPrefix = String(colKey).slice(0, idx);
+        var wantFunnel = isFunnelLikeField(filterField && filterField.label, filterField && filterField.key);
         var first = st.fullData[0] || {};
         var siblingKeys = Object.keys(first).filter(function(k) {
             if (k.indexOf(entityPrefix + '::') !== 0) return false;
             var s = k.toLowerCase();
-            return s.indexOf('stage') >= 0 || s.indexOf('status') >= 0 || s.indexOf('стад') >= 0 || s.indexOf('воронк') >= 0;
+            if (wantFunnel) return s.indexOf('воронк') >= 0 || s.indexOf('funnel') >= 0 || s.indexOf('category') >= 0 || s.indexOf('pipeline') >= 0;
+            return s.indexOf('stage') >= 0 || s.indexOf('status') >= 0 || s.indexOf('стад') >= 0;
         });
         if (!siblingKeys.length) return options;
         var seen2 = {};
@@ -927,9 +940,26 @@ document.addEventListener('DOMContentLoaded', function() {
     function resolveFilterColumnKey(st, f) {
         if (!st || !f) return '';
         var candidate = String(f.key || '').trim();
+        var idxCandidate = candidate.indexOf('::');
+        var prefix = idxCandidate > 0 ? candidate.slice(0, idxCandidate) : '';
+        var aliasCandidates = [];
+        if (prefix) {
+            if (f.sourceB24Field) aliasCandidates.push(prefix + '::' + String(f.sourceB24Field).trim());
+            if (f.sourceColumnName) aliasCandidates.push(prefix + '::' + String(f.sourceColumnName).trim());
+        }
         if (candidate) {
             var hasCandidate = (st.allColumns || []).some(function(c) { return c && c.key === candidate; });
             if (hasCandidate) return candidate;
+            var first = (st.fullData && st.fullData.length) ? (st.fullData[0] || {}) : {};
+            if (Object.prototype.hasOwnProperty.call(first, candidate)) return candidate;
+        }
+        if (aliasCandidates.length) {
+            var allByKey = st.allColumns || [];
+            var byAlias = aliasCandidates.find(function(a) { return allByKey.some(function(c) { return c && c.key === a; }); });
+            if (byAlias) return byAlias;
+            var firstRow = (st.fullData && st.fullData.length) ? (st.fullData[0] || {}) : {};
+            var byAliasRow = aliasCandidates.find(function(a) { return Object.prototype.hasOwnProperty.call(firstRow, a); });
+            if (byAliasRow) return byAliasRow;
         }
         var labelNorm = normalizeFieldLabel(f.label || '');
         if (!labelNorm) return candidate;
@@ -1111,6 +1141,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             container.appendChild(row);
         });
+    }
+
+    function refreshFilterModalIfOpen(tableIndex) {
+        var modalEl = document.getElementById('modalFilter');
+        if (!modalEl || !modalEl.classList.contains('show')) return;
+        if (filterModalTableIndex == null || filterModalTableIndex !== tableIndex) return;
+        renderFilterRows(tableIndex, filterModalRowsContainerEl);
     }
 
     function createSectionHtml(tableIndex) {
@@ -1733,6 +1770,8 @@ document.addEventListener('DOMContentLoaded', function() {
             renderFilterRows(fieldsModalForFilterTableIndex, filterModalRowsContainerEl);
             modalFields.hide();
             modalFilter.show();
+            filterModalTableIndex = fieldsModalForFilterTableIndex;
+            loadData(fieldsModalForFilterTableIndex);
             fieldsModalForFilterTableIndex = null;
             return;
         }
@@ -1972,6 +2011,7 @@ document.addEventListener('DOMContentLoaded', function() {
             st.currentPage = 1;
             st.pageSize = parseInt(els.pageSizeSelect && els.pageSizeSelect.value ? els.pageSizeSelect.value : 25, 10) || 25;
             renderGrid(tableIndex);
+            refreshFilterModalIfOpen(tableIndex);
             if (els.emptyBlock) els.emptyBlock.classList.add('d-none');
             if (els.gridTopRow) els.gridTopRow.classList.remove('d-none');
             if (els.searchFilterRow) els.searchFilterRow.classList.remove('d-none');
@@ -2004,6 +2044,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             rows.forEach(function(row) { st.fullData.push(row); });
                             offset += nextRes.rows.length;
                             renderGrid(tableIndex);
+                            refreshFilterModalIfOpen(tableIndex);
                             if (offset < nextRes.total) fetchMore();
                         }).catch(function() {});
                     }
@@ -2027,6 +2068,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             st.fullData.push(merged);
                         });
                         renderGrid(tableIndex);
+                        refreshFilterModalIfOpen(tableIndex);
                         if (st.fullData.length < primaryTotal) fetchMoreMerged();
                     }).catch(function() {});
                 }
