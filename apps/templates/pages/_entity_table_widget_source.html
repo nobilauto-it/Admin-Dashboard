@@ -44,8 +44,18 @@
         max-width: 220px;
         min-width: 4rem;
     }
+    .entity-table-section .entity-table-grid-wrap .datatable-table > thead > tr > th .entity-table-th-inline {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        vertical-align: middle;
+    }
     .entity-table-section .entity-table-grid-wrap .datatable-table > thead > tr > th .entity-table-th-label {
-        display: block;
+        display: inline-block;
+        flex: 1 1 auto;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -100,9 +110,9 @@
     .entity-table-grid-wrap th.entity-table-th-draggable:active { cursor: grabbing; }
     .entity-table-grid-wrap th.dragging { opacity: 0.5; }
     .entity-table-grid-wrap th.drag-over { border-left: 2px solid var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.08); }
-    .entity-table-grid-wrap .entity-table-sort-indicator { margin-left: 4px; font-size: 0.72rem; opacity: 0.85; }
+    .entity-table-grid-wrap .entity-table-sort-indicator { margin-left: 0; font-size: 0.72rem; opacity: 0.85; flex: 0 0 auto; }
     .entity-table-grid-wrap .entity-table-time-toggle {
-        margin-left: 6px;
+        margin-left: 0;
         width: 22px;
         height: 22px;
         display: inline-flex;
@@ -126,9 +136,9 @@
         color: var(--bs-primary, #6f6af8);
     }
     .entity-table-grid-wrap .entity-table-time-toggle i { font-size: 13px; line-height: 1; }
+    .entity-table-grid-wrap th.entity-table-th-wrap { position: relative; padding-right: 16px; }
     /* auto — ширина колонок по содержимому; при ручном ресайзе сохраняем width в columnWidths */
     .entity-table-grid-wrap .datatable-table { table-layout: auto; }
-    .entity-table-grid-wrap th.entity-table-th-wrap { position: relative; padding-right: 10px; }
     .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; }
     .entity-table-grid-wrap th .entity-table-col-resize:hover { background: rgba(var(--bs-primary-rgb), 0.2); }
     #entityTablesContainer { display: grid; gap: 1rem; align-items: start; }
@@ -2493,7 +2503,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var timeToggle = isDateColumn
                 ? ('<button type="button" class="entity-table-time-toggle' + (showTime ? ' is-active' : '') + '" data-column-key="' + keyEsc + '" title="' + (showTime ? 'Скрыть время для этой колонки' : 'Показывать время для этой колонки') + '" aria-label="' + (showTime ? 'Скрыть время для этой колонки' : 'Показывать время для этой колонки') + '"><i class="iconoir-clock"></i></button>')
                 : '';
-            return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '" data-full-label="' + fullLabelAttr + '" title="' + titleEsc + '"' + style + '><span class="entity-table-th-label">' + labelEsc + '</span><span class="entity-table-sort-indicator">' + sortIcon + '</span>' + timeToggle + '<span class="entity-table-col-resize" title="Изменить ширину"></span></th>';
+            return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '" data-full-label="' + fullLabelAttr + '" title="' + titleEsc + '"' + style + '><span class="entity-table-th-inline"><span class="entity-table-th-label">' + labelEsc + '</span><span class="entity-table-sort-indicator">' + sortIcon + '</span>' + timeToggle + '</span><span class="entity-table-col-resize" title="Изменить ширину"></span></th>';
         }).join('') + '</tr>';
         els.gridBody.innerHTML = slice.map(function(row) {
             return '<tr>' + st.allColumns.map(function(c) {
