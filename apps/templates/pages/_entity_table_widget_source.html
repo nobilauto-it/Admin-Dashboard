@@ -432,7 +432,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var b1 = document.getElementById('btnAddTableBlock');
         if (b1) { if (hide) { b1.style.setProperty('display', 'none', 'important'); b1.classList.add(DASHBOARD_HIDE_CLASS); } else { b1.classList.remove(DASHBOARD_HIDE_CLASS); b1.style.display = ''; } }
         if (entityTablesContainer) {
-            entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection, .btnDeleteTableInSection, .searchFilterRowInSection').forEach(function(el) {
+            entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection, .btnDeleteTableInSection').forEach(function(el) {
                 if (hide) { el.style.setProperty('display', 'none', 'important'); el.classList.add(DASHBOARD_HIDE_CLASS); } else { el.classList.remove(DASHBOARD_HIDE_CLASS); el.style.display = ''; }
             });
         }
@@ -1135,10 +1135,52 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function syncGuestFilterFieldsWithColumns(tableIndex) {
+        var st = tableStates[tableIndex];
+        if (!st) return;
+        var cols = (st.allColumns || []).filter(function(c) { return c && c.key && !isSystemColumn(c.key); });
+        if (!cols.length) return;
+        var existingByKey = {};
+        (st.filterFields || []).forEach(function(f) {
+            if (f && f.key) existingByKey[f.key] = f;
+        });
+        st.filterFields = cols.map(function(c) {
+            var prev = existingByKey[c.key] || {};
+            var probe = {
+                label: c.label || c.key,
+                key: c.key,
+                type: prev.type,
+                sourceFieldType: prev.sourceFieldType,
+                sourceB24Field: prev.sourceB24Field,
+                sourceColumnName: prev.sourceColumnName
+            };
+            var options = collectFieldOptions(st, c.key, probe);
+            var type = shouldRenderAsMultiselect(st, probe, options) ? 'multiselect' : 'text';
+            var next = {
+                label: c.label || c.key,
+                key: c.key,
+                type: type,
+                sourceFieldType: prev.sourceFieldType,
+                sourceB24Field: prev.sourceB24Field,
+                sourceColumnName: prev.sourceColumnName
+            };
+            if (type === 'multiselect') {
+                next.selectedValues = Array.isArray(prev.selectedValues) ? prev.selectedValues.slice() : [];
+            } else {
+                next.value = (prev.value != null) ? String(prev.value) : '';
+            }
+            return next;
+        });
+    }
+
     function renderFilterRows(tableIndex, rowsContainer) {
         var st = tableStates[tableIndex];
         var container = rowsContainer || filterModalRowsContainerEl;
         if (!st || !container) return;
+        var guestMode = isGuestUser();
+        if (guestMode) syncGuestFilterFieldsWithColumns(tableIndex);
+        var addFilterFieldInModalEl = document.getElementById('addFilterFieldInModal');
+        if (addFilterFieldInModalEl) addFilterFieldInModalEl.classList.toggle('d-none', guestMode);
         if (!st.filterFields || !st.filterFields.length) st.filterFields = [{ label: 'Название', key: '', type: 'text' }];
         st.filterFields.forEach(function(f) {
             if ((f.key === '' || !f.key) && f.label === 'Название' && st.allColumns && st.allColumns.length) {
@@ -1160,16 +1202,18 @@ document.addEventListener('DOMContentLoaded', function() {
             var label = document.createElement('label');
             label.textContent = f.label || '';
             head.appendChild(label);
-            var removeBtn = document.createElement('button');
-            removeBtn.type = 'button';
-            removeBtn.className = 'btn btn-link btn-sm text-danger p-0 ms-2';
-            removeBtn.textContent = 'Удалить';
-            removeBtn.addEventListener('click', function() {
-                st.filterFields.splice(rowIdx, 1);
-                if (!st.filterFields.length) st.filterFields = [{ label: 'Название', key: '', type: 'text' }];
-                renderFilterRows(tableIndex, container);
-            });
-            head.appendChild(removeBtn);
+            if (!guestMode) {
+                var removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'btn btn-link btn-sm text-danger p-0 ms-2';
+                removeBtn.textContent = 'Удалить';
+                removeBtn.addEventListener('click', function() {
+                    st.filterFields.splice(rowIdx, 1);
+                    if (!st.filterFields.length) st.filterFields = [{ label: 'Название', key: '', type: 'text' }];
+                    renderFilterRows(tableIndex, container);
+                });
+                head.appendChild(removeBtn);
+            }
             row.appendChild(head);
             if (type === 'multiselect') {
                 if (!f.selectedValues || !Array.isArray(f.selectedValues)) f.selectedValues = [];
@@ -1371,6 +1415,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var addFilterFieldInModalEl = document.getElementById('addFilterFieldInModal');
         if (addFilterFieldInModalEl) addFilterFieldInModalEl.onclick = function(e) {
             e.preventDefault();
+            if (isGuestUser()) return;
             if (filterModalTableIndex == null) return;
             fieldsModalForFilterTableIndex = filterModalTableIndex;
             currentTableIndex = filterModalTableIndex;
