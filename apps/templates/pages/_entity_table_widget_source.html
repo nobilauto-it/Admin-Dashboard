@@ -1340,7 +1340,9 @@ document.addEventListener('DOMContentLoaded', function() {
             var section = inp.closest('.entity-table-section');
             if (!section) return;
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
-            inp.oninput = function() {
+            inp.onkeydown = function(e) {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
                 if (!tableStates[idx]) return;
                 tableStates[idx].currentPage = 1;
                 renderGrid(idx);
