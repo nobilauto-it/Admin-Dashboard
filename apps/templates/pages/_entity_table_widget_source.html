@@ -16,7 +16,8 @@
     .entity-table-section .searchFilterRowInSection .btn-search-filter-gear { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .entity-table-section .gridTopRowInSection .btnDeleteTableInSection { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-color: rgba(220,53,69,.35); color: var(--bs-danger, #dc3545); }
     .entity-table-section .gridTopRowInSection .btnDeleteTableInSection:hover { background: rgba(220,53,69,.08); border-color: rgba(220,53,69,.5); }
-    .entity-table-section .searchFilterRowInSection .searchFilterInputWrap { width: min(560px, 60%); min-width: 240px; }
+    /* Title + search + buttons in one row when they fit; search input flexible (e.g. 30%), can shrink. */
+    .entity-table-section .searchFilterRowInSection .searchFilterInputWrap { flex: 0 1 30%; min-width: 8rem; max-width: 560px; }
     .entity-table-loading { padding: 24px; text-align: center; color: #64748b; }
     .entity-table-grid-wrap { min-width: 0; overflow: auto;}
     /* Те же стили, что у шаблонных table.datatable.datatable-table (simple-datatables + _tables.scss) */
@@ -27,6 +28,7 @@
         border-spacing: 0;
         border-collapse: separate;
         white-space: nowrap;
+        table-layout: fixed;
     }
     .entity-table-section .entity-table-grid-wrap .datatable-table > thead {
         background-color: var(--bs-light, #f8f9fa) !important;
@@ -155,8 +157,9 @@
     .entity-table-section { width: fit-content; max-width: 100%; min-width: min(320px, 100%); margin-bottom: 0; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; padding: 1rem; background: var(--bs-body-bg, #fff); display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
     .entity-table-section .entity-table-toolbar { margin-bottom: 12px; }
     .entity-table-section .gridTopRowInSection { margin-bottom: 12px; }
-    .entity-table-section .searchFilterRowInSection { margin-bottom: 12px; }
-    .entity-table-section .searchFilterRowInSection { position: relative; overflow: visible; }
+    .entity-table-section .searchFilterRowInSection { margin-bottom: 12px; position: relative; overflow: visible; }
+    .entity-table-section .gridTopRowInSection.table-title-search-row { flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+    .entity-table-section .gridTopRowInSection .tableTitleBlockInSection { min-width: 0; }
     .entity-table-section .filterDropdownInSection { position: absolute; left: 0; top: calc(100% + 6px); width: min(380px, 96vw); display: none; z-index: 1070; }
     .entity-table-section .filterDropdownInSection.open { display: block; }
     .entity-table-section .filterDropdownCardInSection { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; background: var(--bs-body-bg, #fff); box-shadow: 0 10px 24px rgba(0,0,0,.12); padding: 12px; max-height: 65vh; overflow: auto; }
@@ -191,7 +194,7 @@
     #modalFilter .filterPanelInSection .filter-multiselect-dropdown .filter-multiselect-search { font-size: 0.85rem; }
     .entity-table-section .entity-table-grid-wrap { flex: 1 1 auto; min-height: 0; border-radius: 6px;}
     .entity-table-section .entity-table-section-table { width: 100%; margin-bottom: 0; }
-    .entity-table-section .entity-table-cell-link { color: var(--bs-primary, #6f6af8); text-decoration: none; word-break: break-all; }
+    .entity-table-section .entity-table-cell-link { color: var(--bs-primary, #6f6af8); text-decoration: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: middle; }
     .entity-table-section .entity-table-cell-link:hover { text-decoration: underline; }
     .entity-table-section .entity-table-grid-wrap td.entity-table-cell-numeric { text-align: right; }
     .entity-table-section .emptyBlockInSection { cursor: pointer; padding: 1.5rem; border: 2px dashed var(--bs-border-color); border-radius: 8px; transition: border-color .15s, background-color .15s; }
@@ -256,13 +259,12 @@
                         <div class="spinner-border text-primary" role="status"></div>
                         <p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p>
                     </div>
-                    <div class="d-flex align-items-start mb-3 gridTopRowInSection d-none">
+                    <div class="d-flex align-items-center gap-2 flex-wrap gridTopRowInSection searchFilterRowInSection table-title-search-row d-none mb-2">
                         <div class="tableTitleBlockInSection d-none flex-grow-1">
-                            <h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4>
+                            <h4 class="mb-0 tableTitleTextInSection" data-placeholder="Название таблицы"></h4>
                         </div>
-                    </div>
-                    <div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2">
                         <div class="input-group input-group-sm searchFilterInputWrap">
+                            <span class="input-group-text"><i class="iconoir-search"></i></span>
                             <input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице">
                         </div>
                         <button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска">
@@ -1507,8 +1509,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="table-mode-admin ms-2" style="display:none!important"><select class="form-select form-select-sm tableModeSelect" title="Режим таблицы" data-table-index="' + tableIndex + '" style="width:auto;min-width:120px">' +
             '<option value="edit">Редактирование</option><option value="read_only">Только просмотр</option><option value="hide">Скрыть</option></select></div></div>' +
             '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +
-            '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4></div></div>' +
-            '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button><div class="filterDropdownInSection"><div class="filterDropdownCardInSection filterPanelInSection"><div class="filterDropdownRowsContainerInSection"></div><a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a><div class="d-flex justify-content-end gap-2 mt-3"><button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button><button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button></div></div></div></div>' +
+            '<div class="d-flex align-items-center gap-2 flex-wrap gridTopRowInSection searchFilterRowInSection table-title-search-row d-none mb-2"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-0 tableTitleTextInSection" data-placeholder="Название таблицы"></h4></div><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button><div class="filterDropdownInSection"><div class="filterDropdownCardInSection filterPanelInSection"><div class="filterDropdownRowsContainerInSection"></div><a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a><div class="d-flex justify-content-end gap-2 mt-3"><button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button><button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button></div></div></div></div>' +
             '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="' + tableCls + '">' +
             (hasCaption ? captionHtml : '') + '<thead class="' + theadCls + '"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
             '<div class="entity-table-loading emptyBlockInSection" role="button" tabindex="0" title="Нажмите, чтобы выбрать сущности и поля"><p class="text-muted mb-0">Нажмите, чтобы выбрать сущности и поля</p></div>' +
@@ -2084,10 +2085,6 @@ document.addEventListener('DOMContentLoaded', function() {
         var columnKey = th.getAttribute('data-column-key');
         var st = tableIndex != null ? tableStates[tableIndex] : null;
         var explicitWidth = st && st.columnWidths && columnKey != null ? st.columnWidths[columnKey] : null;
-        if (!explicitWidth || explicitWidth < MIN_CONTENT_SAFE_WIDTH) {
-            span.textContent = short;
-            return;
-        }
         span.textContent = full;
         if (th.scrollWidth > th.clientWidth) span.textContent = short;
     }
@@ -3080,7 +3077,8 @@ document.addEventListener('DOMContentLoaded', function() {
             var sortIcon = '';
             if (st.sortKey === c.key) sortIcon = (st.sortDir === 'asc') ? '&#9650;' : (st.sortDir === 'desc' ? '&#9660;' : '');
             var w = st.columnWidths[c.key];
-            var style = (w && w >= MIN_CONTENT_SAFE_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
+            /* Apply saved width even if smaller than content so user can narrow columns; content truncates with ellipsis. */
+            var style = (w != null && w >= MIN_COL_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
             var isDateColumn = isLikelyDateColumn(st, c);
             var showTime = isTimeVisibleForColumn(st, c.key);
             var timeToggle = isDateColumn
