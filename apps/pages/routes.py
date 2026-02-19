@@ -528,90 +528,35 @@ def entity_table_meta_data():
 
 @blueprint.route('/api/entity-table/config', methods=['GET', 'POST'])
 def entity_table_config():
-    """GET: конфиг по page_slug. POST: сохранить конфиг. Сохранение в БД проекта (SQLite в apps/db.sqlite3)."""
-    from apps.models import EntityTableConfig
-    from apps import db
+    """Прокси конфига entity-table в CRM backend (7070)."""
+    upstream_url = f"{_crm_base_url()}/api/entity-table/config"
+    if requests is None:
+        return make_response(jsonify({"ok": False, "error": "python-requests not available"}), 500)
 
     try:
-        db.create_all()
-        _ensure_entity_table_config_columns()
-    except Exception as e:
-        current_app.logger.warning("entity_table_config create_all: %s", e)
+        if request.method == 'GET':
+            params = dict(request.args or {})
+            resp = requests.get(upstream_url, params=params, timeout=30)
+        else:
+            payload = request.get_json(silent=True) or {}
+            headers = {'Content-Type': 'application/json'}
+            # Forward auth hints used by upstream guest guard.
+            x_user_role = request.headers.get('x-user-role')
+            x_guest = request.headers.get('x-guest')
+            if x_user_role:
+                headers['x-user-role'] = x_user_role
+            if x_guest:
+                headers['x-guest'] = x_guest
+            resp = requests.post(upstream_url, json=payload, headers=headers, timeout=30)
 
-    if request.method == 'GET':
         try:
-            page_slug = (request.args.get('page_slug') or 'entity-table').strip()
-            page_slug = unicodedata.normalize('NFC', page_slug)
-            read_only_slugs = _read_only_pages_list()
-            page_mode = _get_page_mode(page_slug)
-            table_modes = _get_table_modes(page_slug)
-            read_only = page_slug in read_only_slugs or page_mode == "read_only"
-
-            def _resp(ok=True, tables=None, table_title="", table_description="", entities=None, fields=None):
-                out = {
-                    "ok": ok, "tables": tables or [], "table_title": table_title or "", "table_description": table_description or "",
-                    "entities": entities or [], "fields": fields or [], "read_only": read_only,
-                    "page_mode": page_mode, "table_modes": table_modes,
-                }
-                return jsonify(out)
-
-            rec = EntityTableConfig.query.filter(
-                db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
-            ).first()
-            if not rec:
-                return _resp()
-            tables = rec.get_tables()
-            if isinstance(tables, list) and len(tables) > 0:
-                return jsonify({"ok": True, "tables": tables, "read_only": read_only, "page_mode": page_mode, "table_modes": table_modes})
-            entities = rec.get_entities()
-            fields = rec.get_fields()
-            if not isinstance(entities, list):
-                entities = []
-            if not isinstance(fields, list):
-                fields = []
-            return _resp(
-                table_title=rec.table_title or "",
-                table_description=rec.table_description or "",
-                entities=entities,
-                fields=fields,
-            )
-        except Exception as e:
-            current_app.logger.exception("Entity table config GET: %s", e)
-            return jsonify({"ok": True, "tables": [], "table_title": "", "table_description": "", "entities": [], "fields": [], "read_only": False, "page_mode": "edit", "table_modes": {}})
-
-    data = request.get_json(silent=True) or {}
-    page_slug = (data.get('page_slug') or 'entity-table').strip()
-    tables = data.get('tables')
-    if isinstance(tables, list):
-        rec = EntityTableConfig.query.filter(
-            db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
-        ).first()
-        if not rec:
-            rec = EntityTableConfig(page_slug=page_slug)
-            db.session.add(rec)
-        rec.set_tables(tables)
-    else:
-        table_title = (data.get('table_title') or '').strip()
-        table_description = (data.get('table_description') or '').strip()
-        entities = data.get('entities', [])
-        fields = data.get('fields', [])
-        rec = EntityTableConfig.query.filter(
-            db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
-        ).first()
-        if not rec:
-            rec = EntityTableConfig(page_slug=page_slug)
-            db.session.add(rec)
-        rec.table_title = table_title
-        rec.table_description = table_description
-        rec.set_entities(entities)
-        rec.set_fields(fields)
-    try:
-        db.session.commit()
-        return jsonify({"ok": True})
+            body = resp.json()
+            return make_response(jsonify(body), resp.status_code)
+        except Exception:
+            return make_response(resp.text, resp.status_code)
     except Exception as e:
-        db.session.rollback()
-        current_app.logger.exception("Entity table config save: %s", e)
-        return make_response(jsonify({"ok": False, "error": str(e)}), 500)
+        current_app.logger.exception("Entity table config proxy: %s", e)
+        return make_response(jsonify({"ok": False, "error": str(e)}), 502)
 
 
 @blueprint.route('/api/entity-table/component-modes', methods=['GET', 'POST'])

@@ -419,7 +419,25 @@ document.addEventListener('DOMContentLoaded', function() {
     if (PAGE_SLUG === '__PAGE_SLUG__' || !PAGE_SLUG) {
         PAGE_SLUG = 'entity-table';
     }
-    const API_BASE = (window.ENTITY_TABLE_API_BASE || 'http://194.33.40.197:7070').replace(/\/+$/, '');
+    // Keep entity-table API same-origin by default to avoid browser CORS
+    // when UI and API run on different ports (e.g. 7474 -> 7070).
+    // Optional override is allowed only for same-origin URLs/prefixes.
+    const API_BASE = (function() {
+        var raw = (window.ENTITY_TABLE_API_BASE || '').trim();
+        if (!raw) return '';
+        try {
+            var u = new URL(raw, window.location.origin);
+            if (u.origin !== window.location.origin) {
+                if (typeof console !== 'undefined' && console.warn) {
+                    console.warn('[entity-table] Cross-origin API base is blocked by CORS in browser, falling back to same-origin.');
+                }
+                return '';
+            }
+            return (u.origin + u.pathname).replace(/\/+$/, '');
+        } catch (e) {
+            return '';
+        }
+    })();
     const API = {
         processesDeals: API_BASE + '/api/entity-table/processes-deals/',
         dealCategories: API_BASE + '/api/entity-table/deal-categories/',
