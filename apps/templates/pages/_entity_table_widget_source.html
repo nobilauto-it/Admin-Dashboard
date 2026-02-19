@@ -150,8 +150,9 @@
     .entity-table-section .entity-table-grid-wrap table.table-contextual-rows tbody tr:nth-child(6n+4) { background-color: transparent; }
     .entity-table-section .entity-table-grid-wrap table.table-contextual-rows tbody tr:nth-child(6n+5) { background-color: rgba(var(--bs-success-rgb), 0.1); }
     .entity-table-grid-wrap th .entity-table-col-resize:hover { background: rgba(var(--bs-primary-rgb), 0.2); }
-    #entityTablesContainer { display: grid; gap: 1rem; align-items: start; }
-    .entity-table-section { min-width: 0; margin-bottom: 0; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; padding: 1rem; background: var(--bs-body-bg, #fff); display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    /* Layout: sections take only the width they need; next table/widget can sit beside if room (like Dastone row/col cards). */
+    #entityTablesContainer { display: flex; flex-wrap: wrap; gap: 1rem; align-items: start; }
+    .entity-table-section { width: fit-content; max-width: 100%; min-width: min(320px, 100%); margin-bottom: 0; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; padding: 1rem; background: var(--bs-body-bg, #fff); display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
     .entity-table-section .entity-table-toolbar { margin-bottom: 12px; }
     .entity-table-section .gridTopRowInSection { margin-bottom: 12px; }
     .entity-table-section .searchFilterRowInSection { margin-bottom: 12px; }
@@ -1532,8 +1533,6 @@ document.addEventListener('DOMContentLoaded', function() {
             var modeSel = section.querySelector('.tableModeSelect');
             if (modeSel) modeSel.setAttribute('data-table-index', String(idx));
         });
-        var n = tableStates.length;
-        entityTablesContainer.style.gridTemplateColumns = n === 1 ? '1fr' : 'repeat(' + n + ', 1fr)';
         bindSectionListeners();
         renderComponentModesAdmin();
     }
