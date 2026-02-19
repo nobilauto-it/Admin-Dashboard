@@ -2351,44 +2351,23 @@ document.addEventListener('DOMContentLoaded', function() {
             return fetchPage(obj.ent, obj.titles, obj.key, 0, FIRST_BATCH_SIZE, obj.filterFieldMaps);
         });
         Promise.all(firstBatchPromises).then(function(firstResults) {
-            if (firstResults.length === 1) {
-                firstResults[0].rows.forEach(function(row) { st.fullData.push(row); });
-                var obj = columnsByKey[0];
-                if (obj.ent.type === 'deal' && obj.ent.category_id != null) {
-                    var funnelKey = obj.key + '::' + FUNNEL_FIELD;
-                    var funnelTitle = String(obj.ent.title || '').trim();
-                    var funnelCatId = String(obj.ent.category_id).trim();
-                    st.fullData = st.fullData.filter(function(row) {
-                        var v = row[funnelKey];
-                        if (v == null || v === '') return false;
-                        var s = String(v).trim();
-                        return s === funnelTitle || s === funnelCatId;
-                    });
-                }
-            } else if (firstResults.length > 1) {
-                var primaryRows = firstResults[0].rows;
-                var primaryObj = columnsByKey[0];
-                primaryRows.forEach(function(baseRow, idx) {
-                    var merged = Object.assign({}, baseRow);
-                    for (var j = 1; j < firstResults.length; j++) {
-                        if (firstResults[j].rows && firstResults[j].rows[idx]) {
-                            Object.assign(merged, firstResults[j].rows[idx]);
-                        }
-                    }
-                    st.fullData.push(merged);
+            function applyDealFunnelFilter(rows, obj) {
+                if (!obj || !obj.ent || obj.ent.type !== 'deal' || obj.ent.category_id == null) return rows || [];
+                var funnelKey = obj.key + '::' + FUNNEL_FIELD;
+                var funnelTitle = String(obj.ent.title || '').trim();
+                var funnelCatId = String(obj.ent.category_id).trim();
+                return (rows || []).filter(function(row) {
+                    var v = row[funnelKey];
+                    if (v == null || v === '') return false;
+                    var s = String(v).trim();
+                    return s === funnelTitle || s === funnelCatId;
                 });
-                if (primaryObj.ent.type === 'deal' && primaryObj.ent.category_id != null) {
-                    var funnelKeyM = primaryObj.key + '::' + FUNNEL_FIELD;
-                    var funnelTitleM = String(primaryObj.ent.title || '').trim();
-                    var funnelCatIdM = String(primaryObj.ent.category_id).trim();
-                    st.fullData = st.fullData.filter(function(row) {
-                        var v = row[funnelKeyM];
-                        if (v == null || v === '') return false;
-                        var s = String(v).trim();
-                        return s === funnelTitleM || s === funnelCatIdM;
-                    });
-                }
             }
+            firstResults.forEach(function(res, idx) {
+                var obj = columnsByKey[idx];
+                var rows = applyDealFunnelFilter(res.rows, obj);
+                rows.forEach(function(row) { st.fullData.push(row); });
+            });
             showLoading(tableIndex, false);
             st.currentPage = 1;
             st.pageSize = parseInt(els.pageSizeSelect && els.pageSizeSelect.value ? els.pageSizeSelect.value : 25, 10) || 25;
@@ -2403,7 +2382,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             /* На дашборде (режим только просмотр) не догружаем все записи — только первая порция по настройке таблицы */
             var isDashboard = isReadOnly || isDashboardSlug();
-            if (!isDashboard && firstResults.length === 1) {
+            if (!isDashboard) {
                 columnsByKey.forEach(function(obj, idx) {
                     var res = firstResults[idx];
                     var total = res.total;
@@ -2432,29 +2411,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     fetchMore();
                 });
-            } else if (!isDashboard && firstResults.length > 1) {
-                var primaryTotal = firstResults[0].total;
-                function fetchMoreMerged() {
-                    var nextOffset = st.fullData.length;
-                    if (nextOffset >= primaryTotal) return;
-                    Promise.all(columnsByKey.map(function(obj, idx) {
-                        return fetchPage(obj.ent, obj.titles, obj.key, nextOffset, 10000, obj.filterFieldMaps);
-                    })).then(function(nextResults) {
-                        var primaryRows = nextResults[0].rows;
-                        if (!primaryRows.length) return;
-                        primaryRows.forEach(function(baseRow, i) {
-                            var merged = Object.assign({}, baseRow);
-                            for (var j = 1; j < nextResults.length; j++) {
-                                if (nextResults[j].rows && nextResults[j].rows[i]) Object.assign(merged, nextResults[j].rows[i]);
-                            }
-                            st.fullData.push(merged);
-                        });
-                        renderGrid(tableIndex);
-                        refreshFilterModalIfOpen(tableIndex);
-                        if (st.fullData.length < primaryTotal) fetchMoreMerged();
-                    }).catch(function() {});
-                }
-                fetchMoreMerged();
             }
         }).catch(function(err) {
             showLoading(tableIndex, false);
