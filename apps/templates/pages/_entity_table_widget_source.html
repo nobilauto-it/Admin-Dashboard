@@ -2238,10 +2238,28 @@ document.addEventListener('DOMContentLoaded', function() {
             var list = (data && data.data) ? data.data : [];
             var total = (data && data.total) != null ? data.total : 0;
             var out = [];
+            function resolveRowValue(row, title) {
+                if (!row) return '';
+                if (Object.prototype.hasOwnProperty.call(row, title)) return row[title];
+                var target = normalizeSearchText(title || '');
+                if (!target) return '';
+                var keys = Object.keys(row);
+                for (var i = 0; i < keys.length; i++) {
+                    var kk = keys[i];
+                    if (normalizeSearchText(kk) === target) return row[kk];
+                }
+                for (var j = 0; j < keys.length; j++) {
+                    var k2 = keys[j];
+                    var kn = normalizeSearchText(k2);
+                    if (!kn) continue;
+                    if (kn.indexOf(target) >= 0 || target.indexOf(kn) >= 0) return row[k2];
+                }
+                return '';
+            }
             list.forEach(function(row) {
                 var o = { _entityKey: key };
                 titles.forEach(function(t) {
-                    var val = row[t];
+                    var val = resolveRowValue(row, t);
                     if (val !== null && typeof val === 'object' && !Array.isArray(val)) val = JSON.stringify(val);
                     o[key + '::' + t] = val != null ? val : '';
                 });
@@ -2253,7 +2271,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     for (var i = 0; i < aliases.length; i++) {
                         var a = aliases[i];
                         if (!a) continue;
-                        var vv = row[a];
+                        var vv = resolveRowValue(row, a);
                         if (vv == null || vv === '') continue;
                         if (vv !== null && typeof vv === 'object' && !Array.isArray(vv)) vv = JSON.stringify(vv);
                         o[targetKey] = vv;
@@ -2300,6 +2318,27 @@ document.addEventListener('DOMContentLoaded', function() {
             var displayTitles = (sel && sel.human_titles) ? sel.human_titles : [];
             if (!displayTitles.length) return;
             var fetchTitles = displayTitles.slice();
+            var selectedFieldMaps = [];
+            var cache = fieldsCache[key];
+            displayTitles.forEach(function(title) {
+                var aliases = [];
+                if (cache && cache.fields && Array.isArray(cache.fields)) {
+                    cache.fields.forEach(function(meta) {
+                        if (!meta) return;
+                        var ht = String(meta.human_title || '').trim();
+                        if (!ht) return;
+                        if (normalizeSearchText(ht) !== normalizeSearchText(title)) return;
+                        var cn = String(meta.column_name || '').trim();
+                        var b24 = String(meta.b24_field || '').trim();
+                        if (cn && aliases.indexOf(cn) < 0) aliases.push(cn);
+                        if (b24 && aliases.indexOf(b24) < 0) aliases.push(b24);
+                    });
+                }
+                aliases.forEach(function(a) {
+                    if (a && fetchTitles.indexOf(a) < 0) fetchTitles.push(a);
+                });
+                if (aliases.length) selectedFieldMaps.push({ title: title, aliases: aliases });
+            });
             var extraFilterTitles = filterTitlesByEntityKey[key] || [];
             extraFilterTitles.forEach(function(t) {
                 if (fetchTitles.indexOf(t) < 0) fetchTitles.push(t);
@@ -2315,7 +2354,13 @@ document.addEventListener('DOMContentLoaded', function() {
             displayTitles.forEach(function(t) {
                 st.allColumns.push({ key: key + '::' + t, label: t, entityKey: key, entityTitle: ent.title || entityTitleForNested(ent) });
             });
-            columnsByKey.push({ ent: ent, titles: fetchTitles, key: key, displayTitles: displayTitles, filterFieldMaps: filterFieldMapsByEntityKey[key] || [] });
+            columnsByKey.push({
+                ent: ent,
+                titles: fetchTitles,
+                key: key,
+                displayTitles: displayTitles,
+                filterFieldMaps: (selectedFieldMaps || []).concat(filterFieldMapsByEntityKey[key] || [])
+            });
         });
         if (columnsByKey.length === 0) {
             showLoading(tableIndex, false);
