@@ -2302,6 +2302,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         var els = getSectionEls(tableIndex);
+        var previousAllColumns = Array.isArray(st.allColumns) ? st.allColumns.slice() : [];
         st.fullData = [];
         st.allColumns = [];
         showLoading(tableIndex, true, 'Загрузка данных...');
@@ -2331,8 +2332,8 @@ document.addEventListener('DOMContentLoaded', function() {
             var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
             var displayTitles = (sel && sel.human_titles) ? sel.human_titles.slice() : [];
             // Fallback: if selectedFields lost titles for an entity, restore from current columns for that entity
-            if (!displayTitles.length && st.allColumns && st.allColumns.length) {
-                st.allColumns.forEach(function(col) {
+            if (!displayTitles.length && previousAllColumns.length) {
+                previousAllColumns.forEach(function(col) {
                     if (!col || !col.key) return;
                     var k = String(col.key);
                     if (k.indexOf(key + '::') !== 0) return;
