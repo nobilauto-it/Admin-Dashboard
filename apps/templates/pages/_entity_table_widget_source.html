@@ -2363,11 +2363,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     return s === funnelTitle || s === funnelCatId;
                 });
             }
-            firstResults.forEach(function(res, idx) {
-                var obj = columnsByKey[idx];
-                var rows = applyDealFunnelFilter(res.rows, obj);
-                rows.forEach(function(row) { st.fullData.push(row); });
-            });
+            var mergedEntityState = null;
+            if (firstResults.length === 1) {
+                var onlyObj = columnsByKey[0];
+                var onlyRows = applyDealFunnelFilter(firstResults[0].rows, onlyObj);
+                onlyRows.forEach(function(row) { st.fullData.push(row); });
+            } else {
+                mergedEntityState = firstResults.map(function(res, idx) {
+                    var obj = columnsByKey[idx];
+                    return {
+                        obj: obj,
+                        rows: applyDealFunnelFilter(res.rows, obj),
+                        total: res.total || 0,
+                        offset: (res.rows && res.rows.length) ? res.rows.length : 0
+                    };
+                });
+                var initialMax = 0;
+                mergedEntityState.forEach(function(s) {
+                    if (s.rows.length > initialMax) initialMax = s.rows.length;
+                });
+                for (var r = 0; r < initialMax; r++) {
+                    var mergedRow = {};
+                    mergedEntityState.forEach(function(s) {
+                        if (s.rows[r]) Object.assign(mergedRow, s.rows[r]);
+                    });
+                    if (Object.keys(mergedRow).length) st.fullData.push(mergedRow);
+                }
+            }
             showLoading(tableIndex, false);
             st.currentPage = 1;
             st.pageSize = parseInt(els.pageSizeSelect && els.pageSizeSelect.value ? els.pageSizeSelect.value : 25, 10) || 25;
@@ -2382,7 +2404,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             /* На дашборде (режим только просмотр) не догружаем все записи — только первая порция по настройке таблицы */
             var isDashboard = isReadOnly || isDashboardSlug();
-            if (!isDashboard) {
+            if (!isDashboard && firstResults.length === 1) {
                 columnsByKey.forEach(function(obj, idx) {
                     var res = firstResults[idx];
                     var total = res.total;
@@ -2411,6 +2433,38 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     fetchMore();
                 });
+            } else if (!isDashboard && firstResults.length > 1 && mergedEntityState) {
+                function fetchMoreMergedByIndex() {
+                    var needsAny = false;
+                    var nextPromises = mergedEntityState.map(function(state) {
+                        if (state.offset >= state.total) return Promise.resolve(null);
+                        needsAny = true;
+                        return fetchPage(state.obj.ent, state.obj.titles, state.obj.key, state.offset, 10000, state.obj.filterFieldMaps)
+                            .then(function(nextRes) {
+                                state.offset += nextRes.rows.length;
+                                return applyDealFunnelFilter(nextRes.rows, state.obj);
+                            })
+                            .catch(function() { return []; });
+                    });
+                    if (!needsAny) return;
+                    Promise.all(nextPromises).then(function(chunks) {
+                        var maxLen = 0;
+                        chunks.forEach(function(rows) {
+                            if (rows && rows.length > maxLen) maxLen = rows.length;
+                        });
+                        for (var i = 0; i < maxLen; i++) {
+                            var merged = {};
+                            chunks.forEach(function(rows) {
+                                if (rows && rows[i]) Object.assign(merged, rows[i]);
+                            });
+                            if (Object.keys(merged).length) st.fullData.push(merged);
+                        }
+                        renderGrid(tableIndex);
+                        refreshFilterModalIfOpen(tableIndex);
+                        if (mergedEntityState.some(function(state) { return state.offset < state.total; })) fetchMoreMergedByIndex();
+                    });
+                }
+                fetchMoreMergedByIndex();
             }
         }).catch(function(err) {
             showLoading(tableIndex, false);
