@@ -724,7 +724,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 entities: t.selectedEntities || [],
                 fields: t.selectedFields || [],
                 show_time: (t.showTime === true),
-                date_time_display: (t.dateTimeDisplayByColumn && Object.keys(t.dateTimeDisplayByColumn).length) ? t.dateTimeDisplayByColumn : null
+                date_time_display: (t.dateTimeDisplayByColumn && Object.keys(t.dateTimeDisplayByColumn).length) ? t.dateTimeDisplayByColumn : null,
+                filter_fields: isGuestUser() ? null : serializeFilterFields(t.filterFields)
             };
         });
         if (!tablesPayload.some(function(t) { return t.entities && t.entities.length > 0 && t.fields && t.fields.length > 0; })) return;
@@ -916,11 +917,34 @@ document.addEventListener('DOMContentLoaded', function() {
                     sort_key: st.sortKey || null,
                     sort_dir: st.sortDir || null,
                     show_time: (st.showTime === true),
-                    date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null
+                    date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null,
+                    // Guest filter state must remain session-only after reload.
+                    filter_fields: isGuestUser() ? null : serializeFilterFields(st.filterFields)
                 };
             });
             localStorage.setItem(key, JSON.stringify({ tables: tables }));
         } catch (e) {}
+    }
+
+    function serializeFilterFields(list) {
+        if (!Array.isArray(list) || !list.length) return null;
+        return list.map(function(f) {
+            if (!f) return null;
+            var out = {
+                label: (f.label != null) ? String(f.label) : '',
+                key: (f.key != null) ? String(f.key) : '',
+                type: (f.type != null) ? String(f.type) : 'text',
+                sourceFieldType: (f.sourceFieldType != null) ? String(f.sourceFieldType) : '',
+                sourceB24Field: (f.sourceB24Field != null) ? String(f.sourceB24Field) : '',
+                sourceColumnName: (f.sourceColumnName != null) ? String(f.sourceColumnName) : ''
+            };
+            if (Array.isArray(f.selectedValues)) {
+                out.selectedValues = f.selectedValues.map(function(v) { return String(v); });
+            } else {
+                out.value = (f.value != null) ? String(f.value) : '';
+            }
+            return out;
+        }).filter(function(x) { return x && (x.key || x.label); });
     }
 
     function loadConfigFromStorage() {
@@ -955,6 +979,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
                     showTime: (t.show_time === true),
                     dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
+                    guestFilterInitialized: false,
                     filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                 };
             });
@@ -985,6 +1010,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
                 showTime: (data.show_time === true),
                 dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {},
+                guestFilterInitialized: false,
                 filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
             }];
             ensureSections();
@@ -1176,13 +1202,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!st) return;
         var cols = (st.allColumns || []).filter(function(c) { return c && c.key && !isSystemColumn(c.key); });
         if (!cols.length) return;
-        var firstGuestSync = !st.guestFilterInitialized;
         var existingByKey = {};
-        if (!firstGuestSync) {
-            (st.filterFields || []).forEach(function(f) {
-                if (f && f.key) existingByKey[f.key] = f;
-            });
-        }
+        (st.filterFields || []).forEach(function(f) {
+            if (f && f.key) existingByKey[f.key] = f;
+        });
         st.filterFields = cols.map(function(c) {
             var prev = existingByKey[c.key] || {};
             var probe = {
@@ -1506,6 +1529,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (tableStates[idx]) {
                     tableStates[idx].currentPage = 1;
                     loadData(idx);
+                    if (!isGuestUser()) {
+                        saveConfigToStorage();
+                        saveConfig();
+                        saveTemplateSnapshot(idx);
+                    }
                 }
                 closeFilterDropdown(idx);
             };
@@ -1534,6 +1562,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (filterModalTableIndex != null && tableStates[filterModalTableIndex]) {
                 tableStates[filterModalTableIndex].currentPage = 1;
                 loadData(filterModalTableIndex);
+                if (!isGuestUser()) {
+                    saveConfigToStorage();
+                    saveConfig();
+                    saveTemplateSnapshot(filterModalTableIndex);
+                }
             }
             modalFilter.hide();
         };
@@ -1627,7 +1660,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
                             sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
                             showTime: (t.show_time === true),
-                            dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {}
+                            dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
+                            guestFilterInitialized: false,
+                            filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                         };
                     });
                     ensureSections();
@@ -1662,7 +1697,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
                         sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
                         showTime: (data.show_time === true),
-                        dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {}
+                        dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {},
+                        guestFilterInitialized: false,
+                        filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                     }];
                     ensureSections();
                     applyTableModes(data.table_modes);
@@ -1740,7 +1777,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 sort_key: st.sortKey || null,
                 sort_dir: st.sortDir || null,
                 show_time: (st.showTime === true),
-                date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null
+                date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null,
+                filter_fields: isGuestUser() ? null : serializeFilterFields(st.filterFields)
             };
         });
         var payload = { page_slug: slug, tables: tables };
