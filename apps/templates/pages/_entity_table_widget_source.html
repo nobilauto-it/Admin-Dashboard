@@ -2280,7 +2280,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var k = cb.getAttribute('data-entitykey');
             var ht = cb.getAttribute('data-human-title');
             var nt = (cb.getAttribute('data-nested-type') || '').trim();
-            if (k && ht && byKey[k]) byKey[k].push(ht);
+            if (k && ht && byKey[k] && !nt) byKey[k].push(ht);
             if (k && nt && activeNestedByKey[k] && activeNestedByKey[k].indexOf(nt) < 0) activeNestedByKey[k].push(nt);
             if (k && nt && ht && nestedFieldsByKey[k]) {
                 if (!nestedFieldsByKey[k][nt]) nestedFieldsByKey[k][nt] = [];
@@ -2515,6 +2515,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // Keep them only under real smart entity to avoid duplicate columns.
             if (ent.type !== 'smart_process' && sel && sel.nestedFields && typeof sel.nestedFields === 'object') {
                 var mirroredNorm = {};
+                var explicitMainNorm = {};
+                (sel.human_titles || []).forEach(function(t) {
+                    explicitMainNorm[normalizeSearchText(t)] = true;
+                });
                 Object.keys(sel.nestedFields).forEach(function(typ) {
                     var mappedSmart = resolveSmartEntityByNestedType(typ, entitiesForLoad);
                     if (!mappedSmart) return;
@@ -2524,7 +2528,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 if (Object.keys(mirroredNorm).length) {
                     displayTitles = displayTitles.filter(function(t) {
-                        return !mirroredNorm[normalizeSearchText(t)];
+                        var n = normalizeSearchText(t);
+                        return !mirroredNorm[n] || !!explicitMainNorm[n];
                     });
                 }
             }
@@ -2779,6 +2784,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (sel && sel.nestedFields && typeof sel.nestedFields === 'object') {
                 Object.keys(sel.nestedFields).forEach(function(typ) {
                     (sel.nestedFields[typ] || []).forEach(function(t) {
+                        if (String(typ || '').indexOf('smart_process::') === 0) {
+                            var smartEnt = resolveSmartEntityByNestedType(typ, (st.selectedEntities || []).concat(st._expandedLoadEntities || []).concat(entitiesList || []));
+                            if (smartEnt) {
+                                var smartKey = entityKey(smartEnt);
+                                cols.push({ key: smartKey + '::' + t, label: t, entityKey: smartKey, entityTitle: smartEnt.title || entityTitleForNested(smartEnt) });
+                                return;
+                            }
+                        }
                         cols.push({ key: key + '::' + t, label: t, entityKey: key, entityTitle: ent.title || entityTitleForNested(ent) });
                     });
                 });
