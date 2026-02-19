@@ -2485,6 +2485,16 @@ document.addEventListener('DOMContentLoaded', function() {
             var key = entityKey(ent);
             var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
             var displayTitles = (sel && sel.human_titles) ? sel.human_titles.slice() : [];
+            // Keep non-smart nested fields under their base entity (deal/contact/lead/company).
+            // Smart nested fields are resolved to their own smart entity via nestedTitlesByEntity.
+            if (sel && sel.nestedFields && typeof sel.nestedFields === 'object') {
+                Object.keys(sel.nestedFields).forEach(function(typ) {
+                    if (String(typ || '').indexOf('smart_process::') === 0) return;
+                    (sel.nestedFields[typ] || []).forEach(function(t) {
+                        if (t && displayTitles.indexOf(t) < 0) displayTitles.push(t);
+                    });
+                });
+            }
             if (!displayTitles.length && nestedTitlesByEntity[key] && nestedTitlesByEntity[key].length) {
                 displayTitles = nestedTitlesByEntity[key].slice();
             }
