@@ -2460,12 +2460,26 @@ document.addEventListener('DOMContentLoaded', function() {
             displayTitles.forEach(function(title) {
                 var aliases = [];
                 var titleNorm = normalizeFieldLabel(title);
+                var titleSearch = normalizeSearchText(title);
                 if (cache && cache.fields && Array.isArray(cache.fields)) {
+                    var exactMetaMatches = [];
+                    var fuzzyMetaMatches = [];
                     cache.fields.forEach(function(meta) {
                         if (!meta) return;
                         var ht = String(meta.human_title || '').trim();
                         if (!ht) return;
-                        if (normalizeFieldLabel(ht) !== titleNorm) return;
+                        var htNorm = normalizeFieldLabel(ht);
+                        var htSearch = normalizeSearchText(ht);
+                        var exact = (htNorm === titleNorm);
+                        var fuzzy = (!exact) && (
+                            (htSearch && titleSearch && (htSearch.indexOf(titleSearch) >= 0 || titleSearch.indexOf(htSearch) >= 0)) ||
+                            (htNorm && titleNorm && (htNorm.indexOf(titleNorm) >= 0 || titleNorm.indexOf(htNorm) >= 0))
+                        );
+                        if (exact) exactMetaMatches.push(meta);
+                        else if (fuzzy) fuzzyMetaMatches.push(meta);
+                    });
+                    var candidateMetas = exactMetaMatches.length ? exactMetaMatches : fuzzyMetaMatches;
+                    candidateMetas.forEach(function(meta) {
                         var cn = String(meta.column_name || '').trim();
                         var b24 = String(meta.b24_field || '').trim();
                         if (cn && aliases.indexOf(cn) < 0) aliases.push(cn);
