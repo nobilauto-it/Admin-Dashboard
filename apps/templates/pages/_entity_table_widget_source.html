@@ -2027,7 +2027,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     fieldsList.appendChild(div);
                 });
 
-                var activeNestedForLabels = activeNested.slice();
+                var activeNestedForLabels = (Array.isArray(activeNested) ? activeNested : []).slice();
                 Object.keys(nestedByGroup).forEach(function(typ) {
                     var group = nestedByGroup[typ];
                     var hasSelectedLabel = activeNestedForLabels.indexOf(typ) >= 0;
@@ -2070,18 +2070,28 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function filterFieldsBySearch() {
-        var q = (document.getElementById('fieldsSearchInput') && document.getElementById('fieldsSearchInput').value || '').trim().toLowerCase();
+        var modalTableIndex = (fieldsModalForFilterTableIndex != null) ? fieldsModalForFilterTableIndex : currentTableIndex;
+        var st = tableStates[modalTableIndex];
+        var allowedEntityKeys = {};
+        if (st && Array.isArray(st.selectedEntities)) {
+            st.selectedEntities.forEach(function(ent) {
+                allowedEntityKeys[entityKey(ent)] = true;
+            });
+        }
+        var q = normalizeSearchText((document.getElementById('fieldsSearchInput') && document.getElementById('fieldsSearchInput').value || ''));
         var entityMeta = {};
         fieldsList.querySelectorAll('.field-row[data-entity-header="1"]').forEach(function(row) {
             var ek = row.getAttribute('data-entitykey') || '';
-            var text = row.getAttribute('data-search-text') || '';
+            if (ek && !allowedEntityKeys[ek]) { row.style.display = 'none'; return; }
+            var text = normalizeSearchText(row.getAttribute('data-search-text') || row.textContent || '');
             var forceShow = !!q && text.indexOf(q) >= 0;
             entityMeta[ek] = { header: row, forceShow: forceShow, visibleCount: 0 };
             row.style.display = 'none';
         });
         fieldsList.querySelectorAll('.field-row:not([data-entity-header="1"])').forEach(function(row) {
-            var text = row.getAttribute('data-search-text') || '';
+            var text = normalizeSearchText(row.getAttribute('data-search-text') || row.textContent || '');
             var entityKeyVal = row.getAttribute('data-entitykey') || '';
+            if (entityKeyVal && !allowedEntityKeys[entityKeyVal]) { row.style.display = 'none'; return; }
             var forceShowByEntity = !!(entityMeta[entityKeyVal] && entityMeta[entityKeyVal].forceShow);
             var passesSearch = forceShowByEntity || !q || text.indexOf(q) >= 0;
             var nestedType = row.getAttribute('data-nested-type');
