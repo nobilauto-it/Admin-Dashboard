@@ -528,7 +528,54 @@ def entity_table_meta_data():
 
 @blueprint.route('/api/entity-table/config', methods=['GET', 'POST'])
 def entity_table_config():
-    """Прокси конфига entity-table в CRM backend (7070)."""
+    """
+    Config for entity tables. For dash-* pages use local EntityTableConfig (same as save-dashboard).
+    For other slugs proxy to CRM backend (7070). Local storage keeps full JSON including table_style.
+    """
+    from apps.models import EntityTableConfig
+    from apps import db
+
+    if request.method == 'GET':
+        page_slug = (request.args.get('page_slug') or '').strip()
+    else:
+        payload = request.get_json(silent=True) or {}
+        page_slug = (payload.get('page_slug') or '').strip()
+    is_dashboard = page_slug.lower().startswith('dash-')
+
+    if is_dashboard:
+        try:
+            if request.method == 'GET':
+                rec = EntityTableConfig.query.filter(
+                    db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
+                ).first()
+                tables = rec.get_tables() if rec else []
+                return jsonify({
+                    "ok": True,
+                    "tables": tables,
+                })
+            # POST
+            payload = request.get_json(silent=True) or {}
+            tables = payload.get('tables')
+            if not isinstance(tables, list):
+                tables = []
+            rec = EntityTableConfig.query.filter(
+                db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
+            ).first()
+            if not rec:
+                rec = EntityTableConfig(page_slug=page_slug)
+                db.session.add(rec)
+            rec.set_tables(tables)
+            if tables:
+                first = tables[0]
+                rec.table_title = (first.get('table_title') or '').strip() or rec.table_title or ''
+                rec.table_description = (first.get('table_description') or '').strip() or (rec.table_description or '')
+            db.session.commit()
+            return jsonify({"ok": True})
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.exception("Entity table config (local dash): %s", e)
+            return make_response(jsonify({"ok": False, "error": str(e)}), 500)
+
     upstream_url = f"{_crm_base_url()}/api/entity-table/config"
     if requests is None:
         return make_response(jsonify({"ok": False, "error": "python-requests not available"}), 500)
@@ -540,7 +587,6 @@ def entity_table_config():
         else:
             payload = request.get_json(silent=True) or {}
             headers = {'Content-Type': 'application/json'}
-            # Forward auth hints used by upstream guest guard.
             x_user_role = request.headers.get('x-user-role')
             x_guest = request.headers.get('x-guest')
             if x_user_role:
