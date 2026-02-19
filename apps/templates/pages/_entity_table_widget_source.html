@@ -2086,7 +2086,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var passesSearch = forceShowByEntity || !q || text.indexOf(q) >= 0;
             var nestedType = row.getAttribute('data-nested-type');
             var nestedVisible = true;
-            if (nestedType && entityKeyVal) {
+            if (!q && nestedType && entityKeyVal) {
                 var safeId = (entityKeyVal + '_' + nestedType).replace(/[^a-zA-Z0-9_]/g, '_');
                 var toggleEl = document.getElementById('nested_cb_' + safeId);
                 nestedVisible = toggleEl && (toggleEl.checked === true || toggleEl.getAttribute('data-active') === 'true');
