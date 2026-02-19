@@ -2283,9 +2283,24 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function loadData(tableIndex) {
+    function loadData(tableIndex, skipMetaWarmup) {
         var st = tableStates[tableIndex];
         if (!st || !st.selectedEntities.length) return;
+        if (!skipMetaWarmup) {
+            var missingMetaEntities = st.selectedEntities.filter(function(ent) {
+                return !fieldsCache[entityKey(ent)];
+            });
+            if (missingMetaEntities.length) {
+                Promise.all(missingMetaEntities.map(function(ent) {
+                    return loadFieldsForEntity(ent).catch(function() { return { fields: [], nested: [] }; });
+                })).then(function() {
+                    loadData(tableIndex, true);
+                }).catch(function() {
+                    loadData(tableIndex, true);
+                });
+                return;
+            }
+        }
         var els = getSectionEls(tableIndex);
         st.fullData = [];
         st.allColumns = [];
@@ -2383,9 +2398,10 @@ document.addEventListener('DOMContentLoaded', function() {
             var ln = normalizeFieldLabel(c.label || '');
             labelCount[ln] = (labelCount[ln] || 0) + 1;
         });
+        var multiEntityMode = st.selectedEntities && st.selectedEntities.length > 1;
         st.allColumns.forEach(function(c) {
             var ln = normalizeFieldLabel(c.label || '');
-            if (labelCount[ln] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
+            if (multiEntityMode || labelCount[ln] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
         });
         st.allColumns = applyColumnOrder(st.allColumns, getColumnOrderForTable(tableIndex));
         if (!st.columnWidths || !Object.keys(st.columnWidths).length) st.columnWidths = loadColumnWidths(tableIndex);
@@ -2545,9 +2561,10 @@ document.addEventListener('DOMContentLoaded', function() {
             var ln = normalizeFieldLabel(c.label || '');
             labelCount[ln] = (labelCount[ln] || 0) + 1;
         });
+        var multiEntityMode = st.selectedEntities && st.selectedEntities.length > 1;
         cols.forEach(function(c) {
             var ln = normalizeFieldLabel(c.label || '');
-            if (labelCount[ln] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
+            if (multiEntityMode || labelCount[ln] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
         });
         st.allColumns = applyColumnOrder(cols, getColumnOrderForTable(tableIndex));
     }
