@@ -6,26 +6,6 @@
     body.startbar-guest .startbar { display: none !important; }
     body.startbar-guest .topbar { width: 100% !important; }
     body.startbar-guest .page-wrapper .page-content { margin-left: 0 !important; }
-    @media (max-width: 1199.98px) {
-        .startbar {
-            transform: translateX(-100%);
-            transition: transform 0.2s ease;
-            z-index: 1062;
-        }
-        .startbar.startbar-open {
-            transform: translateX(0);
-        }
-        .startbar-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.4);
-            z-index: 1061;
-        }
-        .startbar-overlay.active {
-            display: block;
-        }
-    }
     </style>
     <!--start brand-->
     <div class="brand">
@@ -55,7 +35,7 @@
                         <span>Navigation</span>
                     </li>
                     <li class="menu-label mt-2 startbar-auth-only" id="createDashboardsLabel">
-                        <span>Create Dashboards</span>
+                        <span>Create Dashboards 2</span>
                     </li>
                     <li class="nav-item d-none startbar-auth-only" id="customPagesPlaceholder" aria-hidden="true">
                         <a class="nav-link text-muted" href="javascript:void(0);">
@@ -739,34 +719,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     loadPages();
     window.addEventListener('pages-updated', () => loadPages());
-});
-
-// Кнопка меню: показ/скрытие startbar
-document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('togglemenu');
-    const startbar = document.querySelector('.startbar');
-    const overlay = document.querySelector('.startbar-overlay');
-    const close = () => {
-        if (startbar) startbar.classList.remove('startbar-open');
-        if (overlay) overlay.classList.remove('active');
-        document.body.classList.remove('startbar-open');
-    };
-    const toggle = () => {
-        if (!startbar) return;
-        const isOpen = startbar.classList.toggle('startbar-open');
-        if (overlay) overlay.classList.toggle('active', isOpen);
-        document.body.classList.toggle('startbar-open', isOpen);
-    };
-    if (btn) {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggle();
-        });
-    }
-    if (overlay) {
-        overlay.addEventListener('click', () => close());
-    }
 });
 </script>
 <div class="startbar-overlay d-print-none"></div>
