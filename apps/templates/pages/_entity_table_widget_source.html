@@ -2459,19 +2459,25 @@ document.addEventListener('DOMContentLoaded', function() {
             var cache = fieldsCache[key];
             displayTitles.forEach(function(title) {
                 var aliases = [];
+                var titleNorm = normalizeFieldLabel(title);
                 if (cache && cache.fields && Array.isArray(cache.fields)) {
                     cache.fields.forEach(function(meta) {
                         if (!meta) return;
                         var ht = String(meta.human_title || '').trim();
                         if (!ht) return;
-                        if (normalizeSearchText(ht) !== normalizeSearchText(title)) return;
+                        if (normalizeFieldLabel(ht) !== titleNorm) return;
                         var cn = String(meta.column_name || '').trim();
                         var b24 = String(meta.b24_field || '').trim();
                         if (cn && aliases.indexOf(cn) < 0) aliases.push(cn);
                         if (b24 && aliases.indexOf(b24) < 0) aliases.push(b24);
                     });
                 }
-                if (aliases.length) selectedFieldMaps.push({ title: title, aliases: aliases });
+                if (aliases.length) {
+                    aliases.forEach(function(a) {
+                        if (a && fetchTitles.indexOf(a) < 0) fetchTitles.push(a);
+                    });
+                    selectedFieldMaps.push({ title: title, aliases: aliases });
+                }
             });
             var extraFilterTitles = filterTitlesByEntityKey[key] || [];
             extraFilterTitles.forEach(function(t) {
