@@ -792,7 +792,7 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.setItem(getColumnOrderStorageKey(), JSON.stringify(obj));
         } catch (e) {}
         // Persist for all browsers/sessions (admin scope).
-        saveConfig();
+        saveConfig({ force: true });
     }
 
     function loadColumnOrder(tableIndex) {
@@ -912,7 +912,7 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.setItem(getColumnWidthStorageKey(), JSON.stringify(obj));
         } catch (e) {}
         // Persist for all browsers/sessions (admin scope).
-        saveConfig();
+        saveConfig({ force: true });
     }
 
     function loadColumnWidths(tableIndex) {
@@ -929,8 +929,8 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             var key = STORAGE_KEY_PREFIX + getPageSlug();
             var tables = tableStates.map(function(st, i) {
-                var keys = getColumnKeysFromSection(i);
-                if (!keys.length && st.allColumns && st.allColumns.length) keys = st.allColumns.map(function(c) { return c.key; });
+                var keys = (st.allColumns && st.allColumns.length) ? st.allColumns.map(function(c) { return c.key; }) : [];
+                if (!keys.length) keys = getColumnKeysFromSection(i);
                 return {
                     table_title: st.tableTitle,
                     table_description: st.tableDescription,
@@ -1803,8 +1803,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isGuestUser() && !opts.force) return Promise.resolve();
         var slug = getPageSlug();
         var tables = tableStates.map(function(st, i) {
-            var keys = getColumnKeysFromSection(i);
-            if (!keys.length && st.allColumns && st.allColumns.length) keys = st.allColumns.map(function(c) { return c.key; });
+            var keys = (st.allColumns && st.allColumns.length) ? st.allColumns.map(function(c) { return c.key; }) : [];
+            if (!keys.length) keys = getColumnKeysFromSection(i);
             return {
                 table_title: st.tableTitle,
                 table_description: st.tableDescription,
@@ -3128,7 +3128,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 st.currentPage = 1;
                 saveConfigToStorage();
-                saveConfig();
+                saveConfig({ force: true });
                 renderGrid(tableIndex);
             };
         });
@@ -3143,7 +3143,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!st.dateTimeDisplayByColumn || typeof st.dateTimeDisplayByColumn !== 'object') st.dateTimeDisplayByColumn = {};
                 st.dateTimeDisplayByColumn[key] = !isTimeVisibleForColumn(st, key);
                 saveConfigToStorage();
-                saveConfig();
+                saveConfig({ force: true });
                 renderGrid(tableIndex);
             };
         });
