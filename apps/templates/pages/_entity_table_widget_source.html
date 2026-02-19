@@ -243,9 +243,6 @@
                         <option value="hide">Скрыть</option>
                     </select>
                 </div>
-                <button type="button" class="btn btn-sm btn-soft-primary" id="btnAddWidget" title="Добавить таблицу или карточку на эту страницу" aria-label="Добавить">
-                    <i class="iconoir-plus"></i>
-                </button>
             </div>
             <div id="entityTablesContainer">
                 <div class="entity-table-section" data-table-index="0">
@@ -299,7 +296,7 @@
                         </table>
                     </div>
                     <div class="entity-table-loading emptyBlockInSection">
-                        <p class="text-muted mb-0">Выберите сущности или шаблон (кнопка «+»).</p>
+                        <p class="text-muted mb-0">Выберите сущности или шаблон.</p>
                     </div>
                     <div class="datatable-bottom paginationBlockInSection d-none">
                         <div class="pagination-left-in-section d-flex align-items-center flex-wrap gap-2">
@@ -602,8 +599,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 toolbar.style.display = '';
             }
         }
-        var btnAddWidget = document.getElementById('btnAddWidget');
-        if (btnAddWidget) { if (hide) { btnAddWidget.style.setProperty('display', 'none', 'important'); btnAddWidget.classList.add(DASHBOARD_HIDE_CLASS); } else { btnAddWidget.classList.remove(DASHBOARD_HIDE_CLASS); btnAddWidget.style.display = ''; } }
+        var topbarWrap = document.getElementById('topbarBtnAddEntityWrap');
+        if (topbarWrap) { if (hide) { topbarWrap.style.setProperty('display', 'none', 'important'); topbarWrap.classList.add(DASHBOARD_HIDE_CLASS); } else { topbarWrap.classList.remove(DASHBOARD_HIDE_CLASS); topbarWrap.style.display = ''; } }
         if (entityTablesContainer) {
             entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection, .btnDeleteTableInSection').forEach(function(el) {
                 if (hide) { el.style.setProperty('display', 'none', 'important'); el.classList.add(DASHBOARD_HIDE_CLASS); } else { el.classList.remove(DASHBOARD_HIDE_CLASS); el.style.display = ''; }
@@ -1700,7 +1697,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="d-flex align-items-center gap-2 flex-wrap gridTopRowInSection searchFilterRowInSection table-title-search-row d-none mb-2"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-0 tableTitleTextInSection" data-placeholder="Название таблицы"></h4></div><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button><div class="filterDropdownInSection"><div class="filterDropdownCardInSection filterPanelInSection"><div class="filterDropdownRowsContainerInSection"></div><a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a><div class="d-flex justify-content-end gap-2 mt-3"><button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button><button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button></div></div></div></div>' +
             '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="' + tableCls + '">' +
             (hasCaption ? captionHtml : '') + '<thead class="' + theadCls + '"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
-            '<div class="entity-table-loading emptyBlockInSection" role="button" tabindex="0" title="Нажмите, чтобы выбрать сущности и поля"><p class="text-muted mb-0">Нажмите, чтобы выбрать сущности и поля</p></div>' +
+            '<div class="entity-table-loading emptyBlockInSection" role="button" tabindex="0" title="Выберите сущности и поля"><p class="text-muted mb-0">Выберите сущности или шаблон.</p></div>' +
             '<div class="datatable-bottom paginationBlockInSection d-none"><div class="pagination-left-in-section d-flex align-items-center flex-wrap gap-2"><span class="datatable-info small text-muted paginationInfoInSection">Показано 0 — 0 из 0 записей</span><span class="small text-muted">На странице:</span><select class="datatable-input pageSizeInSection" style="width:70px;"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></div><nav class="datatable-pagination paginationNavInSection" aria-label="Пагинация таблицы"></nav></div></div>';
     }
 
@@ -3714,13 +3711,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     (function setupAddTableOrCardChoice() {
         var choiceModalEl = document.getElementById('modalAddTableOrCard');
-        var btnAddWidget = document.getElementById('btnAddWidget');
+        var topbarWrap = document.getElementById('topbarBtnAddEntityWrap');
+        var topbarBtn = document.getElementById('topbarBtnAddEntity');
         var btnChoiceTable = document.getElementById('btnChoiceTable');
         var btnChoiceCard = document.getElementById('btnChoiceCard');
         if (!choiceModalEl) return;
         var choiceModal = new bootstrap.Modal(choiceModalEl);
-        if (btnAddWidget) {
-            btnAddWidget.addEventListener('click', function() {
+        if (topbarWrap && topbarBtn) {
+            topbarWrap.classList.remove('d-none');
+            topbarWrap.style.display = '';
+            topbarBtn.addEventListener('click', function(e) {
+                e.preventDefault();
                 if (isGuestUser()) return;
                 choiceModal.show();
             });

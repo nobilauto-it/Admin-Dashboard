@@ -6,6 +6,14 @@
     body.startbar-guest .startbar { display: none !important; }
     body.startbar-guest .topbar { width: 100% !important; }
     body.startbar-guest .page-wrapper .page-content { margin-left: 0 !important; }
+    /* Collapsed: hide add/delete page buttons; custom page items same as nav-link (icon only) */
+    @media (min-width: 1200px) {
+        body[data-sidebar-size="collapsed"] .startbar:not(:hover) .startbar-add-page-btn,
+        body[data-sidebar-size="collapsed"] .startbar:not(:hover) .delete-page-btn { display: none !important; }
+        body[data-sidebar-size="collapsed"] .startbar:not(:hover) .custom-page-item .d-flex { justify-content: center; }
+        body[data-sidebar-size="collapsed"] .startbar:not(:hover) .custom-page-item .nav-link { justify-content: center; padding: 10px 18px; }
+        body[data-sidebar-size="collapsed"] .startbar:not(:hover) .custom-page-item .nav-link .menu-icon { margin-right: 0; }
+    }
     </style>
     <!--start brand-->
     <div class="brand">
@@ -24,18 +32,14 @@
     <div class="startbar-menu" >
         <div class="startbar-collapse" id="startbarCollapse" data-simplebar>
             <div class="d-flex align-items-start flex-column w-100">
-                <div class="w-100 px-3 pt-3 pb-2 startbar-auth-only">
-                    <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#createPageModal">
-                        <i class="iconoir-plus"></i> Добавить страницу
-                    </button>
-                </div>
                 <!-- Navigation -->
                 <ul class="navbar-nav mb-auto w-100" id="startbarNavList">
                     <li class="menu-label mt-2 startbar-auth-only">
                         <span>Navigation</span>
                     </li>
-                    <li class="menu-label mt-2 startbar-auth-only" id="createDashboardsLabel">
+                    <li class="menu-label mt-2 startbar-auth-only d-flex align-items-center justify-content-between px-3" id="createDashboardsLabel">
                         <span>Create Dashboards 2206</span>
+                        <button type="button" class="btn btn-sm btn-link text-primary add-page-btn startbar-add-page-btn" id="startbarAddPageBtn" title="Добавить страницу" aria-label="Добавить страницу"><i class="iconoir-plus"></i></button>
                     </li>
                     <li class="nav-item d-none startbar-auth-only" id="customPagesPlaceholder" aria-hidden="true">
                         <a class="nav-link text-muted" href="javascript:void(0);">
@@ -631,6 +635,13 @@ document.addEventListener('DOMContentLoaded', () => {
             clearMessage();
             input.value = '';
             input.focus();
+        });
+    }
+    const addPageBtn = document.getElementById('startbarAddPageBtn');
+    if (addPageBtn && modalInstance) {
+        addPageBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            modalInstance.show();
         });
     }
 
