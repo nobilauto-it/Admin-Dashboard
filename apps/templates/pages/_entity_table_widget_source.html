@@ -419,14 +419,15 @@ document.addEventListener('DOMContentLoaded', function() {
     if (PAGE_SLUG === '__PAGE_SLUG__' || !PAGE_SLUG) {
         PAGE_SLUG = 'entity-table';
     }
+    const API_BASE = (window.ENTITY_TABLE_API_BASE || 'http://194.33.40.197:7070').replace(/\/+$/, '');
     const API = {
-        processesDeals: '/api/entity-table/processes-deals/',
-        dealCategories: '/api/entity-table/deal-categories/',
-        metaFields: '/api/entity-table/entity-meta-fields/',
-        metaData: '/api/entity-table/entity-meta-data/',
-        config: '/api/entity-table/config',
-        templates: '/api/entity-table/templates',
-        componentModes: '/api/entity-table/component-modes',
+        processesDeals: API_BASE + '/api/entity-table/processes-deals/',
+        dealCategories: API_BASE + '/api/entity-table/deal-categories/',
+        metaFields: API_BASE + '/api/entity-table/entity-meta-fields/',
+        metaData: API_BASE + '/api/entity-table/entity-meta-data/',
+        config: API_BASE + '/api/entity-table/config',
+        templates: API_BASE + '/api/entity-table/templates',
+        componentModes: API_BASE + '/api/entity-table/component-modes',
     };
 
     var isReadOnly = false;
