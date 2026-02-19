@@ -160,6 +160,14 @@
     .entity-table-section .searchFilterRowInSection { margin-bottom: 12px; position: relative; overflow: visible; }
     .entity-table-section .gridTopRowInSection.table-title-search-row { flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
     .entity-table-section .gridTopRowInSection .tableTitleBlockInSection { min-width: 0; }
+    /* Report card widget: same layout as Dastone report-card, fits in entityTablesContainer flex */
+    .entity-report-card-section { width: fit-content; max-width: 100%; min-width: min(260px, 100%); }
+    .entity-report-card-section .card.report-card { margin-bottom: 0; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .entity-report-card-section .report-card-title { font-weight: 600; margin-bottom: 0.25rem; }
+    .entity-report-card-section .report-card-main-value { font-size: 1.25rem; font-weight: 600; margin: 0.25rem 0; }
+    .entity-report-card-section .report-card-secondary-value { font-size: 0.875rem; color: var(--bs-secondary-color); margin-bottom: 0; }
+    .entity-report-card-section .report-card-icon-wrap { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+    .entity-report-card-section .report-card-actions { position: absolute; top: 0.5rem; right: 0.5rem; }
     .entity-table-section .filterDropdownInSection { position: absolute; left: 0; top: calc(100% + 6px); width: min(380px, 96vw); display: none; z-index: 1070; }
     .entity-table-section .filterDropdownInSection.open { display: block; }
     .entity-table-section .filterDropdownCardInSection { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; background: var(--bs-body-bg, #fff); box-shadow: 0 10px 24px rgba(0,0,0,.12); padding: 12px; max-height: 65vh; overflow: auto; }
@@ -238,6 +246,9 @@
                 </div>
                 <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddTableBlock" title="Добавить ещё одну таблицу на страницу">
                     <i class="iconoir-plus"></i> Добавить таблицу
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAddCardBlock" title="Добавить карточку отчёта (KPI по данным сущности)">
+                    <i class="iconoir-report-columns"></i> Добавить карточку
                 </button>
             </div>
             <div id="entityTablesContainer">
@@ -453,6 +464,81 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalAddCard" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalAddCardTitle">Добавить карточку отчёта</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Карточка показывает сводные данные по выбранной сущности (сумма, среднее, количество и т.д.) с теми же фильтрами, что и таблицы.</p>
+                <div class="mb-3">
+                    <label class="form-label" for="cardTitleInput">Название карточки <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="cardTitleInput" placeholder="Например: Сделки за месяц">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="cardEntitySelect">Сущность <span class="text-danger">*</span></label>
+                    <select class="form-select" id="cardEntitySelect">
+                        <option value="">— Выберите сущность —</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Главное значение (формула)</label>
+                    <div class="row g-2">
+                        <div class="col-sm-4">
+                            <select class="form-select" id="cardMainAggregate">
+                                <option value="count">Количество записей</option>
+                                <option value="sum">Сумма</option>
+                                <option value="avg">Среднее</option>
+                                <option value="min">Минимум</option>
+                                <option value="max">Максимум</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-8">
+                            <select class="form-select" id="cardMainField">
+                                <option value="">— Поле (для count не обязательно) —</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Второстепенное значение (подпись или вторая формула)</label>
+                    <div class="row g-2 mb-2">
+                        <div class="col-sm-4">
+                            <select class="form-select" id="cardSecondaryAggregate">
+                                <option value="count">Количество</option>
+                                <option value="sum">Сумма</option>
+                                <option value="avg">Среднее</option>
+                                <option value="min">Минимум</option>
+                                <option value="max">Максимум</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-4">
+                            <select class="form-select" id="cardSecondaryField">
+                                <option value="">— Поле —</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-4">
+                            <input type="text" class="form-control" id="cardSecondaryLabel" placeholder="Подпись (например: за период)">
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="cardIconSelect">Иконка</label>
+                    <select class="form-select" id="cardIconSelect">
+                        <!-- filled by JS from REPORT_CARD_ICONS -->
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="modalAddCardSave">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block javascripts %}
@@ -494,9 +580,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         var b1 = document.getElementById('btnAddTableBlock');
         if (b1) { if (hide) { b1.style.setProperty('display', 'none', 'important'); b1.classList.add(DASHBOARD_HIDE_CLASS); } else { b1.classList.remove(DASHBOARD_HIDE_CLASS); b1.style.display = ''; } }
+        var bCard = document.getElementById('btnAddCardBlock');
+        if (bCard) { if (hide) { bCard.style.setProperty('display', 'none', 'important'); bCard.classList.add(DASHBOARD_HIDE_CLASS); } else { bCard.classList.remove(DASHBOARD_HIDE_CLASS); bCard.style.display = ''; } }
         if (entityTablesContainer) {
             entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection, .btnDeleteTableInSection').forEach(function(el) {
                 if (hide) { el.style.setProperty('display', 'none', 'important'); el.classList.add(DASHBOARD_HIDE_CLASS); } else { el.classList.remove(DASHBOARD_HIDE_CLASS); el.style.display = ''; }
+            });
+            entityTablesContainer.querySelectorAll('.card-actions-in-section').forEach(function(el) {
+                if (hide) { el.classList.add('d-none'); } else { el.classList.remove('d-none'); }
             });
         }
     }
@@ -592,6 +683,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function defaultTableState() {
         return {
+            type: 'table',
             selectedEntities: [],
             selectedFields: [],
             tableTitle: '',
@@ -608,6 +700,29 @@ document.addEventListener('DOMContentLoaded', function() {
             dateTimeDisplayByColumn: {},
             guestFilterInitialized: false,
             filterFields: [{ label: 'Название', key: '', type: 'text' }]
+        };
+    }
+
+    /** Report card: title, main value (formula), secondary value (formula), icon. Same entities/fields/filters as tables. */
+    var CARD_AGGREGATES = [
+        { value: 'count', label: 'Количество записей' },
+        { value: 'sum', label: 'Сумма' },
+        { value: 'avg', label: 'Среднее' },
+        { value: 'min', label: 'Минимум' },
+        { value: 'max', label: 'Максимум' }
+    ];
+    var REPORT_CARD_ICONS = ['iconoir-activity', 'iconoir-handbag', 'iconoir-clock', 'iconoir-user', 'iconoir-dollar-circle', 'iconoir-report-columns', 'iconoir-reports-solid', 'iconoir-trophy', 'iconoir-chat-bubble', 'iconoir-mail', 'iconoir-fire-flame', 'iconoir-suitcase', 'iconoir-bell', 'iconoir-calendar', 'iconoir-list', 'iconoir-candlestick-chart', 'iconoir-map-pin', 'iconoir-send-mail', 'iconoir-page-star', 'iconoir-heart-solid'];
+    function defaultCardState() {
+        return {
+            type: 'card',
+            cardTitle: '',
+            icon: 'iconoir-activity',
+            selectedEntities: [],
+            selectedFields: [],
+            filterFields: [{ label: 'Название', key: '', type: 'text' }],
+            mainFormula: { aggregate: 'count', fieldKey: null },
+            secondaryFormula: { aggregate: 'count', fieldKey: null, label: '' },
+            fullData: []
         };
     }
 
@@ -637,8 +752,25 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function getSectionEls(tableIndex) {
-        var section = entityTablesContainer && entityTablesContainer.querySelector('.entity-table-section[data-table-index="' + tableIndex + '"]');
+    function getSectionEls(sectionIndex) {
+        var st = tableStates[sectionIndex];
+        if (!st) return {};
+        if (st.type === 'card') {
+            var section = entityTablesContainer && entityTablesContainer.querySelector('.entity-report-card-section[data-card-index="' + sectionIndex + '"]');
+            if (!section) return {};
+            return {
+                section: section,
+                cardTitleEl: section.querySelector('.report-card-title'),
+                mainValueEl: section.querySelector('.report-card-main-value'),
+                secondaryValueEl: section.querySelector('.report-card-secondary-value'),
+                iconWrap: section.querySelector('.report-card-icon-wrap'),
+                iconEl: section.querySelector('.report-card-icon-wrap i'),
+                cardActions: section.querySelector('.card-actions-in-section'),
+                btnEditCard: section.querySelector('.btnEditCardInSection'),
+                btnDeleteCard: section.querySelector('.btnDeleteCardInSection')
+            };
+        }
+        var section = entityTablesContainer && entityTablesContainer.querySelector('.entity-table-section[data-table-index="' + sectionIndex + '"]');
         if (!section) return {};
         return {
             section: section,
@@ -800,8 +932,13 @@ document.addEventListener('DOMContentLoaded', function() {
         currentTableIndex = Math.min(Math.max(0, currentTableIndex), tableStates.length - 1);
         ensureSections();
         for (var i = 0; i < tableStates.length; i++) {
-            updateUI(i);
-            loadFieldsThenData(i, false);
+            if (tableStates[i].type === 'card') {
+                updateCardUI(i);
+                loadCardData(i);
+            } else {
+                updateUI(i);
+                loadFieldsThenData(i, false);
+            }
         }
         saveConfigToStorage();
         saveConfig();
@@ -972,9 +1109,22 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             var key = STORAGE_KEY_PREFIX + getPageSlug();
             var tables = tableStates.map(function(st, i) {
+                if (st.type === 'card') {
+                    return {
+                        type: 'card',
+                        card_title: st.cardTitle,
+                        icon: st.icon || 'iconoir-activity',
+                        entities: st.selectedEntities,
+                        fields: st.selectedFields,
+                        filter_fields: (st.filterFields && st.filterFields.length) ? st.filterFields : [],
+                        main_formula: st.mainFormula || { aggregate: 'count', fieldKey: null },
+                        secondary_formula: st.secondaryFormula || null
+                    };
+                }
                 var keys = getColumnKeysFromSection(i);
                 if (!keys.length && st.allColumns && st.allColumns.length) keys = st.allColumns.map(function(c) { return c.key; });
                 return {
+                    type: 'table',
                     table_title: st.tableTitle,
                     table_description: st.tableDescription,
                     table_style: st.tableStyle || 'hoverable_rows',
@@ -1007,9 +1157,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
             tableStates = data.tables.map(function(t) {
                 var norm = normalizeEntitiesAndFields(t.entities || [], t.fields || []);
+                if (t.type === 'card') {
+                    return {
+                        type: 'card',
+                        cardTitle: (t.card_title != null) ? String(t.card_title) : '',
+                        icon: (t.icon && typeof t.icon === 'string') ? t.icon : 'iconoir-activity',
+                        selectedEntities: norm.entities,
+                        selectedFields: norm.fields,
+                        filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }],
+                        mainFormula: (t.main_formula && typeof t.main_formula === 'object') ? { aggregate: t.main_formula.aggregate || 'count', fieldKey: t.main_formula.fieldKey != null ? t.main_formula.fieldKey : null } : { aggregate: 'count', fieldKey: null },
+                        secondaryFormula: (t.secondary_formula && typeof t.secondary_formula === 'object') ? { aggregate: t.secondary_formula.aggregate || 'count', fieldKey: t.secondary_formula.fieldKey != null ? t.secondary_formula.fieldKey : null, label: (t.secondary_formula.label != null) ? String(t.secondary_formula.label) : '' } : null,
+                        fullData: []
+                    };
+                }
                 var orderFromServer = (t.column_order && Array.isArray(t.column_order)) ? t.column_order : null;
                 var widthsFromServer = (t.column_widths && typeof t.column_widths === 'object') ? t.column_widths : {};
                 return {
+                    type: 'table',
                     selectedEntities: norm.entities,
                     selectedFields: norm.fields,
                     tableTitle: (t.table_title != null) ? String(t.table_title) : '',
@@ -1030,10 +1194,15 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             ensureSections();
             tableStates.forEach(function(st, i) {
-                if (!st.columnWidths || !Object.keys(st.columnWidths).length) st.columnWidths = loadColumnWidths(i);
-                applyTableStyleToSection(i);
-                updateUI(i);
-                loadFieldsThenData(i, openModalIfNoFields);
+                if (st.type === 'card') {
+                    updateCardUI(i);
+                    loadCardData(i);
+                } else {
+                    if (!st.columnWidths || !Object.keys(st.columnWidths).length) st.columnWidths = loadColumnWidths(i);
+                    applyTableStyleToSection(i);
+                    updateUI(i);
+                    loadFieldsThenData(i, openModalIfNoFields);
+                }
             });
             return;
         }
@@ -1516,24 +1685,57 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="datatable-bottom paginationBlockInSection d-none"><div class="pagination-left-in-section d-flex align-items-center flex-wrap gap-2"><span class="datatable-info small text-muted paginationInfoInSection">Показано 0 — 0 из 0 записей</span><span class="small text-muted">На странице:</span><select class="datatable-input pageSizeInSection" style="width:70px;"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></div><nav class="datatable-pagination paginationNavInSection" aria-label="Пагинация таблицы"></nav></div></div>';
     }
 
+    /** Report card section HTML: title, main value, secondary, icon; same visual as Dastone report-card */
+    function createCardSectionHtml(cardIndex) {
+        var st = tableStates[cardIndex];
+        var title = (st && st.cardTitle) ? String(st.cardTitle).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+        var icon = (st && st.icon) ? st.icon : 'iconoir-activity';
+        var iconClass = 'bg-primary-subtle text-primary';
+        return '<div class="entity-report-card-section" data-card-index="' + cardIndex + '">' +
+            '<div class="card report-card position-relative">' +
+            '<div class="report-card-actions card-actions-in-section">' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary btnEditCardInSection" title="Настроить карточку"><i class="iconoir-settings"></i></button>' +
+            '<button type="button" class="btn btn-sm btn-outline-danger btnDeleteCardInSection" title="Удалить карточку"><i class="iconoir-trash"></i></button>' +
+            '</div>' +
+            '<div class="card-body">' +
+            '<div class="row d-flex justify-content-center align-items-center">' +
+            '<div class="col">' +
+            '<p class="report-card-title text-dark mb-0"></p>' +
+            '<h3 class="report-card-main-value my-1 fs-20">—</h3>' +
+            '<p class="report-card-secondary-value text-muted mb-0"></p>' +
+            '</div>' +
+            '<div class="col-auto align-self-center">' +
+            '<div class="report-card-icon-wrap ' + iconClass + '"><i class="' + icon + ' fs-4"></i></div>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+    }
+
     function ensureSections() {
         if (!entityTablesContainer) return;
-        var existing = entityTablesContainer.querySelectorAll('.entity-table-section').length;
+        var existing = entityTablesContainer.children.length;
         for (var i = existing; i < tableStates.length; i++) {
+            var st = tableStates[i];
             var div = document.createElement('div');
-            div.innerHTML = createSectionHtml(i);
+            div.innerHTML = (st.type === 'card') ? createCardSectionHtml(i) : createSectionHtml(i);
             entityTablesContainer.appendChild(div.firstElementChild);
         }
-        while (entityTablesContainer.querySelectorAll('.entity-table-section').length > tableStates.length) {
-            var allSections = entityTablesContainer.querySelectorAll('.entity-table-section');
-            var last = allSections[allSections.length - 1];
-            if (last && last.parentNode) last.parentNode.removeChild(last);
+        while (entityTablesContainer.children.length > tableStates.length) {
+            if (entityTablesContainer.lastElementChild) entityTablesContainer.lastElementChild.remove();
         }
-        entityTablesContainer.querySelectorAll('.entity-table-section').forEach(function(section, idx) {
-            section.setAttribute('data-table-index', String(idx));
-            var modeSel = section.querySelector('.tableModeSelect');
-            if (modeSel) modeSel.setAttribute('data-table-index', String(idx));
-        });
+        for (var idx = 0; idx < entityTablesContainer.children.length; idx++) {
+            var section = entityTablesContainer.children[idx];
+            if (section.classList.contains('entity-report-card-section')) {
+                section.setAttribute('data-card-index', String(idx));
+            } else {
+                section.setAttribute('data-table-index', String(idx));
+                var modeSel = section.querySelector('.tableModeSelect');
+                if (modeSel) modeSel.setAttribute('data-table-index', String(idx));
+            }
+        }
         bindSectionListeners();
         renderComponentModesAdmin();
     }
@@ -1605,6 +1807,18 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.onclick = function() {
                 closeFilterDropdown(idx);
             };
+        });
+        entityTablesContainer.querySelectorAll('.btnDeleteCardInSection').forEach(function(btn) {
+            var section = btn.closest('.entity-report-card-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-card-index'), 10);
+            btn.onclick = function() { deleteTableAtIndex(idx); };
+        });
+        entityTablesContainer.querySelectorAll('.btnEditCardInSection').forEach(function(btn) {
+            var section = btn.closest('.entity-report-card-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-card-index'), 10);
+            btn.onclick = function() { openAddCardModal(idx); };
         });
         var addFilterFieldInModalEl = document.getElementById('addFilterFieldInModal');
         if (addFilterFieldInModalEl) addFilterFieldInModalEl.onclick = function(e) {
@@ -1829,9 +2043,22 @@ document.addEventListener('DOMContentLoaded', function() {
         opts = opts || {};
         var slug = getPageSlug();
         var tables = tableStates.map(function(st, i) {
+            if (st.type === 'card') {
+                return {
+                    type: 'card',
+                    card_title: st.cardTitle,
+                    icon: st.icon || 'iconoir-activity',
+                    entities: st.selectedEntities,
+                    fields: st.selectedFields,
+                    filter_fields: (st.filterFields && st.filterFields.length) ? st.filterFields : [],
+                    main_formula: st.mainFormula || { aggregate: 'count', fieldKey: null },
+                    secondary_formula: st.secondaryFormula || null
+                };
+            }
             var keys = getColumnKeysFromSection(i);
             if (!keys.length && st.allColumns && st.allColumns.length) keys = st.allColumns.map(function(c) { return c.key; });
             return {
+                type: 'table',
                 table_title: st.tableTitle,
                 table_description: st.tableDescription,
                 table_style: st.tableStyle || 'hoverable_rows',
@@ -2494,6 +2721,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadData(tableIndex, skipMetaWarmup, skipEntityExpansion) {
         var st = tableStates[tableIndex];
         if (!st || !st.selectedEntities.length) return;
+        if (st.type === 'card') return;
         if (!skipMetaWarmup) {
             var missingMetaEntities = st.selectedEntities.filter(function(ent) {
                 return !fieldsCache[entityKey(ent)];
@@ -2819,6 +3047,110 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    /** Compute aggregate (count/sum/avg/min/max) over rows for card report. fieldKey is entityKey::title. */
+    function computeAggregate(rows, formula, rowKeys) {
+        if (!rows || !rows.length) return null;
+        var agg = (formula && formula.aggregate) ? formula.aggregate : 'count';
+        if (agg === 'count') return rows.length;
+        var fieldKey = (formula && formula.fieldKey) ? formula.fieldKey : null;
+        if (!fieldKey || !rowKeys || rowKeys.indexOf(fieldKey) < 0) return rows.length;
+        var nums = [];
+        rows.forEach(function(r) {
+            var v = r[fieldKey];
+            if (v == null || v === '') return;
+            if (typeof v === 'number' && !isNaN(v)) { nums.push(v); return; }
+            var s = String(v).trim().replace(/\s/g, '').replace(',', '.');
+            var n = parseFloat(s);
+            if (!isNaN(n)) nums.push(n);
+        });
+        if (nums.length === 0) return null;
+        if (agg === 'sum') return nums.reduce(function(a, b) { return a + b; }, 0);
+        if (agg === 'avg') return nums.reduce(function(a, b) { return a + b; }, 0) / nums.length;
+        if (agg === 'min') return Math.min.apply(null, nums);
+        if (agg === 'max') return Math.max.apply(null, nums);
+        return null;
+    }
+
+    function loadCardData(cardIndex) {
+        var st = tableStates[cardIndex];
+        if (!st || st.type !== 'card' || !st.selectedEntities.length) {
+            updateCardUI(cardIndex);
+            return;
+        }
+        var ent = st.selectedEntities[0];
+        var key = entityKey(ent);
+        var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
+        var titles = (sel && sel.human_titles && sel.human_titles.length) ? sel.human_titles : [];
+        if (titles.length === 0) {
+            st.fullData = [];
+            updateCardUI(cardIndex);
+            return;
+        }
+        var filterFieldMaps = [];
+        var cache = fieldsCache[key];
+        if (cache && cache.fields && Array.isArray(cache.fields)) {
+            (st.filterFields || []).forEach(function(f) {
+                if (!f || !f.label) return;
+                var ht = String(f.label || '').trim();
+                var aliases = [];
+                cache.fields.forEach(function(meta) {
+                    if (!meta) return;
+                    if (normalizeSearchText(String(meta.human_title || '')) === normalizeSearchText(ht)) {
+                        var cn = String(meta.column_name || '').trim();
+                        var b24 = String(meta.b24_field || '').trim();
+                        if (cn && aliases.indexOf(cn) < 0) aliases.push(cn);
+                        if (b24 && aliases.indexOf(b24) < 0) aliases.push(b24);
+                    }
+                });
+                if (aliases.length) filterFieldMaps.push({ title: ht, aliases: aliases });
+            });
+        }
+        fetchPage(ent, titles, key, 0, 10000, filterFieldMaps).then(function(res) {
+            var rows = res.rows || [];
+            if (st.filterFields && st.filterFields.length) {
+                rows = rows.filter(function(row) {
+                    return st.filterFields.every(function(f) {
+                        if (!f.label) return true;
+                        var targetKey = key + '::' + f.label;
+                        var val = row[targetKey];
+                        if (f.selectedValues && f.selectedValues.length) return f.selectedValues.some(function(sv) { return String(val) === String(sv); });
+                        if (f.value != null && String(f.value).trim() !== '') return String(val || '').toLowerCase().indexOf(String(f.value).trim().toLowerCase()) >= 0;
+                        return true;
+                    });
+                });
+            }
+            st.fullData = rows;
+            var rowKeys = rows.length ? Object.keys(rows[0]) : [];
+            var mainVal = computeAggregate(rows, st.mainFormula, rowKeys);
+            var secVal = (st.secondaryFormula && (st.secondaryFormula.aggregate || st.secondaryFormula.fieldKey)) ? computeAggregate(rows, st.secondaryFormula, rowKeys) : null;
+            var els = getSectionEls(cardIndex);
+            if (els.mainValueEl) els.mainValueEl.textContent = (mainVal != null) ? (typeof mainVal === 'number' && (mainVal % 1 !== 0 || mainVal > 1e9) ? mainVal.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : mainVal) : '—';
+            if (els.secondaryValueEl) {
+                if (secVal != null) els.secondaryValueEl.textContent = (st.secondaryFormula && st.secondaryFormula.label) ? (st.secondaryFormula.label + ': ' + secVal) : String(secVal);
+                else els.secondaryValueEl.textContent = (st.secondaryFormula && st.secondaryFormula.label) ? st.secondaryFormula.label : '';
+            }
+        }).catch(function() {
+            var els = getSectionEls(cardIndex);
+            if (els.mainValueEl) els.mainValueEl.textContent = '—';
+            if (els.secondaryValueEl) els.secondaryValueEl.textContent = '';
+        });
+    }
+
+    function updateCardUI(cardIndex) {
+        var st = tableStates[cardIndex];
+        if (!st || st.type !== 'card') return;
+        var els = getSectionEls(cardIndex);
+        if (!els.section) return;
+        if (els.cardTitleEl) els.cardTitleEl.textContent = (st.cardTitle && st.cardTitle.trim()) ? st.cardTitle.trim() : 'Карточка';
+        if (els.iconEl) {
+            els.iconEl.className = (st.icon || 'iconoir-activity') + ' fs-4';
+        }
+        if (els.iconWrap) {
+            els.iconWrap.className = 'report-card-icon-wrap bg-primary-subtle text-primary';
+        }
+        loadCardData(cardIndex);
+    }
+
     /** Восстанавливает allColumns из selectedEntities/selectedFields, если колонки потеряны. */
     function rebuildAllColumnsFromSelectedFields(tableIndex) {
         var st = tableStates[tableIndex];
@@ -3037,6 +3369,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderGrid(tableIndex) {
         var st = tableStates[tableIndex];
         if (!st) return;
+        if (st.type === 'card') return;
         if (st.fullData && st.fullData.length > 0) {
             if (!st.allColumns || st.allColumns.length === 0) {
                 rebuildAllColumnsFromSelectedFields(tableIndex);
@@ -3366,6 +3699,170 @@ document.addEventListener('DOMContentLoaded', function() {
             renderInsertModalGrid();
             modal.show();
         });
+    })();
+
+    (function setupAddCardModal() {
+        var modalEl = document.getElementById('modalAddCard');
+        var btnAdd = document.getElementById('btnAddCardBlock');
+        var btnSave = document.getElementById('modalAddCardSave');
+        var cardTitleInput = document.getElementById('cardTitleInput');
+        var cardEntitySelect = document.getElementById('cardEntitySelect');
+        var cardMainAggregate = document.getElementById('cardMainAggregate');
+        var cardMainField = document.getElementById('cardMainField');
+        var cardSecondaryAggregate = document.getElementById('cardSecondaryAggregate');
+        var cardSecondaryField = document.getElementById('cardSecondaryField');
+        var cardSecondaryLabel = document.getElementById('cardSecondaryLabel');
+        var cardIconSelect = document.getElementById('cardIconSelect');
+        var modalTitleEl = document.getElementById('modalAddCardTitle');
+        if (!modalEl || !btnSave) return;
+        var modal = new bootstrap.Modal(modalEl);
+        var editingCardIndex = null;
+
+        function fillIconSelect() {
+            if (!cardIconSelect) return;
+            cardIconSelect.innerHTML = REPORT_CARD_ICONS.map(function(ic) {
+                return '<option value="' + ic + '">' + ic + '</option>';
+            }).join('');
+        }
+        fillIconSelect();
+
+        function fillEntitySelect() {
+            if (!cardEntitySelect) return;
+            var prev = cardEntitySelect.value;
+            cardEntitySelect.innerHTML = '<option value="">— Выберите сущность —</option>' +
+                (entitiesList || []).map(function(ent) {
+                    var key = entityKey(ent);
+                    var title = (ent.title || ent.type || key || '').trim();
+                    return '<option value="' + key + '">' + title + '</option>';
+                }).join('');
+            if (prev) cardEntitySelect.value = prev;
+        }
+
+        function fillFieldDropdowns(ent) {
+            var key = ent ? entityKey(ent) : '';
+            var opts = '<option value="">— Поле (для count не обязательно) —</option>';
+            if (ent) {
+                var cache = fieldsCache[key];
+                var titles = [];
+                if (cache && cache.fields && Array.isArray(cache.fields)) {
+                    cache.fields.forEach(function(meta) {
+                        var ht = String(meta.human_title || '').trim();
+                        if (ht) titles.push({ key: key + '::' + ht, label: ht });
+                    });
+                }
+                titles.forEach(function(t) {
+                    opts += '<option value="' + t.key + '">' + t.label + '</option>';
+                });
+            }
+            if (cardMainField) { cardMainField.innerHTML = opts; }
+            if (cardSecondaryField) { cardSecondaryField.innerHTML = opts.replace('— Поле (для count не обязательно) —', '— Поле —'); }
+        }
+
+        function openAddCardModal(cardIndex) {
+            editingCardIndex = cardIndex;
+            if (modalTitleEl) modalTitleEl.textContent = (cardIndex != null) ? 'Настроить карточку' : 'Добавить карточку отчёта';
+            loadEntitiesList().then(function() {
+                fillEntitySelect();
+                if (cardIndex != null && tableStates[cardIndex] && tableStates[cardIndex].type === 'card') {
+                    var st = tableStates[cardIndex];
+                    if (cardTitleInput) cardTitleInput.value = (st.cardTitle || '').trim();
+                    if (cardEntitySelect && st.selectedEntities && st.selectedEntities[0]) {
+                        cardEntitySelect.value = entityKey(st.selectedEntities[0]);
+                        loadFieldsForEntity(st.selectedEntities[0]).then(function() {
+                            fillFieldDropdowns(st.selectedEntities[0]);
+                            if (cardMainAggregate) cardMainAggregate.value = (st.mainFormula && st.mainFormula.aggregate) ? st.mainFormula.aggregate : 'count';
+                            if (cardMainField) cardMainField.value = (st.mainFormula && st.mainFormula.fieldKey) ? st.mainFormula.fieldKey : '';
+                            if (cardSecondaryAggregate) cardSecondaryAggregate.value = (st.secondaryFormula && st.secondaryFormula.aggregate) ? st.secondaryFormula.aggregate : 'count';
+                            if (cardSecondaryField) cardSecondaryField.value = (st.secondaryFormula && st.secondaryFormula.fieldKey) ? st.secondaryFormula.fieldKey : '';
+                            if (cardSecondaryLabel) cardSecondaryLabel.value = (st.secondaryFormula && st.secondaryFormula.label) ? st.secondaryFormula.label : '';
+                            if (cardIconSelect) cardIconSelect.value = (st.icon || 'iconoir-activity');
+                        });
+                    } else {
+                        if (cardMainAggregate) cardMainAggregate.value = 'count';
+                        if (cardIconSelect) cardIconSelect.value = (st.icon || 'iconoir-activity');
+                    }
+                } else {
+                    if (cardTitleInput) cardTitleInput.value = '';
+                    if (cardEntitySelect) cardEntitySelect.value = '';
+                    fillFieldDropdowns(null);
+                    if (cardMainAggregate) cardMainAggregate.value = 'count';
+                    if (cardSecondaryAggregate) cardSecondaryAggregate.value = 'count';
+                    if (cardSecondaryLabel) cardSecondaryLabel.value = '';
+                    if (cardIconSelect) cardIconSelect.value = 'iconoir-activity';
+                }
+                modal.show();
+            });
+        }
+        window.openAddCardModal = openAddCardModal;
+
+        if (cardEntitySelect) {
+            cardEntitySelect.addEventListener('change', function() {
+                var key = this.value;
+                if (!key) { fillFieldDropdowns(null); return; }
+                var ent = (entitiesList || []).find(function(e) { return entityKey(e) === key; });
+                if (ent) loadFieldsForEntity(ent).then(function() { fillFieldDropdowns(ent); });
+                else fillFieldDropdowns(null);
+            });
+        }
+
+        if (btnAdd) {
+            btnAdd.addEventListener('click', function() {
+                if (isGuestUser()) return;
+                editingCardIndex = null;
+                openAddCardModal(null);
+            });
+        }
+
+        if (btnSave) {
+            btnSave.addEventListener('click', function() {
+                var title = (cardTitleInput && cardTitleInput.value) ? cardTitleInput.value.trim() : '';
+                var key = (cardEntitySelect && cardEntitySelect.value) ? cardEntitySelect.value : '';
+                if (!key) {
+                    alert('Выберите сущность.');
+                    return;
+                }
+                var ent = (entitiesList || []).find(function(e) { return entityKey(e) === key; });
+                if (!ent) {
+                    alert('Сущность не найдена.');
+                    return;
+                }
+                var titles = [];
+                var mainKey = (cardMainField && cardMainField.value) ? cardMainField.value : '';
+                var secKey = (cardSecondaryField && cardSecondaryField.value) ? cardSecondaryField.value : '';
+                if (mainKey && mainKey.indexOf('::') >= 0) titles.push(mainKey.split('::').slice(1).join('::'));
+                if (secKey && secKey.indexOf('::') >= 0) {
+                    var t = secKey.split('::').slice(1).join('::');
+                    if (titles.indexOf(t) < 0) titles.push(t);
+                }
+                if (titles.length === 0) titles = ['ID'];
+                var norm = normalizeEntitiesAndFields([ent], [{ entityKey: key, human_titles: titles }]);
+                var cardState = {
+                    type: 'card',
+                    cardTitle: title || 'Карточка',
+                    icon: (cardIconSelect && cardIconSelect.value) ? cardIconSelect.value : 'iconoir-activity',
+                    selectedEntities: norm.entities,
+                    selectedFields: norm.fields,
+                    filterFields: (editingCardIndex != null && tableStates[editingCardIndex] && tableStates[editingCardIndex].filterFields) ? tableStates[editingCardIndex].filterFields : [{ label: 'Название', key: '', type: 'text' }],
+                    mainFormula: { aggregate: (cardMainAggregate && cardMainAggregate.value) ? cardMainAggregate.value : 'count', fieldKey: mainKey || null },
+                    secondaryFormula: { aggregate: (cardSecondaryAggregate && cardSecondaryAggregate.value) ? cardSecondaryAggregate.value : 'count', fieldKey: secKey || null, label: (cardSecondaryLabel && cardSecondaryLabel.value) ? cardSecondaryLabel.value.trim() : '' },
+                    fullData: []
+                };
+                if (editingCardIndex != null) {
+                    tableStates[editingCardIndex] = cardState;
+                    ensureSections();
+                    updateCardUI(editingCardIndex);
+                    loadCardData(editingCardIndex);
+                } else {
+                    tableStates.push(cardState);
+                    ensureSections();
+                    updateCardUI(tableStates.length - 1);
+                    loadCardData(tableStates.length - 1);
+                }
+                saveConfigToStorage();
+                saveConfig();
+                modal.hide();
+            });
+        }
     })();
 
     // --- Шаблоны: с сервера (общие для всех), выпадающий список по кнопке «Шаблоны» ---
