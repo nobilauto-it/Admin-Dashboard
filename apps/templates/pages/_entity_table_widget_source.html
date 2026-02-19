@@ -12,7 +12,11 @@
     /* Заглушка: скрыть настройки режимов (Редактирование / Просмотр / Скрыть) — логика в коде сохранена */
     .component-modes-admin,
     .table-mode-admin { display: none !important; }
-    .entity-table-toolbar .btn-gear { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+    .entity-table-section .searchFilterRowInSection .btnFieldsInSection,
+    .entity-table-section .searchFilterRowInSection .btn-search-filter-gear { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .entity-table-section .gridTopRowInSection .btnDeleteTableInSection { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-color: rgba(220,53,69,.35); color: var(--bs-danger, #dc3545); }
+    .entity-table-section .gridTopRowInSection .btnDeleteTableInSection:hover { background: rgba(220,53,69,.08); border-color: rgba(220,53,69,.5); }
+    .entity-table-section .searchFilterRowInSection .searchFilterInputWrap { width: min(560px, 60%); min-width: 240px; }
     .entity-table-loading { padding: 24px; text-align: center; color: #64748b; }
     .entity-table-grid-wrap { min-width: 0; overflow: auto; max-height: 70vh; }
     /* Те же стили, что у шаблонных table.datatable.datatable-table (simple-datatables + _tables.scss) */
@@ -40,8 +44,17 @@
         max-width: 220px;
         min-width: 4rem;
     }
+    .entity-table-section .entity-table-grid-wrap .datatable-table > thead > tr > th .entity-table-th-inline {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        min-width: 0;
+        max-width: 100%;
+        vertical-align: middle;
+    }
     .entity-table-section .entity-table-grid-wrap .datatable-table > thead > tr > th .entity-table-th-label {
-        display: block;
+        display: inline-block;
+        flex: 0 1 auto;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -70,6 +83,8 @@
     .fields-modal-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 16px; max-height: 400px; overflow-y: auto; }
     .fields-modal-grid .form-check { min-width: 0; }
     .fields-modal-grid .form-check-label { white-space: normal; word-wrap: break-word; overflow-wrap: break-word; min-width: 0; }
+    .fields-modal-grid .fields-modal-entity-header { grid-column: 1 / -1; font-weight: 700; color: var(--bs-dark, #212529); padding-top: 6px; margin-top: 2px; border-top: 1px dashed var(--bs-border-color, #dee2e6); }
+    .fields-modal-grid .fields-modal-entity-header:first-child { border-top: 0; padding-top: 0; }
     .fields-modal-nested { margin-bottom: 12px; }
     .fields-modal-nested .nested-title { font-weight: 600; margin-bottom: 6px; }
     #paginationBlock.datatable-bottom { padding: 8px 10px; margin-top: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
@@ -96,15 +111,75 @@
     .entity-table-grid-wrap th.entity-table-th-draggable:active { cursor: grabbing; }
     .entity-table-grid-wrap th.dragging { opacity: 0.5; }
     .entity-table-grid-wrap th.drag-over { border-left: 2px solid var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.08); }
+    .entity-table-grid-wrap .entity-table-sort-indicator { margin-left: 0; font-size: 0.72rem; opacity: 0.85; flex: 0 0 auto; }
+    .entity-table-grid-wrap .entity-table-time-toggle {
+        margin-left: 0;
+        width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--bs-secondary-color, #6c757d);
+        line-height: 1;
+    }
+    .entity-table-grid-wrap .entity-table-time-toggle:hover {
+        background: var(--bs-tertiary-bg, #f8f9fa);
+        border-color: var(--bs-border-color, #dee2e6);
+        color: var(--bs-primary, #6f6af8);
+    }
+    .entity-table-grid-wrap .entity-table-time-toggle.is-active {
+        background: rgba(var(--bs-primary-rgb), 0.12);
+        border-color: rgba(var(--bs-primary-rgb), 0.35);
+        color: var(--bs-primary, #6f6af8);
+    }
+    .entity-table-grid-wrap .entity-table-time-toggle i { font-size: 13px; line-height: 1; }
+    .entity-table-grid-wrap th.entity-table-th-wrap { position: relative; padding-right: 16px; }
     /* auto — ширина колонок по содержимому; при ручном ресайзе сохраняем width в columnWidths */
     .entity-table-grid-wrap .datatable-table { table-layout: auto; }
-    .entity-table-grid-wrap th.entity-table-th-wrap { position: relative; padding-right: 10px; }
     .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; }
     .entity-table-grid-wrap th .entity-table-col-resize:hover { background: rgba(var(--bs-primary-rgb), 0.2); }
     #entityTablesContainer { display: grid; gap: 1rem; align-items: start; }
     .entity-table-section { min-width: 0; margin-bottom: 0; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; padding: 1rem; background: var(--bs-body-bg, #fff); display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
     .entity-table-section .entity-table-toolbar { margin-bottom: 12px; }
     .entity-table-section .gridTopRowInSection { margin-bottom: 12px; }
+    .entity-table-section .searchFilterRowInSection { margin-bottom: 12px; }
+    .entity-table-section .searchFilterRowInSection { position: relative; overflow: visible; }
+    .entity-table-section .filterDropdownInSection { position: absolute; left: 0; top: calc(100% + 6px); width: min(380px, 96vw); display: none; z-index: 1070; }
+    .entity-table-section .filterDropdownInSection.open { display: block; }
+    .entity-table-section .filterDropdownCardInSection { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; background: var(--bs-body-bg, #fff); box-shadow: 0 10px 24px rgba(0,0,0,.12); padding: 12px; max-height: 65vh; overflow: auto; }
+    .entity-table-section .filterPanelInSection { border: 1px solid var(--bs-border-color); border-radius: 8px; padding: 1rem; margin-bottom: 12px; background: var(--bs-body-bg); }
+    .entity-table-section .filterPanelInSection .filter-panel-title { font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .entity-table-section .filterPanelInSection .filter-row-item { margin-bottom: 10px; }
+    .entity-table-section .filterPanelInSection .filter-row-item label { font-size: 0.875rem; margin-bottom: 4px; display: block; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-wrap { position: relative; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-tags { display: flex; flex-wrap: wrap; gap: 6px; min-height: 38px; padding: 6px 12px; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); cursor: pointer; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-tags .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; background: #eaf3ff; color: #35528f; font-size: 0.86rem; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-tags .tag-remove { cursor: pointer; opacity: 0.7; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-dropdown { display: none; position: absolute; left: 0; right: 0; top: 100%; margin-top: 2px; max-height: 200px; overflow-y: auto; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1050; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-dropdown.open { display: block; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-dropdown .form-check { padding: 8px 12px; margin: 0; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-dropdown .filter-option-item { display: flex; align-items: center; gap: 8px; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-dropdown .filter-multiselect-search-wrap { position: sticky; top: 0; background: var(--bs-body-bg); padding: 8px; border-bottom: 1px solid var(--bs-border-color); z-index: 1; }
+    .entity-table-section .filterPanelInSection .filter-multiselect-dropdown .filter-multiselect-search { font-size: 0.85rem; }
+    #modalFilter .modal-dialog { max-width: min(560px, 92vw); }
+    #modalFilter .modal-content { min-height: 80vh; }
+    #modalFilter .modal-body { max-height: calc(80vh - 130px); overflow-y: auto; }
+    #modalFilter .filterPanelInSection .filter-row-item { margin-bottom: 10px; }
+    #modalFilter .filterPanelInSection .filter-row-item label { font-size: 0.875rem; margin-bottom: 4px; display: block; }
+    #modalFilter .filterPanelInSection .filter-multiselect-wrap { position: relative; }
+    #modalFilter .filterPanelInSection .filter-multiselect-tags { display: flex; flex-wrap: wrap; gap: 6px; min-height: 38px; padding: 6px 12px; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); cursor: pointer; }
+    #modalFilter .filterPanelInSection .filter-multiselect-tags .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; background: #eaf3ff; color: #35528f; font-size: 0.86rem; }
+    #modalFilter .filterPanelInSection .filter-multiselect-tags .tag-remove { cursor: pointer; opacity: 0.7; }
+    #modalFilter .filterPanelInSection .filter-multiselect-dropdown { display: none; position: absolute; left: 0; right: 0; top: 100%; margin-top: 2px; max-height: 200px; overflow-y: auto; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1050; }
+    #modalFilter .filterPanelInSection .filter-multiselect-dropdown.open { display: block; }
+    #modalFilter .filterPanelInSection .filter-multiselect-dropdown .form-check { padding: 8px 12px; margin: 0; }
+    #modalFilter .filterPanelInSection .filter-multiselect-dropdown .filter-option-item { display: flex; align-items: center; gap: 8px; }
+    #modalFilter .filterPanelInSection .filter-multiselect-dropdown .filter-multiselect-search-wrap { position: sticky; top: 0; background: var(--bs-body-bg); padding: 8px; border-bottom: 1px solid var(--bs-border-color); z-index: 1; }
+    #modalFilter .filterPanelInSection .filter-multiselect-dropdown .filter-multiselect-search { font-size: 0.85rem; }
     .entity-table-section .entity-table-grid-wrap { flex: 1 1 auto; min-height: 0; border-radius: 6px; border: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,.08)); }
     .entity-table-section .entity-table-section-table { width: 100%; margin-bottom: 0; }
     .entity-table-section .entity-table-cell-link { color: var(--bs-primary, #6f6af8); text-decoration: none; word-break: break-all; }
@@ -119,13 +194,17 @@
     .entity-insert-grid .insert-grid-cell-occupied { border-style: solid; background: rgba(var(--bs-primary-rgb), 0.08); border-color: rgba(var(--bs-primary-rgb), 0.3); }
     .entity-insert-grid .insert-grid-cell-occupied .cell-occupied { font-weight: 600; color: var(--bs-primary); }
     .entity-table-section-readonly .entity-table-toolbar,
-    .entity-table-section-readonly .btnFieldsInSection { display: none !important; }
+    .entity-table-section-readonly .btnFieldsInSection,
+    .entity-table-section-readonly .btnDeleteTableInSection,
+    .entity-table-section-readonly .searchFilterRowInSection { display: none !important; }
     .entity-table-section-plus-hidden .entity-table-toolbar .btnAddEntityInSection { display: none !important; }
     .entity-table-section-plus-hidden .entity-table-toolbar .entity-table-section-hidden-label { display: none !important; }
     .entity-table-section-hidden .entity-table-toolbar .btnAddEntityInSection { display: none !important; }
     .entity-table-section-hidden .entity-table-toolbar .entity-table-section-hidden-label { display: none !important; }
     .entity-table-section-hidden .entity-table-loading.loadingBlockInSection,
     .entity-table-section-hidden .gridTopRowInSection,
+    .entity-table-section-hidden .searchFilterRowInSection,
+    .entity-table-section-hidden .filterPanelInSection,
     .entity-table-section-hidden .entity-table-grid-wrap,
     .entity-table-section-hidden .emptyBlockInSection,
     .entity-table-section-hidden .datatable-bottom.paginationBlockInSection { display: none !important; }
@@ -174,9 +253,32 @@
                             <h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4>
                             <p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p>
                         </div>
-                        <button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none ms-auto flex-shrink-0" title="Настроить поля">
+                        <button type="button" class="btn btn-outline-danger btnDeleteTableInSection d-none ms-auto" title="Удалить таблицу" aria-label="Удалить таблицу">
+                            <i class="iconoir-trash"></i>
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2">
+                        <div class="input-group input-group-sm searchFilterInputWrap">
+                            <span class="input-group-text"><i class="iconoir-search"></i></span>
+                            <input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице">
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска">
                             <i class="iconoir-settings"></i>
                         </button>
+                        <div class="flex-grow-1"></div>
+                        <button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы">
+                            <i class="iconoir-settings"></i>
+                        </button>
+                        <div class="filterDropdownInSection">
+                            <div class="filterDropdownCardInSection filterPanelInSection">
+                                <div class="filterDropdownRowsContainerInSection"></div>
+                                <a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a>
+                                <div class="d-flex justify-content-end gap-2 mt-3">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button>
+                                    <button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none">
                         <table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">
@@ -268,6 +370,25 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalFilter" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Фильтр + поиск</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body filterPanelInSection">
+                <div id="filterModalRowsContainer"></div>
+                <a href="javascript:void(0)" class="addFilterFieldInModal text-primary small mt-2 d-inline-block" id="addFilterFieldInModal">Добавить поле</a>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-primary" id="modalFilterSave">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalInsertTableGrid" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -327,7 +448,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var b1 = document.getElementById('btnAddTableBlock');
         if (b1) { if (hide) { b1.style.setProperty('display', 'none', 'important'); b1.classList.add(DASHBOARD_HIDE_CLASS); } else { b1.classList.remove(DASHBOARD_HIDE_CLASS); b1.style.display = ''; } }
         if (entityTablesContainer) {
-            entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection').forEach(function(el) {
+            entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection, .btnDeleteTableInSection').forEach(function(el) {
                 if (hide) { el.style.setProperty('display', 'none', 'important'); el.classList.add(DASHBOARD_HIDE_CLASS); } else { el.classList.remove(DASHBOARD_HIDE_CLASS); el.style.display = ''; }
             });
         }
@@ -417,7 +538,13 @@ document.addEventListener('DOMContentLoaded', function() {
             allColumns: [],
             currentPage: 1,
             pageSize: 25,
-            columnWidths: {}
+            columnWidths: {},
+            sortKey: '',
+            sortDir: '',
+            showTime: false,
+            dateTimeDisplayByColumn: {},
+            guestFilterInitialized: false,
+            filterFields: [{ label: 'Название', key: '', type: 'text' }]
         };
     }
 
@@ -433,9 +560,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalEntityBody = document.getElementById('modalEntityBody');
     const modalEntitySave = document.getElementById('modalEntitySave');
     const modalFields = new bootstrap.Modal(document.getElementById('modalFields'));
+    const modalFieldsEl = document.getElementById('modalFields');
+    const modalFilter = new bootstrap.Modal(document.getElementById('modalFilter'));
+    const filterModalRowsContainerEl = document.getElementById('filterModalRowsContainer');
     const fieldsList = document.getElementById('fieldsList');
     const modalFieldsSave = document.getElementById('modalFieldsSave');
     const nestedCheckboxesRow = document.getElementById('nestedCheckboxesRow');
+
+    if (modalFieldsEl) {
+        modalFieldsEl.addEventListener('hidden.bs.modal', function() {
+            fieldsModalForFilterTableIndex = null;
+            fieldsModalForFilterSource = null;
+        });
+    }
 
     function getSectionEls(tableIndex) {
         var section = entityTablesContainer && entityTablesContainer.querySelector('.entity-table-section[data-table-index="' + tableIndex + '"]');
@@ -445,7 +582,9 @@ document.addEventListener('DOMContentLoaded', function() {
             loadingBlock: section.querySelector('.loadingBlockInSection'),
             loadingText: section.querySelector('.loadingTextInSection'),
             gridTopRow: section.querySelector('.gridTopRowInSection'),
+            btnDeleteTable: section.querySelector('.btnDeleteTableInSection'),
             gridBlock: section.querySelector('.gridBlockInSection'),
+            searchFilterRow: section.querySelector('.searchFilterRowInSection'),
             emptyBlock: section.querySelector('.emptyBlockInSection'),
             gridHead: section.querySelector('.entity-table-grid-head'),
             gridBody: section.querySelector('.entity-table-grid-body'),
@@ -455,6 +594,11 @@ document.addEventListener('DOMContentLoaded', function() {
             paginationNav: section.querySelector('.paginationNavInSection'),
             selectedEntitiesLabel: section.querySelector('.selectedEntitiesLabelInSection'),
             btnFields: section.querySelector('.btnFieldsInSection'),
+            filterDropdown: section.querySelector('.filterDropdownInSection'),
+            filterDropdownRowsContainer: section.querySelector('.filterDropdownRowsContainerInSection'),
+            filterDropdownAdd: section.querySelector('.addFilterFieldInDropdownInSection'),
+            filterDropdownSave: section.querySelector('.filterDropdownSaveInSection'),
+            filterDropdownClose: section.querySelector('.filterDropdownCloseInSection'),
             tableTitleBlock: section.querySelector('.tableTitleBlockInSection'),
             tableTitleText: section.querySelector('.tableTitleTextInSection'),
             tableDescriptionText: section.querySelector('.tableDescriptionTextInSection')
@@ -562,11 +706,49 @@ document.addEventListener('DOMContentLoaded', function() {
         var els = getSectionEls(tableIndex);
         var hasEntities = st.selectedEntities.length > 0;
         if (els.btnFields) els.btnFields.classList.toggle('d-none', !hasEntities);
+        if (els.btnDeleteTable) els.btnDeleteTable.classList.toggle('d-none', !hasEntities);
         if (els.selectedEntitiesLabel) els.selectedEntitiesLabel.textContent = hasEntities
             ? 'Сущности: ' + st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ')
             : '';
         var plusBtn = els.section && els.section.querySelector('.btnAddEntityInSection');
         if (plusBtn) plusBtn.classList.toggle('d-none', !hasEntities);
+    }
+
+    function saveTemplateSnapshot(preferredIndex) {
+        var st = tableStates[preferredIndex] || tableStates[0];
+        if (!st) return;
+        var tablesPayload = tableStates.map(function(t) {
+            return {
+                table_title: t.tableTitle || '',
+                table_description: t.tableDescription || '',
+                entities: t.selectedEntities || [],
+                fields: t.selectedFields || [],
+                show_time: (t.showTime === true),
+                date_time_display: (t.dateTimeDisplayByColumn && Object.keys(t.dateTimeDisplayByColumn).length) ? t.dateTimeDisplayByColumn : null
+            };
+        });
+        if (!tablesPayload.some(function(t) { return t.entities && t.entities.length > 0 && t.fields && t.fields.length > 0; })) return;
+        var templateName = (st.tableTitle && String(st.tableTitle).trim()) || ('Шаблон ' + new Date().toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
+        fetch(API.templates, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: templateName, tables: tablesPayload })
+        }).then(function(r) { return r.json(); }).then(function(data) { if (data && data.ok) loadTemplates(); }).catch(function() {});
+    }
+
+    function deleteTableAtIndex(index) {
+        if (index == null || isNaN(index) || index < 0 || index >= tableStates.length) return;
+        tableStates.splice(index, 1);
+        if (!tableStates.length) tableStates = [defaultTableState()];
+        currentTableIndex = Math.min(Math.max(0, currentTableIndex), tableStates.length - 1);
+        ensureSections();
+        for (var i = 0; i < tableStates.length; i++) {
+            updateUI(i);
+            loadFieldsThenData(i, false);
+        }
+        saveConfigToStorage();
+        saveConfig();
+        saveTemplateSnapshot(index > 0 ? index - 1 : 0);
     }
 
     function getPageSlug() {
@@ -622,6 +804,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function getValidColumnKeysFromSelectedFields(st) {
         if (!st || !st.selectedEntities || !st.selectedFields) return {};
         var valid = {};
+        var knownEntities = [];
+        if (st._expandedLoadEntities && Array.isArray(st._expandedLoadEntities)) knownEntities = knownEntities.concat(st._expandedLoadEntities);
+        if (st.selectedEntities && Array.isArray(st.selectedEntities)) knownEntities = knownEntities.concat(st.selectedEntities);
+        if (entitiesList && Array.isArray(entitiesList)) knownEntities = knownEntities.concat(entitiesList);
         st.selectedEntities.forEach(function(ent) {
             var key = entityKey(ent);
             var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
@@ -635,6 +821,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     (sel.nestedFields[typ] || []).forEach(function(t) {
                         var colKey = key + '::' + t;
                         if (!isSystemColumn(colKey)) valid[colKey] = true;
+                        if (String(typ || '').indexOf('smart_process::') === 0) {
+                            var smartEnt = resolveSmartEntityByNestedType(typ, knownEntities);
+                            if (smartEnt) {
+                                var smartKey = entityKey(smartEnt) + '::' + t;
+                                if (!isSystemColumn(smartKey)) valid[smartKey] = true;
+                            }
+                        }
                     });
                 });
             }
@@ -718,7 +911,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     entities: st.selectedEntities,
                     fields: st.selectedFields,
                     column_order: keys.length ? keys : null,
-                    column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null
+                    column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
+                    sort_key: st.sortKey || null,
+                    sort_dir: st.sortDir || null,
+                    show_time: (st.showTime === true),
+                    date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null
                 };
             });
             localStorage.setItem(key, JSON.stringify({ tables: tables }));
@@ -752,7 +949,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     currentPage: 1,
                     pageSize: 25,
                     columnOrderFromServer: orderFromServer,
-                    columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : {}
+                    columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : {},
+                    sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
+                    sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
+                    showTime: (t.show_time === true),
+                    dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
+                    filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                 };
             });
             ensureSections();
@@ -777,12 +979,433 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentPage: 1,
                 pageSize: 25,
                 columnOrderFromServer: orderFromServer,
-                columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : loadColumnWidths(0)
+                columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : loadColumnWidths(0),
+                sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
+                sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
+                showTime: (data.show_time === true),
+                dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {},
+                filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
             }];
             ensureSections();
             updateUI(0);
             loadFieldsThenData(0, openModalIfNoFields);
         }
+    }
+
+    var fieldsModalForFilterTableIndex = null;
+    var fieldsModalForFilterSource = null; // 'dropdown' | 'modal'
+
+    var filterModalTableIndex = null;
+
+    function isStageLikeField(label, key) {
+        var sample = ((label || '') + ' ' + (key || '')).toLowerCase();
+        return sample.indexOf('стад') >= 0
+            || sample.indexOf('stage') >= 0
+            || sample.indexOf('status') >= 0
+            || sample.indexOf('воронк') >= 0
+            || sample.indexOf('pipeline') >= 0;
+    }
+
+    function isFunnelLikeField(label, key) {
+        var sample = ((label || '') + ' ' + (key || '')).toLowerCase();
+        return sample.indexOf('воронк') >= 0
+            || sample.indexOf('funnel') >= 0
+            || sample.indexOf('category') >= 0
+            || sample.indexOf('pipeline') >= 0;
+    }
+
+    function isDropdownFieldType(fieldType) {
+        var ft = String(fieldType || '').toLowerCase();
+        if (!ft) return false;
+        return ft.indexOf('enum') >= 0
+            || ft.indexOf('list') >= 0
+            || ft.indexOf('select') >= 0
+            || ft.indexOf('status') >= 0
+            || ft.indexOf('stage') >= 0
+            || ft.indexOf('bool') >= 0;
+    }
+
+    function collectFieldOptions(st, colKey, filterField) {
+        var options = [];
+        if (!st || !st.fullData || !st.fullData.length || !colKey) return options;
+        var seen = {};
+        st.fullData.forEach(function(r) {
+            var v = r[colKey];
+            if (v == null || v === '') return;
+            var s = String(v).trim();
+            if (!s || seen[s]) return;
+            seen[s] = true;
+            options.push(s);
+        });
+        options.sort();
+        if (options.length) return options;
+        if (!isStageLikeField(filterField && filterField.label, filterField && filterField.key)) return options;
+        var idx = String(colKey).indexOf('::');
+        if (idx <= 0) return options;
+        var entityPrefix = String(colKey).slice(0, idx);
+        var wantFunnel = isFunnelLikeField(filterField && filterField.label, filterField && filterField.key);
+        var first = st.fullData[0] || {};
+        var siblingKeys = Object.keys(first).filter(function(k) {
+            if (k.indexOf(entityPrefix + '::') !== 0) return false;
+            var s = k.toLowerCase();
+            if (wantFunnel) return s.indexOf('воронк') >= 0 || s.indexOf('funnel') >= 0 || s.indexOf('category') >= 0 || s.indexOf('pipeline') >= 0;
+            return s.indexOf('stage') >= 0 || s.indexOf('status') >= 0 || s.indexOf('стад') >= 0;
+        });
+        if (!siblingKeys.length) return options;
+        var seen2 = {};
+        st.fullData.forEach(function(r) {
+            siblingKeys.forEach(function(sk) {
+                var vv = r[sk];
+                if (vv == null || vv === '') return;
+                var ss = String(vv).trim();
+                if (!ss || seen2[ss]) return;
+                seen2[ss] = true;
+                options.push(ss);
+            });
+        });
+        options.sort();
+        return options;
+    }
+
+    function normalizeFieldLabel(s) {
+        return String(s || '')
+            .toLowerCase()
+            .replace(/\s*\([^)]*\)\s*$/, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function normalizeSearchText(s) {
+        var out = String(s || '').toLowerCase().trim();
+        if (out.normalize) out = out.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return out;
+    }
+
+    function resolveFilterColumnKey(st, f) {
+        if (!st || !f) return '';
+        var candidate = String(f.key || '').trim();
+        var idxCandidate = candidate.indexOf('::');
+        var prefix = idxCandidate > 0 ? candidate.slice(0, idxCandidate) : '';
+        var aliasCandidates = [];
+        if (prefix) {
+            if (f.sourceB24Field) aliasCandidates.push(prefix + '::' + String(f.sourceB24Field).trim());
+            if (f.sourceColumnName) aliasCandidates.push(prefix + '::' + String(f.sourceColumnName).trim());
+        }
+        if (candidate) {
+            var hasCandidate = (st.allColumns || []).some(function(c) { return c && c.key === candidate; });
+            if (hasCandidate) return candidate;
+            var first = (st.fullData && st.fullData.length) ? (st.fullData[0] || {}) : {};
+            if (Object.prototype.hasOwnProperty.call(first, candidate)) return candidate;
+        }
+        if (aliasCandidates.length) {
+            var allByKey = st.allColumns || [];
+            var byAlias = aliasCandidates.find(function(a) { return allByKey.some(function(c) { return c && c.key === a; }); });
+            if (byAlias) return byAlias;
+            var firstRow = (st.fullData && st.fullData.length) ? (st.fullData[0] || {}) : {};
+            var byAliasRow = aliasCandidates.find(function(a) { return Object.prototype.hasOwnProperty.call(firstRow, a); });
+            if (byAliasRow) return byAliasRow;
+        }
+        var labelNorm = normalizeFieldLabel(f.label || '');
+        if (!labelNorm) return candidate;
+        var byLabel = (st.allColumns || []).find(function(c) { return normalizeFieldLabel(c && c.label) === labelNorm; });
+        if (byLabel && byLabel.key) return byLabel.key;
+        var byKeyTitle = (st.allColumns || []).find(function(c) {
+            var key = String((c && c.key) || '');
+            var idx = key.indexOf('::');
+            var title = idx >= 0 ? key.slice(idx + 2) : key;
+            return normalizeFieldLabel(title) === labelNorm;
+        });
+        if (byKeyTitle && byKeyTitle.key) return byKeyTitle.key;
+        return candidate;
+    }
+
+    function updateMultiselectCaption(tagsDiv, selected) {
+        renderMultiselectTags(tagsDiv, selected);
+    }
+
+    function shouldRenderAsMultiselect(st, f, options) {
+        if (f && f.type === 'multiselect') return true;
+        if (isStageLikeField(f && f.label, f && f.key)) return true;
+        if (isDropdownFieldType(f && f.sourceFieldType)) return true;
+        var totalRows = (st && st.fullData && st.fullData.length) ? st.fullData.length : 0;
+        var uniqCount = options ? options.length : 0;
+        if (!totalRows || !uniqCount) return false;
+        return uniqCount <= 60 && uniqCount < Math.max(3, Math.floor(totalRows * 0.7));
+    }
+
+    function renderMultiselectTags(tagsDiv, selected) {
+        if (!tagsDiv) return;
+        var values = Array.isArray(selected) ? selected : [];
+        var arrowHtml = '<i class="iconoir-nav-arrow-down ms-auto"></i>';
+        if (!values.length) {
+            tagsDiv.innerHTML = '<span class="filter-multiselect-caption text-muted small">Выберите...</span>' + arrowHtml;
+            return;
+        }
+        var tagsHtml = values.map(function(v) {
+            var txt = String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            return '<span class="tag">' + txt + ' <span class="tag-remove" data-value="' + txt + '">&times;</span></span>';
+        }).join('');
+        tagsDiv.innerHTML = tagsHtml + arrowHtml;
+    }
+
+    function applyConfiguredFieldFilters(rows, st) {
+        if (!rows || !rows.length || !st || !st.filterFields || !st.filterFields.length) return rows || [];
+        return rows.filter(function(row) {
+            return st.filterFields.every(function(f) {
+                if (!f || !f.key) return true;
+                var raw = row[f.key];
+                var cell = raw == null ? '' : String(raw).toLowerCase();
+                var type = f.type || (isStageLikeField(f.label, f.key) ? 'multiselect' : 'text');
+                var hasMultiSelection = Array.isArray(f.selectedValues) && f.selectedValues.length > 0;
+                if (type !== 'multiselect' && hasMultiSelection) type = 'multiselect';
+                if (type === 'multiselect') {
+                    var selected = Array.isArray(f.selectedValues) ? f.selectedValues : [];
+                    if (!selected.length) return true;
+                    return selected.some(function(v) { return String(v).trim().toLowerCase() === cell; });
+                }
+                var q = (f.value != null) ? String(f.value).trim().toLowerCase() : '';
+                if (!q) return true;
+                return cell.indexOf(q) >= 0;
+            });
+        });
+    }
+
+    function syncGuestFilterFieldsWithColumns(tableIndex) {
+        var st = tableStates[tableIndex];
+        if (!st) return;
+        var cols = (st.allColumns || []).filter(function(c) { return c && c.key && !isSystemColumn(c.key); });
+        if (!cols.length) return;
+        var firstGuestSync = !st.guestFilterInitialized;
+        var existingByKey = {};
+        if (!firstGuestSync) {
+            (st.filterFields || []).forEach(function(f) {
+                if (f && f.key) existingByKey[f.key] = f;
+            });
+        }
+        st.filterFields = cols.map(function(c) {
+            var prev = existingByKey[c.key] || {};
+            var probe = {
+                label: c.label || c.key,
+                key: c.key,
+                type: prev.type,
+                sourceFieldType: prev.sourceFieldType,
+                sourceB24Field: prev.sourceB24Field,
+                sourceColumnName: prev.sourceColumnName
+            };
+            var options = collectFieldOptions(st, c.key, probe);
+            var type = shouldRenderAsMultiselect(st, probe, options) ? 'multiselect' : 'text';
+            var next = {
+                label: c.label || c.key,
+                key: c.key,
+                type: type,
+                sourceFieldType: prev.sourceFieldType,
+                sourceB24Field: prev.sourceB24Field,
+                sourceColumnName: prev.sourceColumnName
+            };
+            if (type === 'multiselect') {
+                next.selectedValues = Array.isArray(prev.selectedValues) ? prev.selectedValues.slice() : [];
+            } else {
+                next.value = (prev.value != null) ? String(prev.value) : '';
+            }
+            return next;
+        });
+        st.guestFilterInitialized = true;
+    }
+
+    function renderFilterRows(tableIndex, rowsContainer) {
+        var st = tableStates[tableIndex];
+        var container = rowsContainer || filterModalRowsContainerEl;
+        if (!st || !container) return;
+        var guestMode = isGuestUser();
+        if (guestMode) syncGuestFilterFieldsWithColumns(tableIndex);
+        var addFilterFieldInModalEl = document.getElementById('addFilterFieldInModal');
+        if (addFilterFieldInModalEl) addFilterFieldInModalEl.classList.toggle('d-none', guestMode);
+        if (!st.filterFields || !st.filterFields.length) st.filterFields = [{ label: 'Название', key: '', type: 'text' }];
+        st.filterFields.forEach(function(f) {
+            if ((f.key === '' || !f.key) && f.label === 'Название' && st.allColumns && st.allColumns.length) {
+                var col = st.allColumns.find(function(c) { return (c.label === 'Название') || (c.key && String(c.key).indexOf('Название') >= 0); });
+                if (col && col.key) f.key = col.key;
+            }
+        });
+        container.innerHTML = '';
+        st.filterFields.forEach(function(f, rowIdx) {
+            var colKey = resolveFilterColumnKey(st, f);
+            if (colKey) f.key = colKey;
+            var options = collectFieldOptions(st, colKey, f);
+            var type = shouldRenderAsMultiselect(st, f, options) ? 'multiselect' : 'text';
+            var row = document.createElement('div');
+            row.className = 'filter-row-item';
+            row.setAttribute('data-filter-row-index', rowIdx);
+            var head = document.createElement('div');
+            head.className = 'd-flex align-items-center justify-content-between mb-1';
+            var label = document.createElement('label');
+            label.textContent = f.label || '';
+            head.appendChild(label);
+            if (!guestMode) {
+                var removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'btn btn-link btn-sm text-danger p-0 ms-2';
+                removeBtn.textContent = 'Удалить';
+                removeBtn.addEventListener('click', function() {
+                    st.filterFields.splice(rowIdx, 1);
+                    if (!st.filterFields.length) st.filterFields = [{ label: 'Название', key: '', type: 'text' }];
+                    renderFilterRows(tableIndex, container);
+                });
+                head.appendChild(removeBtn);
+            }
+            row.appendChild(head);
+            if (type === 'multiselect') {
+                if (!f.selectedValues || !Array.isArray(f.selectedValues)) f.selectedValues = [];
+                var selected = f.selectedValues;
+                var wrap = document.createElement('div');
+                wrap.className = 'filter-multiselect-wrap';
+                var tagsDiv = document.createElement('div');
+                tagsDiv.className = 'filter-multiselect-tags';
+                tagsDiv.setAttribute('data-column-key', colKey);
+                renderMultiselectTags(tagsDiv, selected);
+                var drop = document.createElement('div');
+                drop.className = 'filter-multiselect-dropdown';
+                var searchWrap = document.createElement('div');
+                searchWrap.className = 'filter-multiselect-search-wrap';
+                var searchInput = document.createElement('input');
+                searchInput.type = 'text';
+                searchInput.className = 'form-control form-control-sm filter-multiselect-search';
+                searchInput.placeholder = 'Поиск по значениям...';
+                searchWrap.appendChild(searchInput);
+                drop.appendChild(searchWrap);
+                options.forEach(function(opt) {
+                    var cb = document.createElement('label');
+                    cb.className = 'form-check filter-option-item';
+                    cb.setAttribute('data-option-text', String(opt).toLowerCase());
+                    var checked = selected.indexOf(opt) >= 0;
+                    cb.innerHTML = '<input class="form-check-input filter-multiselect-option" type="checkbox" value="' + String(opt).replace(/"/g, '&quot;') + '"' + (checked ? ' checked' : '') + '><span class="form-check-label">' + String(opt).replace(/</g, '&lt;') + '</span>';
+                    drop.appendChild(cb);
+                });
+                if (!options.length) {
+                    var empty = document.createElement('div');
+                    empty.className = 'small text-muted px-3 py-2 filter-multiselect-empty';
+                    empty.textContent = 'Нет значений';
+                    drop.appendChild(empty);
+                }
+                wrap.appendChild(tagsDiv);
+                wrap.appendChild(drop);
+                tagsDiv.addEventListener('click', function(e) {
+                    var removeEl = e.target.closest('.tag-remove');
+                    if (removeEl) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var valToRemove = removeEl.getAttribute('data-value');
+                        var idxSel = selected.indexOf(valToRemove);
+                        if (idxSel >= 0) selected.splice(idxSel, 1);
+                        st.filterFields[rowIdx].selectedValues = selected.slice();
+                        drop.querySelectorAll('.filter-multiselect-option').forEach(function(ch) {
+                            if (ch.value === valToRemove) ch.checked = false;
+                        });
+                        updateMultiselectCaption(tagsDiv, selected);
+                        return;
+                    }
+                    drop.classList.toggle('open');
+                    if (drop.classList.contains('open')) {
+                        searchInput.focus();
+                        setTimeout(function() { document.addEventListener('click', function closeDrop() { drop.classList.remove('open'); document.removeEventListener('click', closeDrop); }); }, 0);
+                    }
+                });
+                drop.querySelectorAll('.filter-multiselect-option').forEach(function(cb) {
+                    cb.addEventListener('change', function() {
+                        var val = this.value;
+                        if (this.checked) {
+                            if (selected.indexOf(val) < 0) selected.push(val);
+                        } else {
+                            var idx = selected.indexOf(val);
+                            if (idx >= 0) selected.splice(idx, 1);
+                        }
+                        st.filterFields[rowIdx].selectedValues = selected.slice();
+                        updateMultiselectCaption(tagsDiv, selected);
+                    });
+                });
+                function applyDropdownSearch() {
+                    var q = normalizeSearchText(searchInput.value || '');
+                    var visibleCount = 0;
+                    drop.querySelectorAll('.filter-multiselect-option').forEach(function(ch) {
+                        var host = ch.closest('.form-check');
+                        if (!host) return;
+                        var labelTextEl = host.querySelector('.form-check-label');
+                        var text = normalizeSearchText(labelTextEl ? labelTextEl.textContent : '');
+                        var show = !q || text.indexOf(q) >= 0;
+                        host.classList.toggle('d-none', !show);
+                        if (show) visibleCount++;
+                    });
+                    var emptyEl = drop.querySelector('.filter-multiselect-empty');
+                    if (emptyEl) {
+                        if (options.length === 0) {
+                            emptyEl.textContent = 'Нет значений';
+                            emptyEl.style.display = '';
+                        } else if (visibleCount === 0) {
+                            emptyEl.textContent = 'Ничего не найдено';
+                            emptyEl.style.display = '';
+                        } else {
+                            emptyEl.style.display = 'none';
+                        }
+                    }
+                }
+                searchInput.addEventListener('input', applyDropdownSearch);
+                searchInput.addEventListener('keyup', applyDropdownSearch);
+                searchInput.addEventListener('change', applyDropdownSearch);
+                wrap.addEventListener('click', function(e) { e.stopPropagation(); });
+                row.appendChild(wrap);
+            } else {
+                var inp = document.createElement('input');
+                inp.type = 'text';
+                inp.className = 'form-control form-control-sm filter-text-input';
+                inp.placeholder = '';
+                inp.value = f.value != null ? String(f.value) : '';
+                inp.setAttribute('data-filter-row-index', rowIdx);
+                inp.addEventListener('input', function() { st.filterFields[rowIdx].value = this.value; });
+                row.appendChild(inp);
+            }
+            container.appendChild(row);
+        });
+    }
+
+    function refreshFilterModalIfOpen(tableIndex) {
+        var modalEl = document.getElementById('modalFilter');
+        if (!modalEl || !modalEl.classList.contains('show')) return;
+        if (filterModalTableIndex == null || filterModalTableIndex !== tableIndex) return;
+        renderFilterRows(tableIndex, filterModalRowsContainerEl);
+    }
+
+    function closeFilterDropdown(tableIndex) {
+        var els = getSectionEls(tableIndex);
+        if (els && els.filterDropdown) els.filterDropdown.classList.remove('open');
+    }
+
+    function closeAllFilterDropdowns(exceptTableIndex) {
+        if (!entityTablesContainer) return;
+        entityTablesContainer.querySelectorAll('.entity-table-section').forEach(function(section) {
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            if (exceptTableIndex != null && !isNaN(idx) && idx === exceptTableIndex) return;
+            var drop = section.querySelector('.filterDropdownInSection');
+            if (drop) drop.classList.remove('open');
+        });
+    }
+
+    function openFilterDropdown(tableIndex) {
+        var els = getSectionEls(tableIndex);
+        if (!els || !els.filterDropdown || !els.filterDropdownRowsContainer) return;
+        closeAllFilterDropdowns(tableIndex);
+        filterModalTableIndex = tableIndex;
+        fieldsModalForFilterSource = 'dropdown';
+        renderFilterRows(tableIndex, els.filterDropdownRowsContainer);
+        if (els.filterDropdownAdd) els.filterDropdownAdd.classList.toggle('d-none', isGuestUser());
+        els.filterDropdown.classList.add('open');
+    }
+
+    function openFilterModal(tableIndex) {
+        closeAllFilterDropdowns();
+        filterModalTableIndex = tableIndex;
+        fieldsModalForFilterSource = 'modal';
+        renderFilterRows(tableIndex, filterModalRowsContainerEl);
+        modalFilter.show();
     }
 
     function createSectionHtml(tableIndex) {
@@ -794,8 +1417,8 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="table-mode-admin ms-2" style="display:none!important"><select class="form-select form-select-sm tableModeSelect" title="Режим таблицы" data-table-index="' + tableIndex + '" style="width:auto;min-width:120px">' +
             '<option value="edit">Редактирование</option><option value="read_only">Только просмотр</option><option value="hide">Скрыть</option></select></div></div>' +
             '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +
-            '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div>' +
-            '<button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none ms-auto flex-shrink-0" title="Настроить поля"><i class="iconoir-settings"></i></button></div>' +
+            '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div><button type="button" class="btn btn-outline-danger btnDeleteTableInSection d-none ms-auto" title="Удалить таблицу" aria-label="Удалить таблицу"><i class="iconoir-trash"></i></button></div>' +
+            '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button><div class="filterDropdownInSection"><div class="filterDropdownCardInSection filterPanelInSection"><div class="filterDropdownRowsContainerInSection"></div><a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a><div class="d-flex justify-content-end gap-2 mt-3"><button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button><button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button></div></div></div></div>' +
             '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">' +
             '<thead class="table-light entity-table-grid-head"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
             '<div class="entity-table-loading emptyBlockInSection" role="button" tabindex="0" title="Нажмите, чтобы выбрать сущности и поля"><p class="text-muted mb-0">Нажмите, чтобы выбрать сущности и поля</p></div>' +
@@ -810,6 +1433,16 @@ document.addEventListener('DOMContentLoaded', function() {
             div.innerHTML = createSectionHtml(i);
             entityTablesContainer.appendChild(div.firstElementChild);
         }
+        while (entityTablesContainer.querySelectorAll('.entity-table-section').length > tableStates.length) {
+            var allSections = entityTablesContainer.querySelectorAll('.entity-table-section');
+            var last = allSections[allSections.length - 1];
+            if (last && last.parentNode) last.parentNode.removeChild(last);
+        }
+        entityTablesContainer.querySelectorAll('.entity-table-section').forEach(function(section, idx) {
+            section.setAttribute('data-table-index', String(idx));
+            var modeSel = section.querySelector('.tableModeSelect');
+            if (modeSel) modeSel.setAttribute('data-table-index', String(idx));
+        });
         var n = tableStates.length;
         entityTablesContainer.style.gridTemplateColumns = n === 1 ? '1fr' : 'repeat(' + n + ', 1fr)';
         bindSectionListeners();
@@ -818,6 +1451,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function bindSectionListeners() {
         if (!entityTablesContainer) return;
+        entityTablesContainer.querySelectorAll('.btnDeleteTableInSection').forEach(function(btn) {
+            var section = btn.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            btn.onclick = function() {
+                deleteTableAtIndex(idx);
+            };
+        });
         entityTablesContainer.querySelectorAll('.btnAddEntityInSection').forEach(function(btn) {
             var section = btn.closest('.entity-table-section');
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
@@ -834,6 +1475,67 @@ document.addEventListener('DOMContentLoaded', function() {
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
             btn.onclick = function() { currentTableIndex = idx; openFieldsModal(); };
         });
+        entityTablesContainer.querySelectorAll('.btn-search-filter-gear').forEach(function(btn) {
+            var section = btn.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            btn.onclick = function() {
+                openFilterModal(idx);
+            };
+        });
+        entityTablesContainer.querySelectorAll('.addFilterFieldInDropdownInSection').forEach(function(btn) {
+            var section = btn.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            btn.onclick = function(e) {
+                e.preventDefault();
+                if (isGuestUser()) return;
+                fieldsModalForFilterTableIndex = idx;
+                fieldsModalForFilterSource = 'dropdown';
+                currentTableIndex = idx;
+                closeFilterDropdown(idx);
+                openFieldsModal();
+            };
+        });
+        entityTablesContainer.querySelectorAll('.filterDropdownSaveInSection').forEach(function(btn) {
+            var section = btn.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            btn.onclick = function() {
+                if (tableStates[idx]) {
+                    tableStates[idx].currentPage = 1;
+                    loadData(idx);
+                }
+                closeFilterDropdown(idx);
+            };
+        });
+        entityTablesContainer.querySelectorAll('.filterDropdownCloseInSection').forEach(function(btn) {
+            var section = btn.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            btn.onclick = function() {
+                closeFilterDropdown(idx);
+            };
+        });
+        var addFilterFieldInModalEl = document.getElementById('addFilterFieldInModal');
+        if (addFilterFieldInModalEl) addFilterFieldInModalEl.onclick = function(e) {
+            e.preventDefault();
+            if (isGuestUser()) return;
+            if (filterModalTableIndex == null) return;
+            fieldsModalForFilterTableIndex = filterModalTableIndex;
+            fieldsModalForFilterSource = 'modal';
+            currentTableIndex = filterModalTableIndex;
+            modalFilter.hide();
+            openFieldsModal();
+        };
+        var modalFilterSaveEl = document.getElementById('modalFilterSave');
+        if (modalFilterSaveEl) modalFilterSaveEl.onclick = function() {
+            if (filterModalTableIndex != null && tableStates[filterModalTableIndex]) {
+                tableStates[filterModalTableIndex].currentPage = 1;
+                loadData(filterModalTableIndex);
+            }
+            modalFilter.hide();
+        };
         entityTablesContainer.querySelectorAll('.pageSizeInSection').forEach(function(sel) {
             var section = sel.closest('.entity-table-section');
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
@@ -843,6 +1545,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderGrid(idx);
             };
         });
+        entityTablesContainer.querySelectorAll('.searchFilterInputInSection').forEach(function(inp) {
+            var section = inp.closest('.entity-table-section');
+            if (!section) return;
+            var idx = parseInt(section.getAttribute('data-table-index'), 10);
+            inp.onfocus = function() { openFilterDropdown(idx); };
+            inp.onclick = function() { openFilterDropdown(idx); };
+            inp.oninput = function() { closeFilterDropdown(idx); };
+            inp.onkeydown = function(e) {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                if (!tableStates[idx]) return;
+                tableStates[idx].currentPage = 1;
+                renderGrid(idx);
+            };
+        });
+        if (!document._entityFilterDropdownHandlersBound) {
+            document._entityFilterDropdownHandlersBound = true;
+            document.addEventListener('click', function(e) {
+                var t = e.target;
+                if (!t || !t.closest) { closeAllFilterDropdowns(); return; }
+                if (t.closest('.filterDropdownInSection')) return;
+                if (t.closest('.searchFilterInputInSection')) return;
+                if (t.closest('.btn-search-filter-gear')) return;
+                closeAllFilterDropdowns();
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeAllFilterDropdowns();
+            });
+        }
     }
 
     /** Делегирование: клики по кнопкам пагинации (prev/next/номер страницы) — привязывается один раз. */
@@ -891,7 +1622,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             currentPage: 1,
                             pageSize: 25,
                             columnOrderFromServer: orderFromServer,
-                            columnWidths: isDashboard ? {} : (Object.keys(widthsFromServer).length ? widthsFromServer : {})
+                            columnWidths: isDashboard ? {} : (Object.keys(widthsFromServer).length ? widthsFromServer : {}),
+                            sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
+                            sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
+                            showTime: (t.show_time === true),
+                            dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {}
                         };
                     });
                     ensureSections();
@@ -922,7 +1657,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         allColumns: [],
                         currentPage: 1,
                         pageSize: 25,
-                        columnWidths: loadColumnWidths(0)
+                        columnWidths: loadColumnWidths(0),
+                        sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
+                        sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
+                        showTime: (data.show_time === true),
+                        dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {}
                     }];
                     ensureSections();
                     applyTableModes(data.table_modes);
@@ -996,7 +1735,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 entities: st.selectedEntities,
                 fields: st.selectedFields,
                 column_order: keys.length ? keys : null,
-                column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null
+                column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
+                sort_key: st.sortKey || null,
+                sort_dir: st.sortDir || null,
+                show_time: (st.showTime === true),
+                date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null
             };
         });
         var payload = { page_slug: slug, tables: tables };
@@ -1222,6 +1965,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function openFieldsModal() {
         var st = tableStates[currentTableIndex];
         if (!st || !st.selectedEntities.length) return;
+        var isFilterMode = (fieldsModalForFilterTableIndex != null);
         var nestedRow = document.getElementById('nestedCheckboxesRow');
         if (nestedRow) nestedRow.innerHTML = '';
         fieldsList.innerHTML = '';
@@ -1229,6 +1973,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var key = entityKey(ent);
             var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
             var titles = (sel && sel.human_titles) ? sel.human_titles : [];
+            var entityTitle = (ent && ent.title) ? String(ent.title) : entityTitleForNested(ent);
             loadFieldsForEntity(ent).then(function(res) {
                 var mainFields = [];
                 var nestedByGroup = {};
@@ -1246,10 +1991,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
 
+                var entityHeader = document.createElement('div');
+                entityHeader.className = 'field-row fields-modal-entity-header';
+                entityHeader.setAttribute('data-entitykey', key);
+                entityHeader.setAttribute('data-entity-header', '1');
+                entityHeader.setAttribute('data-search-text', (entityTitle || '').toLowerCase());
+                entityHeader.innerHTML = '<span>' + String(entityTitle || key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;') + '</span>';
+                fieldsList.appendChild(entityHeader);
+
                 if (Object.keys(nestedByGroup).length && nestedRow) {
                     var wrap = document.createElement('div');
                     wrap.className = 'd-flex flex-wrap gap-2 align-items-center';
-                    var activeNestedRaw = (sel && sel.activeNestedTypes && Array.isArray(sel.activeNestedTypes)) ? sel.activeNestedTypes : [];
+                    var activeNestedRaw = (!isFilterMode && sel && sel.activeNestedTypes && Array.isArray(sel.activeNestedTypes)) ? sel.activeNestedTypes : [];
                     var activeNested = activeNestedRaw.filter(function(typ) { return Object.prototype.hasOwnProperty.call(nestedByGroup, typ); });
                     Object.keys(nestedByGroup).forEach(function(typ) {
                         var group = nestedByGroup[typ];
@@ -1274,27 +2027,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     div.className = 'form-check field-row';
                     div.setAttribute('data-entitykey', key);
                     div.setAttribute('data-nested-type', '');
-                    div.setAttribute('data-search-text', ((f.human_title || f.column_name || '') + '').toLowerCase());
+                    div.setAttribute('data-search-text', ((entityTitle || '') + ' ' + (f.human_title || f.column_name || '')).toLowerCase());
                     var id = 'f_' + key + '_main_' + (f.human_title || f.column_name || f.id).replace(/\s/g, '_');
-                    var checked = titles.indexOf(f.human_title) >= 0 ? ' checked' : '';
+                    var checked = (!isFilterMode && titles.indexOf(f.human_title) >= 0) ? ' checked' : '';
                     var nestAttr = ' data-nested-type=""';
                     var lab = fieldLabelShort(f.human_title || f.column_name || '');
                     var labDisp = (lab.display || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
                     var labTitle = (lab.title || '').replace(/"/g, '&quot;');
-                    div.innerHTML = '<input class="form-check-input field-cb" type="checkbox" id="' + id + '" data-entitykey="' + key + '" data-human-title="' + (f.human_title || '').replace(/"/g, '&quot;') + '"' + nestAttr + checked + '><label class="form-check-label" for="' + id + '" title="' + labTitle + '">' + labDisp + '</label>';
+                    div.innerHTML = '<input class="form-check-input field-cb" type="checkbox" id="' + id + '" data-entitykey="' + key + '" data-human-title="' + (f.human_title || '').replace(/"/g, '&quot;') + '" data-field-type="' + String(f.field_type || '').replace(/"/g, '&quot;') + '" data-b24-field="' + String(f.b24_field || '').replace(/"/g, '&quot;') + '" data-column-name="' + String(f.column_name || '').replace(/"/g, '&quot;') + '"' + nestAttr + checked + '><label class="form-check-label" for="' + id + '" title="' + labTitle + '">' + labDisp + '</label>';
                     fieldsList.appendChild(div);
                 });
 
-                var activeNestedForLabels = activeNested.slice();
+                var activeNestedForLabels = (Array.isArray(activeNested) ? activeNested : []).slice();
                 Object.keys(nestedByGroup).forEach(function(typ) {
                     var group = nestedByGroup[typ];
                     var hasSelectedLabel = activeNestedForLabels.indexOf(typ) >= 0;
-                    var titlesNested = (sel && sel.nestedFields && sel.nestedFields[typ] && Array.isArray(sel.nestedFields[typ])) ? sel.nestedFields[typ] : [];
+                    var titlesNested = (!isFilterMode && sel && sel.nestedFields && sel.nestedFields[typ] && Array.isArray(sel.nestedFields[typ])) ? sel.nestedFields[typ] : [];
                     var groupLabel = document.createElement('div');
                     groupLabel.className = 'form-check fields-modal-group-label field-row';
                     groupLabel.setAttribute('data-entitykey', key);
                     groupLabel.setAttribute('data-nested-type', typ);
-                    groupLabel.setAttribute('data-search-text', (group.label || typ).toLowerCase());
+                    groupLabel.setAttribute('data-search-text', ((entityTitle || '') + ' ' + (group.label || typ)).toLowerCase());
                     groupLabel.style.display = hasSelectedLabel ? '' : 'none';
                     groupLabel.style.gridColumn = '1 / -1';
                     groupLabel.innerHTML = '<span class="fw-bold text-dark">Поля: ' + (group.label || typ) + '</span>';
@@ -1305,9 +2058,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         div.setAttribute('data-entitykey', key);
                         div.setAttribute('data-nested-type', typ);
                         div.style.display = hasSelectedLabel ? '' : 'none';
-                        div.setAttribute('data-search-text', ((n.human_title || n.column_name || '') + '').toLowerCase());
+                        div.setAttribute('data-search-text', ((entityTitle || '') + ' ' + (n.human_title || n.column_name || '')).toLowerCase());
                         var id = 'f_' + key + '_' + typ.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + (n.human_title || n.column_name || n.id).replace(/\s/g, '_');
-                        var checked = titlesNested.indexOf(n.human_title) >= 0 ? ' checked' : '';
+                        var checked = (!isFilterMode && titlesNested.indexOf(n.human_title) >= 0) ? ' checked' : '';
                         var nestAttr = ' data-nested-type="' + String(typ).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"';
                         var lab = fieldLabelShort(n.human_title || n.column_name || '');
                         var labDisp = (lab.display || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -1328,23 +2081,106 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function filterFieldsBySearch() {
-        var q = (document.getElementById('fieldsSearchInput') && document.getElementById('fieldsSearchInput').value || '').trim().toLowerCase();
-        fieldsList.querySelectorAll('.field-row').forEach(function(row) {
-            var text = row.getAttribute('data-search-text') || '';
-            var passesSearch = !q || text.indexOf(q) >= 0;
+        var modalTableIndex = (fieldsModalForFilterTableIndex != null) ? fieldsModalForFilterTableIndex : currentTableIndex;
+        var st = tableStates[modalTableIndex];
+        var allowedEntityKeys = {};
+        if (st && Array.isArray(st.selectedEntities)) {
+            st.selectedEntities.forEach(function(ent) {
+                allowedEntityKeys[entityKey(ent)] = true;
+            });
+        }
+        var q = normalizeSearchText((document.getElementById('fieldsSearchInput') && document.getElementById('fieldsSearchInput').value || ''));
+        var entityMeta = {};
+        fieldsList.querySelectorAll('.field-row[data-entity-header="1"]').forEach(function(row) {
+            var ek = row.getAttribute('data-entitykey') || '';
+            if (ek && !allowedEntityKeys[ek]) { row.style.display = 'none'; return; }
+            var text = normalizeSearchText(row.getAttribute('data-search-text') || row.textContent || '');
+            var forceShow = !!q && text.indexOf(q) >= 0;
+            entityMeta[ek] = { header: row, forceShow: forceShow, visibleCount: 0 };
+            row.style.display = 'none';
+        });
+        fieldsList.querySelectorAll('.field-row:not([data-entity-header="1"])').forEach(function(row) {
+            if (row.classList && row.classList.contains('fields-modal-group-label')) {
+                row.style.display = 'none';
+                return;
+            }
+            var text = normalizeSearchText(row.getAttribute('data-search-text') || row.textContent || '');
+            var entityKeyVal = row.getAttribute('data-entitykey') || '';
+            if (entityKeyVal && !allowedEntityKeys[entityKeyVal]) { row.style.display = 'none'; return; }
+            var forceShowByEntity = !!(entityMeta[entityKeyVal] && entityMeta[entityKeyVal].forceShow);
+            var passesSearch = forceShowByEntity || !q || text.indexOf(q) >= 0;
             var nestedType = row.getAttribute('data-nested-type');
-            var entityKeyVal = row.getAttribute('data-entitykey');
             var nestedVisible = true;
             if (nestedType && entityKeyVal) {
                 var safeId = (entityKeyVal + '_' + nestedType).replace(/[^a-zA-Z0-9_]/g, '_');
                 var toggleEl = document.getElementById('nested_cb_' + safeId);
-                nestedVisible = toggleEl && (toggleEl.checked === true || toggleEl.getAttribute('data-active') === 'true');
+                nestedVisible = !toggleEl || (toggleEl.checked === true || toggleEl.getAttribute('data-active') === 'true');
             }
-            row.style.display = (passesSearch && nestedVisible) ? '' : 'none';
+            var show = (passesSearch && nestedVisible);
+            row.style.display = show ? '' : 'none';
+            if (show && entityMeta[entityKeyVal]) entityMeta[entityKeyVal].visibleCount++;
+        });
+        // Показываем заголовок nested-группы, если в ней есть видимые поля после поиска.
+        fieldsList.querySelectorAll('.fields-modal-group-label.field-row').forEach(function(labelRow) {
+            var entityKeyVal = labelRow.getAttribute('data-entitykey') || '';
+            var nestedType = labelRow.getAttribute('data-nested-type') || '';
+            if (!entityKeyVal || !nestedType || (entityKeyVal && !allowedEntityKeys[entityKeyVal])) {
+                labelRow.style.display = 'none';
+                return;
+            }
+            var hasVisibleRows = false;
+            fieldsList.querySelectorAll('.field-row[data-entitykey="' + entityKeyVal + '"][data-nested-type="' + nestedType + '"]').forEach(function(r) {
+                if (hasVisibleRows) return;
+                if (r === labelRow) return;
+                if (r.classList && r.classList.contains('fields-modal-group-label')) return;
+                if (r.style.display !== 'none') hasVisibleRows = true;
+            });
+            labelRow.style.display = hasVisibleRows ? '' : 'none';
+        });
+        Object.keys(entityMeta).forEach(function(ek) {
+            var meta = entityMeta[ek];
+            if (!meta || !meta.header) return;
+            meta.header.style.display = (meta.visibleCount > 0 || meta.forceShow) ? '' : 'none';
         });
     }
 
     modalFieldsSave.addEventListener('click', function() {
+        if (fieldsModalForFilterTableIndex != null) {
+            var st = tableStates[fieldsModalForFilterTableIndex];
+            if (!st) { fieldsModalForFilterTableIndex = null; fieldsModalForFilterSource = null; return; }
+            var existingKeys = {};
+            (st.filterFields || []).forEach(function(f) {
+                var fk = String((f && f.key) || '').trim().toLowerCase();
+                if (fk) existingKeys[fk] = true;
+            });
+            fieldsList.querySelectorAll('.field-cb:checked').forEach(function(cb) {
+                var k = (cb.getAttribute('data-entitykey') || '').trim();
+                var ht = (cb.getAttribute('data-human-title') || '').trim();
+                var fType = (cb.getAttribute('data-field-type') || '').trim();
+                var b24Field = (cb.getAttribute('data-b24-field') || '').trim();
+                var columnName = (cb.getAttribute('data-column-name') || '').trim();
+                var nt = (cb.getAttribute('data-nested-type') || '').trim();
+                if (!k || !ht || nt) return;
+                var key = k + '::' + ht;
+                var normKey = key.toLowerCase();
+                if (existingKeys[normKey]) return;
+                existingKeys[normKey] = true;
+                var type = (isStageLikeField(ht, key) || isDropdownFieldType(fType)) ? 'multiselect' : 'text';
+                st.filterFields = st.filterFields || [];
+                st.filterFields.push({ label: ht, key: key, type: type, sourceFieldType: fType, sourceB24Field: b24Field, sourceColumnName: columnName });
+            });
+            modalFields.hide();
+            filterModalTableIndex = fieldsModalForFilterTableIndex;
+            loadData(fieldsModalForFilterTableIndex);
+            if (fieldsModalForFilterSource === 'modal') {
+                openFilterModal(fieldsModalForFilterTableIndex);
+            } else {
+                openFilterDropdown(fieldsModalForFilterTableIndex);
+            }
+            fieldsModalForFilterTableIndex = null;
+            fieldsModalForFilterSource = null;
+            return;
+        }
         var st = tableStates[currentTableIndex];
         if (!st) return;
         var byKey = {};
@@ -1377,17 +2213,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadData(currentTableIndex);
         modalFields.hide();
         // Автосохранение шаблона на сервере (общий для всех пользователей) после выбора полей
-        var tablesPayload = tableStates.map(function(t) {
-            return { table_title: t.tableTitle || '', table_description: t.tableDescription || '', entities: t.selectedEntities || [], fields: t.selectedFields || [] };
-        });
-        if (tablesPayload.some(function(t) { return t.entities && t.entities.length > 0 && t.fields && t.fields.length > 0; })) {
-            var templateName = (st.tableTitle && String(st.tableTitle).trim()) || ('Шаблон ' + new Date().toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
-            fetch(API.templates, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: templateName, tables: tablesPayload })
-            }).then(function(r) { return r.json(); }).then(function(data) { if (data && data.ok) loadTemplates(); }).catch(function() {});
-        }
+        saveTemplateSnapshot(currentTableIndex);
     });
 
     function loadFieldsThenData(tableIndex, openModalIfNoFields) {
@@ -1399,6 +2225,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (els.emptyBlock) els.emptyBlock.classList.remove('d-none');
             if (els.gridBlock) els.gridBlock.classList.add('d-none');
             if (els.gridTopRow) els.gridTopRow.classList.add('d-none');
+            if (els.searchFilterRow) els.searchFilterRow.classList.add('d-none');
+            if (els.paginationBlock) els.paginationBlock.classList.add('d-none');
             return;
         }
         var hasAnyFields = st.selectedFields.some(function(f) { return f.human_titles && f.human_titles.length; });
@@ -1408,6 +2236,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (els.emptyBlock) els.emptyBlock.classList.remove('d-none');
                 if (els.gridBlock) els.gridBlock.classList.add('d-none');
                 if (els.gridTopRow) els.gridTopRow.classList.add('d-none');
+                if (els.searchFilterRow) els.searchFilterRow.classList.add('d-none');
+                if (els.paginationBlock) els.paginationBlock.classList.add('d-none');
             }
             return;
         }
@@ -1415,7 +2245,45 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     var FIRST_BATCH_SIZE = 2000;
-    function fetchPage(ent, titles, key, offset, limit) {
+    function resolveSmartEntityByNestedType(typeToken, smartEntities) {
+        var token = String(typeToken || '');
+        if (!token || token.indexOf('smart_process::') !== 0) return null;
+        var raw = token.slice('smart_process::'.length);
+        var rawNorm = normalizeSearchText(raw.replace(/_/g, ' '));
+        return (smartEntities || []).find(function(e) {
+            var eKey = String((e && e.entity_key) || '');
+            var eTitle = String((e && e.title) || eKey);
+            return normalizeSearchText(eKey) === normalizeSearchText(raw)
+                || normalizeSearchText(eKey) === rawNorm
+                || normalizeSearchText(eTitle) === rawNorm;
+        }) || null;
+    }
+
+    function expandEntitiesFromNestedFields(st) {
+        return loadEntitiesList().catch(function() { return entitiesList || []; }).then(function(list) {
+            var smartEntities = (list || []).filter(function(e) { return e && e.type === 'smart_process'; });
+            var expanded = (st && st.selectedEntities && Array.isArray(st.selectedEntities)) ? st.selectedEntities.slice() : [];
+            var nestedTitlesByEntity = {};
+            (st && st.selectedFields && Array.isArray(st.selectedFields) ? st.selectedFields : []).forEach(function(f) {
+                var nested = (f && f.nestedFields && typeof f.nestedFields === 'object') ? f.nestedFields : {};
+                Object.keys(nested).forEach(function(typ) {
+                    var ent = resolveSmartEntityByNestedType(typ, smartEntities);
+                    if (!ent) return;
+                    var ek = entityKey(ent);
+                    if (!nestedTitlesByEntity[ek]) nestedTitlesByEntity[ek] = [];
+                    (nested[typ] || []).forEach(function(t) {
+                        if (t && nestedTitlesByEntity[ek].indexOf(t) < 0) nestedTitlesByEntity[ek].push(t);
+                    });
+                    if (!expanded.some(function(x) { return entityKey(x) === ek; })) {
+                        expanded.push({ type: 'smart_process', entity_key: ent.entity_key, title: ent.title || ent.entity_key });
+                    }
+                });
+            });
+            return { expandedEntities: expanded, nestedTitlesByEntity: nestedTitlesByEntity };
+        });
+    }
+
+    function fetchPage(ent, titles, key, offset, limit, filterFieldMaps) {
         var url = API.metaData + '?type=' + encodeURIComponent(ent.type) + '&limit=' + limit + '&offset=' + offset;
         if (ent.entity_key && ent.type === 'smart_process') url += '&entity_key=' + encodeURIComponent(ent.entity_key);
         if (ent.category_id != null && ent.category_id !== '') url += '&category_id=' + encodeURIComponent(String(ent.category_id));
@@ -1424,12 +2292,39 @@ document.addEventListener('DOMContentLoaded', function() {
             var list = (data && data.data) ? data.data : [];
             var total = (data && data.total) != null ? data.total : 0;
             var out = [];
+            function resolveRowValue(row, title) {
+                if (!row) return '';
+                if (Object.prototype.hasOwnProperty.call(row, title)) return row[title];
+                var target = normalizeSearchText(title || '');
+                if (!target) return '';
+                var keys = Object.keys(row);
+                for (var i = 0; i < keys.length; i++) {
+                    var kk = keys[i];
+                    if (normalizeSearchText(kk) === target) return row[kk];
+                }
+                return '';
+            }
             list.forEach(function(row) {
                 var o = { _entityKey: key };
                 titles.forEach(function(t) {
-                    var val = row[t];
+                    var val = resolveRowValue(row, t);
                     if (val !== null && typeof val === 'object' && !Array.isArray(val)) val = JSON.stringify(val);
                     o[key + '::' + t] = val != null ? val : '';
+                });
+                (filterFieldMaps || []).forEach(function(m) {
+                    if (!m || !m.title) return;
+                    var targetKey = key + '::' + m.title;
+                    if (o[targetKey] != null && String(o[targetKey]).trim() !== '') return;
+                    var aliases = m.aliases || [];
+                    for (var i = 0; i < aliases.length; i++) {
+                        var a = aliases[i];
+                        if (!a) continue;
+                        var vv = resolveRowValue(row, a);
+                        if (vv == null || vv === '') continue;
+                        if (vv !== null && typeof vv === 'object' && !Array.isArray(vv)) vv = JSON.stringify(vv);
+                        o[targetKey] = vv;
+                        break;
+                    }
                 });
                 out.push(o);
             });
@@ -1437,29 +2332,176 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function loadData(tableIndex) {
+    function loadData(tableIndex, skipMetaWarmup, skipEntityExpansion) {
         var st = tableStates[tableIndex];
         if (!st || !st.selectedEntities.length) return;
+        if (!skipMetaWarmup) {
+            var missingMetaEntities = st.selectedEntities.filter(function(ent) {
+                return !fieldsCache[entityKey(ent)];
+            });
+            if (missingMetaEntities.length) {
+                Promise.all(missingMetaEntities.map(function(ent) {
+                    return loadFieldsForEntity(ent).catch(function() { return { fields: [], nested: [] }; });
+                })).then(function() {
+                    loadData(tableIndex, true, false);
+                }).catch(function() {
+                    loadData(tableIndex, true, false);
+                });
+                return;
+            }
+        }
+        if (!skipEntityExpansion) {
+            expandEntitiesFromNestedFields(st).then(function(ctx) {
+                st._expandedLoadEntities = (ctx && ctx.expandedEntities) ? ctx.expandedEntities : null;
+                st._nestedTitlesByEntity = (ctx && ctx.nestedTitlesByEntity) ? ctx.nestedTitlesByEntity : {};
+                loadData(tableIndex, true, true);
+            }).catch(function() {
+                st._expandedLoadEntities = null;
+                st._nestedTitlesByEntity = {};
+                loadData(tableIndex, true, true);
+            });
+            return;
+        }
         var els = getSectionEls(tableIndex);
+        var previousAllColumns = Array.isArray(st.allColumns) ? st.allColumns.slice() : [];
+        var previousDomColumnKeys = getColumnKeysFromSection(tableIndex);
+        var savedOrderKeys = getColumnOrderForTable(tableIndex) || [];
         st.fullData = [];
         st.allColumns = [];
         showLoading(tableIndex, true, 'Загрузка данных...');
         var columnsByKey = [];
         var FUNNEL_FIELD = 'Воронка';
-        st.selectedEntities.forEach(function(ent) {
+        var filterTitlesByEntityKey = {};
+        var filterFieldMapsByEntityKey = {};
+        (st.filterFields || []).forEach(function(f) {
+            var k = (f && f.key) ? String(f.key) : '';
+            var sep = k.indexOf('::');
+            if (sep <= 0) return;
+            var ek = k.slice(0, sep);
+            var title = k.slice(sep + 2);
+            if (!ek || !title) return;
+            if (!filterTitlesByEntityKey[ek]) filterTitlesByEntityKey[ek] = [];
+            if (filterTitlesByEntityKey[ek].indexOf(title) < 0) filterTitlesByEntityKey[ek].push(title);
+            var aliases = [];
+            if (f && f.sourceB24Field) aliases.push(String(f.sourceB24Field).trim());
+            if (f && f.sourceColumnName) aliases.push(String(f.sourceColumnName).trim());
+            if (aliases.length) {
+                if (!filterFieldMapsByEntityKey[ek]) filterFieldMapsByEntityKey[ek] = [];
+                filterFieldMapsByEntityKey[ek].push({ title: title, aliases: aliases });
+            }
+        });
+        var entitiesForLoad = (st._expandedLoadEntities && st._expandedLoadEntities.length) ? st._expandedLoadEntities : st.selectedEntities;
+        var nestedTitlesByEntity = st._nestedTitlesByEntity || {};
+        entitiesForLoad.forEach(function(ent) {
             var key = entityKey(ent);
             var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
-            var displayTitles = (sel && sel.human_titles) ? sel.human_titles : [];
+            var displayTitles = (sel && sel.human_titles) ? sel.human_titles.slice() : [];
+            if (!displayTitles.length && nestedTitlesByEntity[key] && nestedTitlesByEntity[key].length) {
+                displayTitles = nestedTitlesByEntity[key].slice();
+            }
+            // Also restore titles from currently rendered headers (before reload)
+            if (previousDomColumnKeys && previousDomColumnKeys.length) {
+                previousDomColumnKeys.forEach(function(colKey) {
+                    var k = String(colKey || '');
+                    if (k.indexOf(key + '::') !== 0) return;
+                    var t = k.slice((key + '::').length);
+                    if (t && displayTitles.indexOf(t) < 0) displayTitles.push(t);
+                });
+            }
+            // Restore from persisted column order (server/local) for mixed-entity cases after reload.
+            if (savedOrderKeys && savedOrderKeys.length) {
+                savedOrderKeys.forEach(function(colKey) {
+                    var k = String(colKey || '');
+                    if (k.indexOf(key + '::') !== 0) return;
+                    var t = k.slice((key + '::').length);
+                    if (t && displayTitles.indexOf(t) < 0) displayTitles.push(t);
+                });
+            }
+            // Fallback: if selectedFields lost titles for an entity, restore from current columns for that entity
+            if (!displayTitles.length && previousAllColumns.length) {
+                previousAllColumns.forEach(function(col) {
+                    if (!col || !col.key) return;
+                    var k = String(col.key);
+                    if (k.indexOf(key + '::') !== 0) return;
+                    var t = k.slice((key + '::').length);
+                    if (t && displayTitles.indexOf(t) < 0) displayTitles.push(t);
+                });
+            }
+            // In mixed mode, nested smart-process fields may be mirrored into deal.human_titles.
+            // Keep them only under real smart entity to avoid duplicate columns.
+            if (ent.type !== 'smart_process' && sel && sel.nestedFields && typeof sel.nestedFields === 'object') {
+                var mirroredNorm = {};
+                Object.keys(sel.nestedFields).forEach(function(typ) {
+                    var mappedSmart = resolveSmartEntityByNestedType(typ, entitiesForLoad);
+                    if (!mappedSmart) return;
+                    (sel.nestedFields[typ] || []).forEach(function(t) {
+                        mirroredNorm[normalizeSearchText(t)] = true;
+                    });
+                });
+                if (Object.keys(mirroredNorm).length) {
+                    displayTitles = displayTitles.filter(function(t) {
+                        return !mirroredNorm[normalizeSearchText(t)];
+                    });
+                }
+            }
+            // Keep unique titles in stable order.
+            var seenTitle = {};
+            displayTitles = displayTitles.filter(function(t) {
+                var n = normalizeSearchText(t);
+                if (!n || seenTitle[n]) return false;
+                seenTitle[n] = true;
+                return true;
+            });
             if (!displayTitles.length) return;
             var fetchTitles = displayTitles.slice();
+            var selectedFieldMaps = [];
+            var cache = fieldsCache[key];
+            displayTitles.forEach(function(title) {
+                var aliases = [];
+                if (cache && cache.fields && Array.isArray(cache.fields)) {
+                    cache.fields.forEach(function(meta) {
+                        if (!meta) return;
+                        var ht = String(meta.human_title || '').trim();
+                        if (!ht) return;
+                        if (normalizeSearchText(ht) !== normalizeSearchText(title)) return;
+                        var cn = String(meta.column_name || '').trim();
+                        var b24 = String(meta.b24_field || '').trim();
+                        if (cn && aliases.indexOf(cn) < 0) aliases.push(cn);
+                        if (b24 && aliases.indexOf(b24) < 0) aliases.push(b24);
+                    });
+                }
+                if (aliases.length) selectedFieldMaps.push({ title: title, aliases: aliases });
+            });
+            var extraFilterTitles = filterTitlesByEntityKey[key] || [];
+            extraFilterTitles.forEach(function(t) {
+                if (fetchTitles.indexOf(t) < 0) fetchTitles.push(t);
+            });
+            (filterFieldMapsByEntityKey[key] || []).forEach(function(m) {
+                (m.aliases || []).forEach(function(a) {
+                    if (a && fetchTitles.indexOf(a) < 0) fetchTitles.push(a);
+                });
+            });
             if (ent.type === 'deal' && ent.category_id != null && displayTitles.indexOf(FUNNEL_FIELD) < 0) {
                 fetchTitles.push(FUNNEL_FIELD);
+            }
+            // console.debug helper: helps verify all selected entities are requested
+            if (typeof console !== 'undefined' && console.debug) {
+                console.debug('[entity-table] request entity', key, { type: ent.type, titles: displayTitles.length, fetchTitles: fetchTitles.length });
             }
             displayTitles.forEach(function(t) {
                 st.allColumns.push({ key: key + '::' + t, label: t, entityKey: key, entityTitle: ent.title || entityTitleForNested(ent) });
             });
-            columnsByKey.push({ ent: ent, titles: fetchTitles, key: key, displayTitles: displayTitles });
+            columnsByKey.push({
+                ent: ent,
+                titles: fetchTitles,
+                key: key,
+                displayTitles: displayTitles,
+                filterFieldMaps: (selectedFieldMaps || []).concat(filterFieldMapsByEntityKey[key] || [])
+            });
         });
+        if (typeof console !== 'undefined' && console.debug) {
+            console.debug('[entity-table] columnsByKey', columnsByKey.map(function(x) { return x.key + ' [' + x.displayTitles.length + ']'; }));
+        }
         if (columnsByKey.length === 0) {
             showLoading(tableIndex, false);
             st.fullData = [];
@@ -1467,6 +2509,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (els.emptyBlock) els.emptyBlock.classList.remove('d-none');
             if (els.gridBlock) els.gridBlock.classList.add('d-none');
             if (els.gridTopRow) els.gridTopRow.classList.add('d-none');
+            if (els.searchFilterRow) els.searchFilterRow.classList.add('d-none');
             if (els.paginationBlock) els.paginationBlock.classList.add('d-none');
             renderGrid(tableIndex);
             return;
@@ -1481,62 +2524,68 @@ document.addEventListener('DOMContentLoaded', function() {
         st.allColumns = st.allColumns.filter(function(c) { return !isSystemColumn(c.key) && validKeys[c.key]; });
         var labelCount = {};
         st.allColumns.forEach(function(c) {
-            labelCount[c.label] = (labelCount[c.label] || 0) + 1;
+            var ln = normalizeFieldLabel(c.label || '');
+            labelCount[ln] = (labelCount[ln] || 0) + 1;
         });
+        var multiEntityMode = ((st._expandedLoadEntities && st._expandedLoadEntities.length) || (st.selectedEntities && st.selectedEntities.length) || 0) > 1;
         st.allColumns.forEach(function(c) {
-            if (labelCount[c.label] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
+            var ln = normalizeFieldLabel(c.label || '');
+            if (multiEntityMode || labelCount[ln] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
         });
         st.allColumns = applyColumnOrder(st.allColumns, getColumnOrderForTable(tableIndex));
         if (!st.columnWidths || !Object.keys(st.columnWidths).length) st.columnWidths = loadColumnWidths(tableIndex);
 
         var firstBatchPromises = columnsByKey.map(function(obj) {
-            return fetchPage(obj.ent, obj.titles, obj.key, 0, FIRST_BATCH_SIZE);
+            return fetchPage(obj.ent, obj.titles, obj.key, 0, FIRST_BATCH_SIZE, obj.filterFieldMaps);
         });
         Promise.all(firstBatchPromises).then(function(firstResults) {
-            if (firstResults.length === 1) {
-                firstResults[0].rows.forEach(function(row) { st.fullData.push(row); });
-                var obj = columnsByKey[0];
-                if (obj.ent.type === 'deal' && obj.ent.category_id != null) {
-                    var funnelKey = obj.key + '::' + FUNNEL_FIELD;
-                    var funnelTitle = String(obj.ent.title || '').trim();
-                    var funnelCatId = String(obj.ent.category_id).trim();
-                    st.fullData = st.fullData.filter(function(row) {
-                        var v = row[funnelKey];
-                        if (v == null || v === '') return false;
-                        var s = String(v).trim();
-                        return s === funnelTitle || s === funnelCatId;
-                    });
-                }
-            } else if (firstResults.length > 1) {
-                var primaryRows = firstResults[0].rows;
-                var primaryObj = columnsByKey[0];
-                primaryRows.forEach(function(baseRow, idx) {
-                    var merged = Object.assign({}, baseRow);
-                    for (var j = 1; j < firstResults.length; j++) {
-                        if (firstResults[j].rows && firstResults[j].rows[idx]) {
-                            Object.assign(merged, firstResults[j].rows[idx]);
-                        }
-                    }
-                    st.fullData.push(merged);
+            function applyDealFunnelFilter(rows, obj) {
+                if (!obj || !obj.ent || obj.ent.type !== 'deal' || obj.ent.category_id == null) return rows || [];
+                var funnelKey = obj.key + '::' + FUNNEL_FIELD;
+                var funnelTitle = String(obj.ent.title || '').trim();
+                var funnelCatId = String(obj.ent.category_id).trim();
+                return (rows || []).filter(function(row) {
+                    var v = row[funnelKey];
+                    if (v == null || v === '') return false;
+                    var s = String(v).trim();
+                    return s === funnelTitle || s === funnelCatId;
                 });
-                if (primaryObj.ent.type === 'deal' && primaryObj.ent.category_id != null) {
-                    var funnelKeyM = primaryObj.key + '::' + FUNNEL_FIELD;
-                    var funnelTitleM = String(primaryObj.ent.title || '').trim();
-                    var funnelCatIdM = String(primaryObj.ent.category_id).trim();
-                    st.fullData = st.fullData.filter(function(row) {
-                        var v = row[funnelKeyM];
-                        if (v == null || v === '') return false;
-                        var s = String(v).trim();
-                        return s === funnelTitleM || s === funnelCatIdM;
+            }
+            var mergedEntityState = null;
+            if (firstResults.length === 1) {
+                var onlyObj = columnsByKey[0];
+                var onlyRows = applyDealFunnelFilter(firstResults[0].rows, onlyObj);
+                onlyRows.forEach(function(row) { st.fullData.push(row); });
+            } else {
+                mergedEntityState = firstResults.map(function(res, idx) {
+                    var obj = columnsByKey[idx];
+                    return {
+                        obj: obj,
+                        rows: applyDealFunnelFilter(res.rows, obj),
+                        total: res.total || 0,
+                        offset: (res.rows && res.rows.length) ? res.rows.length : 0
+                    };
+                });
+                var initialMax = 0;
+                mergedEntityState.forEach(function(s) {
+                    if (s.rows.length > initialMax) initialMax = s.rows.length;
+                });
+                for (var r = 0; r < initialMax; r++) {
+                    var mergedRow = {};
+                    mergedEntityState.forEach(function(s) {
+                        if (s.rows[r]) Object.assign(mergedRow, s.rows[r]);
                     });
+                    if (Object.keys(mergedRow).length) st.fullData.push(mergedRow);
                 }
             }
             showLoading(tableIndex, false);
             st.currentPage = 1;
             st.pageSize = parseInt(els.pageSizeSelect && els.pageSizeSelect.value ? els.pageSizeSelect.value : 25, 10) || 25;
             renderGrid(tableIndex);
+            refreshFilterModalIfOpen(tableIndex);
             if (els.emptyBlock) els.emptyBlock.classList.add('d-none');
             if (els.gridTopRow) els.gridTopRow.classList.remove('d-none');
+            if (els.searchFilterRow) els.searchFilterRow.classList.remove('d-none');
             if (els.gridBlock) els.gridBlock.classList.remove('d-none');
             if (els.paginationBlock) els.paginationBlock.classList.remove('d-none');
             updateTableTitleBlock(tableIndex);
@@ -1553,7 +2602,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var funnelTitleF = funnelKeyF ? String(obj.ent.title || '').trim() : '';
                     var funnelCatIdF = funnelKeyF ? String(obj.ent.category_id).trim() : '';
                     function fetchMore() {
-                        fetchPage(obj.ent, obj.titles, obj.key, offset, 10000).then(function(nextRes) {
+                        fetchPage(obj.ent, obj.titles, obj.key, offset, 10000, obj.filterFieldMaps).then(function(nextRes) {
                             var rows = nextRes.rows;
                             if (funnelKeyF) {
                                 rows = rows.filter(function(row) {
@@ -1566,33 +2615,44 @@ document.addEventListener('DOMContentLoaded', function() {
                             rows.forEach(function(row) { st.fullData.push(row); });
                             offset += nextRes.rows.length;
                             renderGrid(tableIndex);
+                            refreshFilterModalIfOpen(tableIndex);
                             if (offset < nextRes.total) fetchMore();
                         }).catch(function() {});
                     }
                     fetchMore();
                 });
-            } else if (!isDashboard && firstResults.length > 1) {
-                var primaryTotal = firstResults[0].total;
-                function fetchMoreMerged() {
-                    var nextOffset = st.fullData.length;
-                    if (nextOffset >= primaryTotal) return;
-                    Promise.all(columnsByKey.map(function(obj, idx) {
-                        return fetchPage(obj.ent, obj.titles, obj.key, nextOffset, 10000);
-                    })).then(function(nextResults) {
-                        var primaryRows = nextResults[0].rows;
-                        if (!primaryRows.length) return;
-                        primaryRows.forEach(function(baseRow, i) {
-                            var merged = Object.assign({}, baseRow);
-                            for (var j = 1; j < nextResults.length; j++) {
-                                if (nextResults[j].rows && nextResults[j].rows[i]) Object.assign(merged, nextResults[j].rows[i]);
-                            }
-                            st.fullData.push(merged);
+            } else if (!isDashboard && firstResults.length > 1 && mergedEntityState) {
+                function fetchMoreMergedByIndex() {
+                    var needsAny = false;
+                    var nextPromises = mergedEntityState.map(function(state) {
+                        if (state.offset >= state.total) return Promise.resolve(null);
+                        needsAny = true;
+                        return fetchPage(state.obj.ent, state.obj.titles, state.obj.key, state.offset, 10000, state.obj.filterFieldMaps)
+                            .then(function(nextRes) {
+                                state.offset += nextRes.rows.length;
+                                return applyDealFunnelFilter(nextRes.rows, state.obj);
+                            })
+                            .catch(function() { return []; });
+                    });
+                    if (!needsAny) return;
+                    Promise.all(nextPromises).then(function(chunks) {
+                        var maxLen = 0;
+                        chunks.forEach(function(rows) {
+                            if (rows && rows.length > maxLen) maxLen = rows.length;
                         });
+                        for (var i = 0; i < maxLen; i++) {
+                            var merged = {};
+                            chunks.forEach(function(rows) {
+                                if (rows && rows[i]) Object.assign(merged, rows[i]);
+                            });
+                            if (Object.keys(merged).length) st.fullData.push(merged);
+                        }
                         renderGrid(tableIndex);
-                        if (st.fullData.length < primaryTotal) fetchMoreMerged();
-                    }).catch(function() {});
+                        refreshFilterModalIfOpen(tableIndex);
+                        if (mergedEntityState.some(function(state) { return state.offset < state.total; })) fetchMoreMergedByIndex();
+                    });
                 }
-                fetchMoreMerged();
+                fetchMoreMergedByIndex();
             }
         }).catch(function(err) {
             showLoading(tableIndex, false);
@@ -1626,8 +2686,15 @@ document.addEventListener('DOMContentLoaded', function() {
         var validKeys = getValidColumnKeysFromSelectedFields(st);
         cols = cols.filter(function(c) { return validKeys[c.key]; });
         var labelCount = {};
-        cols.forEach(function(c) { labelCount[c.label] = (labelCount[c.label] || 0) + 1; });
-        cols.forEach(function(c) { if (labelCount[c.label] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')'; });
+        cols.forEach(function(c) {
+            var ln = normalizeFieldLabel(c.label || '');
+            labelCount[ln] = (labelCount[ln] || 0) + 1;
+        });
+        var multiEntityMode = ((st._expandedLoadEntities && st._expandedLoadEntities.length) || (st.selectedEntities && st.selectedEntities.length) || 0) > 1;
+        cols.forEach(function(c) {
+            var ln = normalizeFieldLabel(c.label || '');
+            if (multiEntityMode || labelCount[ln] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
+        });
         st.allColumns = applyColumnOrder(cols, getColumnOrderForTable(tableIndex));
     }
 
@@ -1701,21 +2768,146 @@ document.addEventListener('DOMContentLoaded', function() {
         st.allColumns = applyColumnOrder(cols, getColumnOrderForTable(tableIndex));
     }
 
+    function tryParseDateValue(v) {
+        if (v == null) return null;
+        var s = String(v).trim();
+        if (!s) return null;
+        var m;
+        // yyyy-mm-dd / yyyy.mm.dd / yyyy/mm/dd [+ time]
+        m = s.match(/^(\d{4})[./-](\d{2})[./-](\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?(?:\.\d+)?(?:Z)?$/);
+        if (m) {
+            var y = parseInt(m[1], 10);
+            var mo = parseInt(m[2], 10) - 1;
+            var d = parseInt(m[3], 10);
+            var h = parseInt(m[4] || '0', 10);
+            var mi = parseInt(m[5] || '0', 10);
+            var se = parseInt(m[6] || '0', 10);
+            return new Date(y, mo, d, h, mi, se).getTime();
+        }
+        // dd-mm-yyyy / dd.mm.yyyy / dd/mm/yyyy [+ time]
+        m = s.match(/^(\d{2})[./-](\d{2})[./-](\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+        if (m) {
+            var dd = parseInt(m[1], 10);
+            var mm = parseInt(m[2], 10) - 1;
+            var yy = parseInt(m[3], 10);
+            var hh = parseInt(m[4] || '0', 10);
+            var mii = parseInt(m[5] || '0', 10);
+            var ss = parseInt(m[6] || '0', 10);
+            return new Date(yy, mm, dd, hh, mii, ss).getTime();
+        }
+        // Generic parse for ISO-like strings
+        var parsed = Date.parse(s);
+        if (!isNaN(parsed) && /[-/T:]/.test(s)) return parsed;
+        return null;
+    }
+
+    function formatDateTimeDisplay(value, includeTime) {
+        if (value == null) return '';
+        var s = String(value).trim();
+        if (!s) return '';
+        var m;
+        // yyyy-mm-dd[ T]hh:mm[:ss][.ms][Z]
+        m = s.match(/^(\d{4})[./-](\d{2})[./-](\d{2})(?:[ T](\d{2}):(\d{2})(?::\d{2})?)?(?:\.\d+)?(?:Z)?$/);
+        if (m) {
+            var y = m[1], mo = m[2], d = m[3], h = m[4], mi = m[5];
+            if (includeTime !== false && h != null && mi != null) return d + '.' + mo + '.' + y + ' ' + h + ':' + mi;
+            return d + '.' + mo + '.' + y;
+        }
+        // dd-mm-yyyy[ T]hh:mm[:ss]
+        m = s.match(/^(\d{2})[./-](\d{2})[./-](\d{4})(?:[ T](\d{2}):(\d{2})(?::\d{2})?)?$/);
+        if (m) {
+            var dd = m[1], mm = m[2], yy = m[3], hh = m[4], mii = m[5];
+            if (includeTime !== false && hh != null && mii != null) return dd + '.' + mm + '.' + yy + ' ' + hh + ':' + mii;
+            return dd + '.' + mm + '.' + yy;
+        }
+        return '';
+    }
+
+    function isLikelyDateColumn(st, col) {
+        if (!st || !col || !col.key) return false;
+        var sampleLabel = String((col.label || '') + ' ' + (col.key || '')).toLowerCase();
+        if (sampleLabel.indexOf('дата') >= 0 || sampleLabel.indexOf('date') >= 0) return true;
+        var rows = st.fullData || [];
+        var checked = 0;
+        var parsed = 0;
+        for (var i = 0; i < rows.length && checked < 20; i++) {
+            var v = rows[i] ? rows[i][col.key] : null;
+            if (v == null || String(v).trim() === '') continue;
+            checked++;
+            if (tryParseDateValue(v) != null) parsed++;
+        }
+        if (!checked) return false;
+        return parsed >= Math.max(1, Math.ceil(checked * 0.6));
+    }
+
+    function isTimeVisibleForColumn(st, columnKey) {
+        if (st && st.dateTimeDisplayByColumn && Object.prototype.hasOwnProperty.call(st.dateTimeDisplayByColumn, columnKey)) {
+            return st.dateTimeDisplayByColumn[columnKey] !== false;
+        }
+        // Backward compatibility with old global setting
+        return !!(st && st.showTime === true);
+    }
+
+    function toSortableValue(v) {
+        if (v == null) return '';
+        if (typeof v === 'number') return v;
+        var s = String(v).trim();
+        if (!s) return '';
+        var dateValue = tryParseDateValue(s);
+        if (dateValue != null) return dateValue;
+        var compact = s.replace(/\s/g, '').replace(',', '.');
+        if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?%?$/.test(compact)) {
+            var num = parseFloat(compact.replace('%', ''));
+            if (!isNaN(num)) return num;
+        }
+        return s.toLowerCase();
+    }
+
+    function sortRowsByColumn(rows, sortKey, sortDir) {
+        if (!rows || !rows.length || !sortKey || (sortDir !== 'asc' && sortDir !== 'desc')) return rows || [];
+        var factor = sortDir === 'asc' ? 1 : -1;
+        return rows.map(function(row, idx) { return { row: row, idx: idx }; }).sort(function(a, b) {
+            var av = toSortableValue(a.row[sortKey]);
+            var bv = toSortableValue(b.row[sortKey]);
+            if (av < bv) return -1 * factor;
+            if (av > bv) return 1 * factor;
+            return a.idx - b.idx;
+        }).map(function(x) { return x.row; });
+    }
+
     function renderGrid(tableIndex) {
         var st = tableStates[tableIndex];
         if (!st) return;
         if (st.fullData && st.fullData.length > 0) {
-            var dataKeys = Object.keys(st.fullData[0] || {});
-            if (!st.allColumns || st.allColumns.length === 0 || st.allColumns.length < dataKeys.length) {
+            if (!st.allColumns || st.allColumns.length === 0) {
                 rebuildAllColumnsFromSelectedFields(tableIndex);
-                if (st.allColumns.length < dataKeys.length) rebuildAllColumnsFromData(tableIndex);
+                if (st.allColumns.length === 0) rebuildAllColumnsFromData(tableIndex);
             }
         }
         var els = getSectionEls(tableIndex);
         if (!els.gridHead || !els.gridBody) return;
+        var searchInput = els.section ? els.section.querySelector('.searchFilterInputInSection') : null;
+        var searchQuery = (searchInput && searchInput.value) ? String(searchInput.value).trim().toLowerCase() : '';
+        var filteredRows = applyConfiguredFieldFilters(st.fullData, st);
+        if (searchQuery) {
+            var searchKeys = (st && st.allColumns && Array.isArray(st.allColumns))
+                ? st.allColumns.map(function(c) { return c && c.key ? c.key : ''; }).filter(Boolean)
+                : [];
+            filteredRows = filteredRows.filter(function(row) {
+                return searchKeys.some(function(k) {
+                    var v = row[k];
+                    if (v == null) return false;
+                    return String(v).toLowerCase().indexOf(searchQuery) >= 0;
+                });
+            });
+        }
+        var sortedRows = sortRowsByColumn(filteredRows, st.sortKey, st.sortDir);
+        var totalRows = sortedRows.length;
+        var totalPages = totalRows ? Math.ceil(totalRows / st.pageSize) : 0;
+        if (totalPages > 0 && st.currentPage > totalPages) st.currentPage = totalPages;
+        if (totalPages === 0) st.currentPage = 1;
         var start = (st.currentPage - 1) * st.pageSize;
-        var slice = st.fullData.slice(start, start + st.pageSize);
-        var totalRows = st.fullData.length;
+        var slice = sortedRows.slice(start, start + st.pageSize);
         els.gridHead.innerHTML = '<tr>' + st.allColumns.map(function(c, i) {
             var fullLabel = c.label || c.key || '';
             var lab = fieldLabelShort(fullLabel);
@@ -1723,28 +2915,36 @@ document.addEventListener('DOMContentLoaded', function() {
             var keyEsc = (c.key || '').replace(/"/g, '&quot;');
             var titleEsc = (fullLabel || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
             var fullLabelAttr = (fullLabel || '').replace(/"/g, '&quot;');
+            var sortIcon = '';
+            if (st.sortKey === c.key) sortIcon = (st.sortDir === 'asc') ? '&#9650;' : (st.sortDir === 'desc' ? '&#9660;' : '');
             var w = st.columnWidths[c.key];
             var style = (w && w >= MIN_CONTENT_SAFE_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
-            return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '" data-full-label="' + fullLabelAttr + '" title="' + titleEsc + '"' + style + '><span class="entity-table-th-label">' + labelEsc + '</span><span class="entity-table-col-resize" title="Изменить ширину"></span></th>';
+            var isDateColumn = isLikelyDateColumn(st, c);
+            var showTime = isTimeVisibleForColumn(st, c.key);
+            var timeToggle = isDateColumn
+                ? ('<button type="button" class="entity-table-time-toggle' + (showTime ? ' is-active' : '') + '" data-column-key="' + keyEsc + '" title="' + (showTime ? 'Скрыть время для этой колонки' : 'Показывать время для этой колонки') + '" aria-label="' + (showTime ? 'Скрыть время для этой колонки' : 'Показывать время для этой колонки') + '"><i class="iconoir-clock"></i></button>')
+                : '';
+            return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '" data-full-label="' + fullLabelAttr + '" title="' + titleEsc + '"' + style + '><span class="entity-table-th-inline"><span class="entity-table-th-label">' + labelEsc + '</span><span class="entity-table-sort-indicator">' + sortIcon + '</span>' + timeToggle + '</span><span class="entity-table-col-resize" title="Изменить ширину"></span></th>';
         }).join('') + '</tr>';
         els.gridBody.innerHTML = slice.map(function(row) {
             return '<tr>' + st.allColumns.map(function(c) {
                 var val = row[c.key];
                 if (val !== null && typeof val === 'object') val = JSON.stringify(val);
                 var str = val != null ? String(val).trim() : '';
+                var dtFmt = formatDateTimeDisplay(str, isTimeVisibleForColumn(st, c.key));
+                var displayStr = dtFmt || str;
                 var cellHtml = '';
                 if (str && (str.indexOf('http://') === 0 || str.indexOf('https://') === 0)) {
                     var hrefEsc = str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     var textEsc = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                     cellHtml = '<a href="' + hrefEsc + '" target="_blank" rel="noopener noreferrer" class="entity-table-cell-link">' + textEsc + '</a>';
                 } else {
-                    cellHtml = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                    cellHtml = displayStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                 }
                 var isNum = typeof row[c.key] === 'number' || (str && /^-?\d+([.,]\d+)?([eE][+-]?\d+)?%?$/.test(str.replace(/\s/g, '')));
                 return '<td' + (isNum ? ' class="entity-table-cell-numeric"' : '') + '>' + cellHtml + '</td>';
             }).join('') + '</tr>';
         }).join('');
-        var totalPages = totalRows ? Math.ceil(totalRows / st.pageSize) : 0;
         if (els.paginationInfo) els.paginationInfo.textContent = 'Показано ' + (totalRows ? (start + 1) : 0) + ' — ' + (start + slice.length) + ' из ' + totalRows + ' записей';
         if (els.paginationNav) {
             var ul = document.createElement('ul');
@@ -1785,6 +2985,46 @@ document.addEventListener('DOMContentLoaded', function() {
             els.paginationNav.appendChild(ul);
         }
         updateTableTitleBlock(tableIndex);
+
+        els.gridHead.querySelectorAll('th[data-column-key]').forEach(function(th) {
+            th.onclick = null;
+            th.onclick = function(e) {
+                if (e.target && e.target.closest && e.target.closest('.entity-table-col-resize')) return;
+                if (e.target && e.target.closest && e.target.closest('.entity-table-time-toggle')) return;
+                var key = th.getAttribute('data-column-key');
+                if (!key) return;
+                if (st.sortKey !== key) {
+                    st.sortKey = key;
+                    st.sortDir = 'asc';
+                } else if (st.sortDir === 'asc') {
+                    st.sortDir = 'desc';
+                } else if (st.sortDir === 'desc') {
+                    st.sortKey = '';
+                    st.sortDir = '';
+                } else {
+                    st.sortDir = 'asc';
+                }
+                st.currentPage = 1;
+                saveConfigToStorage();
+                saveConfig();
+                renderGrid(tableIndex);
+            };
+        });
+
+        els.gridHead.querySelectorAll('.entity-table-time-toggle').forEach(function(btn) {
+            btn.onclick = null;
+            btn.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var key = btn.getAttribute('data-column-key');
+                if (!key) return;
+                if (!st.dateTimeDisplayByColumn || typeof st.dateTimeDisplayByColumn !== 'object') st.dateTimeDisplayByColumn = {};
+                st.dateTimeDisplayByColumn[key] = !isTimeVisibleForColumn(st, key);
+                saveConfigToStorage();
+                saveConfig();
+                renderGrid(tableIndex);
+            };
+        });
 
         els.gridHead.querySelectorAll('.entity-table-col-resize').forEach(function(handle) {
             handle.onmousedown = null;
@@ -1936,10 +3176,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             for (var i = 0; i < tableStates.length; i++) {
                                 var s = tableStates[i];
                                 if (s.fullData && s.fullData.length > 0) {
-                                    var dk = Object.keys(s.fullData[0] || {});
-                                    if (!s.allColumns || s.allColumns.length < dk.length) {
+                                    if (!s.allColumns || s.allColumns.length === 0) {
                                         rebuildAllColumnsFromSelectedFields(i);
-                                        if (s.allColumns.length < dk.length) rebuildAllColumnsFromData(i);
+                                        if (s.allColumns.length === 0) rebuildAllColumnsFromData(i);
                                     }
                                 }
                                 renderGrid(i);
