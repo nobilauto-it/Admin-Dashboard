@@ -592,7 +592,7 @@ document.addEventListener('DOMContentLoaded', function() {
             selectedFields: [],
             tableTitle: '',
             tableDescription: '',
-            tableStyle: 'default',
+            tableStyle: 'hoverable_rows',
             fullData: [],
             allColumns: [],
             currentPage: 1,
@@ -773,7 +773,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return {
                 table_title: t.tableTitle || '',
                 table_description: t.tableDescription || '',
-                table_style: t.tableStyle || 'default',
+                table_style: t.tableStyle || 'hoverable_rows',
                 entities: t.selectedEntities || [],
                 fields: t.selectedFields || [],
                 show_time: (t.showTime === true),
@@ -961,7 +961,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return {
                     table_title: st.tableTitle,
                     table_description: st.tableDescription,
-                    table_style: st.tableStyle || 'default',
+                    table_style: st.tableStyle || 'hoverable_rows',
                     entities: st.selectedEntities,
                     fields: st.selectedFields,
                     column_order: keys.length ? keys : null,
@@ -998,7 +998,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectedFields: norm.fields,
                     tableTitle: (t.table_title != null) ? String(t.table_title) : '',
                     tableDescription: (t.table_description != null) ? String(t.table_description) : '',
-                    tableStyle: (t.table_style && TABLE_STYLES[t.table_style]) ? t.table_style : 'default',
+                    tableStyle: (t.table_style && TABLE_STYLES[t.table_style]) ? t.table_style : 'hoverable_rows',
                     fullData: [],
                     allColumns: [],
                     currentPage: 1,
@@ -1030,7 +1030,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectedFields: norm.fields,
                 tableTitle: (data.table_title != null) ? String(data.table_title) : '',
                 tableDescription: (data.table_description != null) ? String(data.table_description) : '',
-                tableStyle: (data.table_style && TABLE_STYLES[data.table_style]) ? data.table_style : 'default',
+                tableStyle: (data.table_style && TABLE_STYLES[data.table_style]) ? data.table_style : 'hoverable_rows',
                 fullData: [],
                 allColumns: [],
                 currentPage: 1,
@@ -1481,7 +1481,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function createSectionHtml(tableIndex) {
         var st = tableStates[tableIndex];
-        var styleKey = (st && st.tableStyle) ? st.tableStyle : 'default';
+        var styleKey = (st && st.tableStyle) ? st.tableStyle : 'hoverable_rows';
         var tableCls = getTableClassesForStyle(styleKey);
         var theadCls = getTheadClassesForStyle(styleKey);
         var hasCaption = getTableCaptionForStyle(styleKey);
@@ -1693,7 +1693,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             selectedFields: norm.fields,
                             tableTitle: (t.table_title != null) ? String(t.table_title) : '',
                             tableDescription: (t.table_description != null) ? String(t.table_description) : '',
-                            tableStyle: (t.table_style && TABLE_STYLES[t.table_style]) ? t.table_style : 'default',
+                            tableStyle: (t.table_style && TABLE_STYLES[t.table_style]) ? t.table_style : 'hoverable_rows',
                             fullData: [],
                             allColumns: [],
                             currentPage: 1,
@@ -1706,6 +1706,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {}
                         };
                     });
+                    var stored = loadConfigFromStorage();
+                    if (stored && stored.tables && Array.isArray(stored.tables)) {
+                        tableStates.forEach(function(st, i) {
+                            var s = stored.tables[i];
+                            if (s && s.table_style && TABLE_STYLES[s.table_style]) st.tableStyle = s.table_style;
+                        });
+                    }
                     ensureSections();
                     tableStates.forEach(function(st, i) {
                         applyTableStyleToSection(i);
@@ -1733,7 +1740,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         selectedFields: norm.fields,
                         tableTitle: (data.table_title != null) ? String(data.table_title) : '',
                         tableDescription: (data.table_description != null) ? String(data.table_description) : '',
-                        tableStyle: (data.table_style && TABLE_STYLES[data.table_style]) ? data.table_style : 'default',
+                        tableStyle: (data.table_style && TABLE_STYLES[data.table_style]) ? data.table_style : 'hoverable_rows',
                         fullData: [],
                         allColumns: [],
                         currentPage: 1,
@@ -1814,7 +1821,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return {
                 table_title: st.tableTitle,
                 table_description: st.tableDescription,
-                table_style: st.tableStyle || 'default',
+                table_style: st.tableStyle || 'hoverable_rows',
                 entities: st.selectedEntities,
                 fields: st.selectedFields,
                 column_order: keys.length ? keys : null,
@@ -1861,7 +1868,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var tableEl = section.querySelector('.entity-table-grid-wrap table');
         var theadEl = section.querySelector('.entity-table-grid-head');
         if (!tableEl || !theadEl) return;
-        var styleKey = st.tableStyle || 'default';
+        var styleKey = st.tableStyle || 'hoverable_rows';
         var s = TABLE_STYLES[styleKey] || TABLE_STYLES.default;
         var tableCls = (s.tableClass || '') + ' datatable datatable-table entityTableInSection entity-table-section-table';
         tableEl.className = tableCls;
