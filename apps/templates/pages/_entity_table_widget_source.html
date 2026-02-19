@@ -539,7 +539,7 @@ document.addEventListener('DOMContentLoaded', function() {
             columnWidths: {},
             sortKey: '',
             sortDir: '',
-            showTime: true,
+            showTime: false,
             dateTimeDisplayByColumn: {},
             guestFilterInitialized: false,
             filterFields: [{ label: 'Название', key: '', type: 'text' }]
@@ -721,7 +721,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 table_description: t.tableDescription || '',
                 entities: t.selectedEntities || [],
                 fields: t.selectedFields || [],
-                show_time: (t.showTime !== false),
+                show_time: (t.showTime === true),
                 date_time_display: (t.dateTimeDisplayByColumn && Object.keys(t.dateTimeDisplayByColumn).length) ? t.dateTimeDisplayByColumn : null
             };
         });
@@ -901,7 +901,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
                     sort_key: st.sortKey || null,
                     sort_dir: st.sortDir || null,
-                    show_time: (st.showTime !== false),
+                    show_time: (st.showTime === true),
                     date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null
                 };
             });
@@ -939,7 +939,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : {},
                     sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
                     sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
-                    showTime: (t.show_time !== false),
+                    showTime: (t.show_time === true),
                     dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
                     filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                 };
@@ -969,7 +969,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : loadColumnWidths(0),
                 sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
                 sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
-                showTime: (data.show_time !== false),
+                showTime: (data.show_time === true),
                 dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {},
                 filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
             }];
@@ -1612,7 +1612,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             columnWidths: isDashboard ? {} : (Object.keys(widthsFromServer).length ? widthsFromServer : {}),
                             sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
                             sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
-                            showTime: (t.show_time !== false),
+                            showTime: (t.show_time === true),
                             dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {}
                         };
                     });
@@ -1647,7 +1647,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         columnWidths: loadColumnWidths(0),
                         sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
                         sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
-                        showTime: (data.show_time !== false),
+                        showTime: (data.show_time === true),
                         dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {}
                     }];
                     ensureSections();
@@ -1725,7 +1725,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
                 sort_key: st.sortKey || null,
                 sort_dir: st.sortDir || null,
-                show_time: (st.showTime !== false),
+                show_time: (st.showTime === true),
                 date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null
             };
         });
@@ -2582,7 +2582,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return st.dateTimeDisplayByColumn[columnKey] !== false;
         }
         // Backward compatibility with old global setting
-        return st && st.showTime !== false;
+        return !!(st && st.showTime === true);
     }
 
     function toSortableValue(v) {
