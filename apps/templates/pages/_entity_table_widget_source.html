@@ -2427,6 +2427,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (t && displayTitles.indexOf(t) < 0) displayTitles.push(t);
                 });
             }
+            // In mixed mode, nested smart-process fields may be mirrored into deal.human_titles.
+            // Keep them only under real smart entity to avoid duplicate columns.
+            if (ent.type !== 'smart_process' && sel && sel.nestedFields && typeof sel.nestedFields === 'object') {
+                var mirroredNorm = {};
+                Object.keys(sel.nestedFields).forEach(function(typ) {
+                    var mappedSmart = resolveSmartEntityByNestedType(typ, entitiesForLoad);
+                    if (!mappedSmart) return;
+                    (sel.nestedFields[typ] || []).forEach(function(t) {
+                        mirroredNorm[normalizeSearchText(t)] = true;
+                    });
+                });
+                if (Object.keys(mirroredNorm).length) {
+                    displayTitles = displayTitles.filter(function(t) {
+                        return !mirroredNorm[normalizeSearchText(t)];
+                    });
+                }
+            }
+            // Keep unique titles in stable order.
+            var seenTitle = {};
+            displayTitles = displayTitles.filter(function(t) {
+                var n = normalizeSearchText(t);
+                if (!n || seenTitle[n]) return false;
+                seenTitle[n] = true;
+                return true;
+            });
             if (!displayTitles.length) return;
             var fetchTitles = displayTitles.slice();
             var selectedFieldMaps = [];
