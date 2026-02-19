@@ -432,6 +432,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var isReadOnly = false;
     var currentPageMode = 'edit';
     var currentTableModes = {};
+    var currentConfigVersion = 2;
     var DASHBOARD_HIDE_CLASS = 'dashboard-toolbar-hidden';
     function applyReadOnlyMode() {
         var hide = isGuestUser();
@@ -1648,6 +1649,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(data) {
                 if (!data || !data.ok) { if (isDashboardSlug()) showDashboardLoadError(); else tryApplyStored(); return; }
                 if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
+                    currentConfigVersion = (data.config_version != null && !isNaN(parseInt(data.config_version, 10)))
+                        ? parseInt(data.config_version, 10)
+                        : 2;
                     var isDashboard = !!(data.read_only || isDashboardSlug());
                     tableStates = data.tables.map(function(t) {
                         var norm = normalizeEntitiesAndFields(t.entities || [], t.fields || []);
@@ -1690,6 +1694,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 if (data.entities && Array.isArray(data.entities) && data.entities.length > 0) {
+                    currentConfigVersion = (data.config_version != null && !isNaN(parseInt(data.config_version, 10)))
+                        ? parseInt(data.config_version, 10)
+                        : 2;
                     var norm = normalizeEntitiesAndFields(data.entities, data.fields || []);
                     tableStates = [{
                         selectedEntities: norm.entities,
@@ -1789,7 +1796,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 filter_fields: isGuestUser() ? null : serializeFilterFields(st.filterFields)
             };
         });
-        var payload = { page_slug: slug, tables: tables };
+        var payload = {
+            page_slug: slug,
+            config_version: currentConfigVersion || 2,
+            page_mode: (currentPageMode || 'edit'),
+            table_modes: (currentTableModes && typeof currentTableModes === 'object') ? currentTableModes : {},
+            tables: tables
+        };
         var fetchOpts = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
