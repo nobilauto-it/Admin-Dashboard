@@ -141,6 +141,13 @@
     /* auto — ширина колонок по содержимому; при ручном ресайзе сохраняем width в columnWidths */
     .entity-table-grid-wrap .datatable-table { table-layout: auto; }
     .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; }
+    .entity-table-section .entity-table-grid-wrap table caption.entity-table-caption { padding: 0.5rem 0; font-size: 0.875rem; color: var(--bs-secondary-color, #6c757d); caption-side: top; }
+    /* Contextual Classes: alternating row colors like Dastone tables-basic */
+    .entity-table-section .entity-table-grid-wrap table.table-contextual-rows tbody tr:nth-child(6n+1) { background-color: rgba(var(--bs-primary-rgb), 0.1); }
+    .entity-table-section .entity-table-grid-wrap table.table-contextual-rows tbody tr:nth-child(6n+2) { background-color: transparent; }
+    .entity-table-section .entity-table-grid-wrap table.table-contextual-rows tbody tr:nth-child(6n+3) { background-color: rgba(var(--bs-secondary-rgb), 0.15); }
+    .entity-table-section .entity-table-grid-wrap table.table-contextual-rows tbody tr:nth-child(6n+4) { background-color: transparent; }
+    .entity-table-section .entity-table-grid-wrap table.table-contextual-rows tbody tr:nth-child(6n+5) { background-color: rgba(var(--bs-success-rgb), 0.1); }
     .entity-table-grid-wrap th .entity-table-col-resize:hover { background: rgba(var(--bs-primary-rgb), 0.2); }
     #entityTablesContainer { display: grid; gap: 1rem; align-items: start; }
     .entity-table-section { min-width: 0; margin-bottom: 0; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; padding: 1rem; background: var(--bs-body-bg, #fff); display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
@@ -351,16 +358,46 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                    <div class="flex-grow-1" style="min-width: 200px;">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text"><i class="iconoir-search"></i></span>
-                            <input type="text" class="form-control" id="fieldsSearchInput" placeholder="Поиск полей" autocomplete="off">
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#fieldsTabPane" role="tab">Поля для таблицы</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#settingsTabPane" role="tab">Настройки таблицы</a>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane active" id="fieldsTabPane" role="tabpanel">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                            <div class="flex-grow-1" style="min-width: 200px;">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="iconoir-search"></i></span>
+                                    <input type="text" class="form-control" id="fieldsSearchInput" placeholder="Поиск полей" autocomplete="off">
+                                </div>
+                            </div>
+                            <div id="nestedCheckboxesRow" class="d-flex flex-wrap gap-2 align-items-center"></div>
+                        </div>
+                        <div class="fields-modal-grid" id="fieldsList"></div>
+                    </div>
+                    <div class="tab-pane" id="settingsTabPane" role="tabpanel">
+                        <div class="mb-3">
+                            <label class="form-label" for="tableStyleSelect">Стиль таблицы</label>
+                            <select class="form-select" id="tableStyleSelect">
+                                <option value="default">Default</option>
+                                <option value="customers_details">Customers Details</option>
+                                <option value="basic_example">Basic Example</option>
+                                <option value="striped_rows">Striped Rows</option>
+                                <option value="hoverable_rows">Hoverable Rows</option>
+                                <option value="contextual_classes">Contextual Classes</option>
+                                <option value="captions_table">Captions Table</option>
+                                <option value="small_table">Small Table</option>
+                                <option value="dark_table">Dark Table</option>
+                                <option value="table_head_options">Table Head Options</option>
+                                <option value="bordered_table">Bordered Table</option>
+                            </select>
                         </div>
                     </div>
-                    <div id="nestedCheckboxesRow" class="d-flex flex-wrap gap-2 align-items-center"></div>
                 </div>
-                <div class="fields-modal-grid" id="fieldsList"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -528,12 +565,28 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    /** Table style mapping: Dastone tables-basic / tables-datatable classes */
+    var TABLE_STYLES = {
+        default: { tableClass: 'table table-sm border-dashed', theadClass: 'table-light', caption: false },
+        customers_details: { tableClass: 'table table-centered mb-0', theadClass: 'table-light', caption: false },
+        basic_example: { tableClass: 'table mb-0 table-centered', theadClass: 'table-light', caption: false },
+        striped_rows: { tableClass: 'table table-striped mb-0', theadClass: 'table-light', caption: false },
+        hoverable_rows: { tableClass: 'table table-hover mb-0', theadClass: 'table-light', caption: false },
+        contextual_classes: { tableClass: 'table mb-0 table-contextual-rows', theadClass: 'table-light', caption: false },
+        captions_table: { tableClass: 'table mb-0', theadClass: 'table-light', caption: true },
+        small_table: { tableClass: 'table table-sm mb-0', theadClass: 'table-light', caption: false },
+        dark_table: { tableClass: 'table table-dark mb-0', theadClass: '', caption: false },
+        table_head_options: { tableClass: 'table mb-0', theadClass: 'table-light', caption: false },
+        bordered_table: { tableClass: 'table table-bordered mb-0 table-centered', theadClass: '', caption: false }
+    };
+
     function defaultTableState() {
         return {
             selectedEntities: [],
             selectedFields: [],
             tableTitle: '',
             tableDescription: '',
+            tableStyle: 'default',
             fullData: [],
             allColumns: [],
             currentPage: 1,
@@ -721,6 +774,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return {
                 table_title: t.tableTitle || '',
                 table_description: t.tableDescription || '',
+                table_style: t.tableStyle || 'default',
                 entities: t.selectedEntities || [],
                 fields: t.selectedFields || [],
                 show_time: (t.showTime === true),
@@ -908,6 +962,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return {
                     table_title: st.tableTitle,
                     table_description: st.tableDescription,
+                    table_style: st.tableStyle || 'default',
                     entities: st.selectedEntities,
                     fields: st.selectedFields,
                     column_order: keys.length ? keys : null,
@@ -944,6 +999,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectedFields: norm.fields,
                     tableTitle: (t.table_title != null) ? String(t.table_title) : '',
                     tableDescription: (t.table_description != null) ? String(t.table_description) : '',
+                    tableStyle: (t.table_style && TABLE_STYLES[t.table_style]) ? t.table_style : 'default',
                     fullData: [],
                     allColumns: [],
                     currentPage: 1,
@@ -960,6 +1016,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ensureSections();
             tableStates.forEach(function(st, i) {
                 if (!st.columnWidths || !Object.keys(st.columnWidths).length) st.columnWidths = loadColumnWidths(i);
+                applyTableStyleToSection(i);
                 updateUI(i);
                 loadFieldsThenData(i, openModalIfNoFields);
             });
@@ -974,6 +1031,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectedFields: norm.fields,
                 tableTitle: (data.table_title != null) ? String(data.table_title) : '',
                 tableDescription: (data.table_description != null) ? String(data.table_description) : '',
+                tableStyle: (data.table_style && TABLE_STYLES[data.table_style]) ? data.table_style : 'default',
                 fullData: [],
                 allColumns: [],
                 currentPage: 1,
@@ -987,6 +1045,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
             }];
             ensureSections();
+            applyTableStyleToSection(0);
             updateUI(0);
             loadFieldsThenData(0, openModalIfNoFields);
         }
@@ -1408,7 +1467,26 @@ document.addEventListener('DOMContentLoaded', function() {
         modalFilter.show();
     }
 
+    function getTableClassesForStyle(styleKey) {
+        var s = TABLE_STYLES[styleKey] || TABLE_STYLES.default;
+        return (s.tableClass || '') + ' datatable datatable-table entityTableInSection entity-table-section-table';
+    }
+    function getTheadClassesForStyle(styleKey) {
+        var s = TABLE_STYLES[styleKey] || TABLE_STYLES.default;
+        return (s.theadClass || '') + ' entity-table-grid-head';
+    }
+    function getTableCaptionForStyle(styleKey) {
+        var s = TABLE_STYLES[styleKey] || TABLE_STYLES.default;
+        return s.caption === true;
+    }
+
     function createSectionHtml(tableIndex) {
+        var st = tableStates[tableIndex];
+        var styleKey = (st && st.tableStyle) ? st.tableStyle : 'default';
+        var tableCls = getTableClassesForStyle(styleKey);
+        var theadCls = getTheadClassesForStyle(styleKey);
+        var hasCaption = getTableCaptionForStyle(styleKey);
+        var captionHtml = hasCaption ? '<caption class="entity-table-caption">' + (st && st.tableDescription ? String(st.tableDescription).replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'Данные таблицы') + '</caption>' : '';
         return '<div class="entity-table-section" data-table-index="' + tableIndex + '">' +
             '<div class="entity-table-toolbar d-flex align-items-center flex-wrap">' +
             '<button type="button" class="btn btn-primary btn-plus-content btnAddEntityInSection" title="Добавить сущность / настройки таблицы"><i class="iconoir-plus"></i></button>' +
@@ -1419,8 +1497,8 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +
             '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div><button type="button" class="btn btn-outline-danger btnDeleteTableInSection d-none ms-auto" title="Удалить таблицу" aria-label="Удалить таблицу"><i class="iconoir-trash"></i></button></div>' +
             '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button><div class="filterDropdownInSection"><div class="filterDropdownCardInSection filterPanelInSection"><div class="filterDropdownRowsContainerInSection"></div><a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a><div class="d-flex justify-content-end gap-2 mt-3"><button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button><button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button></div></div></div></div>' +
-            '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">' +
-            '<thead class="table-light entity-table-grid-head"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
+            '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="' + tableCls + '">' +
+            (hasCaption ? captionHtml : '') + '<thead class="' + theadCls + '"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
             '<div class="entity-table-loading emptyBlockInSection" role="button" tabindex="0" title="Нажмите, чтобы выбрать сущности и поля"><p class="text-muted mb-0">Нажмите, чтобы выбрать сущности и поля</p></div>' +
             '<div class="datatable-bottom paginationBlockInSection d-none"><div class="pagination-left-in-section d-flex align-items-center flex-wrap gap-2"><span class="datatable-info small text-muted paginationInfoInSection">Показано 0 — 0 из 0 записей</span><span class="small text-muted">На странице:</span><select class="datatable-input pageSizeInSection" style="width:70px;"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></div><nav class="datatable-pagination paginationNavInSection" aria-label="Пагинация таблицы"></nav></div></div>';
     }
@@ -1617,6 +1695,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             selectedFields: norm.fields,
                             tableTitle: (t.table_title != null) ? String(t.table_title) : '',
                             tableDescription: (t.table_description != null) ? String(t.table_description) : '',
+                            tableStyle: (t.table_style && TABLE_STYLES[t.table_style]) ? t.table_style : 'default',
                             fullData: [],
                             allColumns: [],
                             currentPage: 1,
@@ -1630,6 +1709,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         };
                     });
                     ensureSections();
+                    tableStates.forEach(function(st, i) {
+                        applyTableStyleToSection(i);
+                    });
                     applyTableModes(data.table_modes);
                     tableStates.forEach(function(st, i) {
                         if (!isDashboard && (!st.columnWidths || !Object.keys(st.columnWidths).length)) st.columnWidths = loadColumnWidths(i);
@@ -1653,6 +1735,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         selectedFields: norm.fields,
                         tableTitle: (data.table_title != null) ? String(data.table_title) : '',
                         tableDescription: (data.table_description != null) ? String(data.table_description) : '',
+                        tableStyle: (data.table_style && TABLE_STYLES[data.table_style]) ? data.table_style : 'default',
                         fullData: [],
                         allColumns: [],
                         currentPage: 1,
@@ -1664,6 +1747,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {}
                     }];
                     ensureSections();
+                    applyTableStyleToSection(0);
                     applyTableModes(data.table_modes);
                     updateUI(0);
                     loadFieldsThenData(0, false);
@@ -1732,6 +1816,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return {
                 table_title: st.tableTitle,
                 table_description: st.tableDescription,
+                table_style: st.tableStyle || 'default',
                 entities: st.selectedEntities,
                 fields: st.selectedFields,
                 column_order: keys.length ? keys : null,
@@ -1768,6 +1853,37 @@ document.addEventListener('DOMContentLoaded', function() {
         saveConfig({ keepalive: true });
     }
 
+    /** Apply table style (classes + caption) to section DOM based on st.tableStyle */
+    function applyTableStyleToSection(tableIndex) {
+        var st = tableStates[tableIndex];
+        if (!st) return;
+        var els = getSectionEls(tableIndex);
+        var section = els.section;
+        if (!section) return;
+        var tableEl = section.querySelector('.entity-table-grid-wrap table');
+        var theadEl = section.querySelector('.entity-table-grid-head');
+        if (!tableEl || !theadEl) return;
+        var styleKey = st.tableStyle || 'default';
+        var s = TABLE_STYLES[styleKey] || TABLE_STYLES.default;
+        var tableCls = (s.tableClass || '') + ' datatable datatable-table entityTableInSection entity-table-section-table';
+        tableEl.className = tableCls;
+        theadEl.className = (s.theadClass || '') + ' entity-table-grid-head';
+        var captionEl = tableEl.querySelector('caption.entity-table-caption');
+        if (s.caption) {
+            var captionText = (st.tableDescription && String(st.tableDescription).trim()) ? st.tableDescription.trim() : 'Данные таблицы';
+            if (captionEl) {
+                captionEl.textContent = captionText;
+            } else {
+                var cap = document.createElement('caption');
+                cap.className = 'entity-table-caption';
+                cap.textContent = captionText;
+                tableEl.insertBefore(cap, tableEl.firstChild);
+            }
+        } else if (captionEl) {
+            captionEl.remove();
+        }
+    }
+
     function updateTableTitleBlock(tableIndex) {
         var st = tableStates[tableIndex];
         if (!st) return;
@@ -1785,6 +1901,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         var gridHidden = !els.gridBlock || els.gridBlock.classList.contains('d-none');
         els.tableTitleBlock.classList.toggle('d-none', gridHidden);
+        applyTableStyleToSection(tableIndex);
     }
 
     /** API может возвращать type: "entity" или "crm_entity" — оба считаем смарт-процессами. */
@@ -1966,6 +2083,17 @@ document.addEventListener('DOMContentLoaded', function() {
         var st = tableStates[currentTableIndex];
         if (!st || !st.selectedEntities.length) return;
         var isFilterMode = (fieldsModalForFilterTableIndex != null);
+        var tableStyleSelect = document.getElementById('tableStyleSelect');
+        if (tableStyleSelect && TABLE_STYLES[st.tableStyle]) tableStyleSelect.value = st.tableStyle;
+        var settingsTab = document.querySelector('#modalFields [href="#settingsTabPane"]');
+        var settingsPane = document.getElementById('settingsTabPane');
+        if (settingsTab && settingsPane) {
+            if (isFilterMode) {
+                settingsTab.closest('.nav-item').classList.add('d-none');
+            } else {
+                settingsTab.closest('.nav-item').classList.remove('d-none');
+            }
+        }
         var nestedRow = document.getElementById('nestedCheckboxesRow');
         if (nestedRow) nestedRow.innerHTML = '';
         fieldsList.innerHTML = '';
@@ -2207,6 +2335,11 @@ document.addEventListener('DOMContentLoaded', function() {
             var k = entityKey(e);
             return { entityKey: k, human_titles: byKey[k] || [], activeNestedTypes: activeNestedByKey[k] || [], nestedFields: nestedFieldsByKey[k] || {} };
         });
+        var tableStyleSelect = document.getElementById('tableStyleSelect');
+        if (tableStyleSelect && TABLE_STYLES[tableStyleSelect.value]) {
+            st.tableStyle = tableStyleSelect.value;
+            applyTableStyleToSection(currentTableIndex);
+        }
         clearColumnOrderForTable(currentTableIndex);
         saveConfig();
         saveConfigToStorage();
