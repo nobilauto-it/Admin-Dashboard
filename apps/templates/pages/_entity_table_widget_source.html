@@ -2209,6 +2209,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (fieldsModalForFilterTableIndex != null) {
             var st = tableStates[fieldsModalForFilterTableIndex];
             if (!st) { fieldsModalForFilterTableIndex = null; fieldsModalForFilterSource = null; return; }
+            var filterCfgTableIndex = fieldsModalForFilterTableIndex;
             var existingKeys = {};
             (st.filterFields || []).forEach(function(f) {
                 var fk = String((f && f.key) || '').trim().toLowerCase();
@@ -2233,6 +2234,11 @@ document.addEventListener('DOMContentLoaded', function() {
             modalFields.hide();
             filterModalTableIndex = fieldsModalForFilterTableIndex;
             loadData(fieldsModalForFilterTableIndex);
+            if (!isGuestUser()) {
+                saveConfigToStorage();
+                saveConfig();
+                saveTemplateSnapshot(filterCfgTableIndex);
+            }
             if (fieldsModalForFilterSource === 'modal') {
                 openFilterModal(fieldsModalForFilterTableIndex);
             } else {
