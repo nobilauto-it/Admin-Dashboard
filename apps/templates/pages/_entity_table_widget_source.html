@@ -2234,6 +2234,44 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     var FIRST_BATCH_SIZE = 2000;
+    function resolveSmartEntityByNestedType(typeToken, smartEntities) {
+        var token = String(typeToken || '');
+        if (!token || token.indexOf('smart_process::') !== 0) return null;
+        var raw = token.slice('smart_process::'.length);
+        var rawNorm = normalizeSearchText(raw.replace(/_/g, ' '));
+        return (smartEntities || []).find(function(e) {
+            var eKey = String((e && e.entity_key) || '');
+            var eTitle = String((e && e.title) || eKey);
+            return normalizeSearchText(eKey) === normalizeSearchText(raw)
+                || normalizeSearchText(eKey) === rawNorm
+                || normalizeSearchText(eTitle) === rawNorm;
+        }) || null;
+    }
+
+    function expandEntitiesFromNestedFields(st) {
+        return loadEntitiesList().catch(function() { return entitiesList || []; }).then(function(list) {
+            var smartEntities = (list || []).filter(function(e) { return e && e.type === 'smart_process'; });
+            var expanded = (st && st.selectedEntities && Array.isArray(st.selectedEntities)) ? st.selectedEntities.slice() : [];
+            var nestedTitlesByEntity = {};
+            (st && st.selectedFields && Array.isArray(st.selectedFields) ? st.selectedFields : []).forEach(function(f) {
+                var nested = (f && f.nestedFields && typeof f.nestedFields === 'object') ? f.nestedFields : {};
+                Object.keys(nested).forEach(function(typ) {
+                    var ent = resolveSmartEntityByNestedType(typ, smartEntities);
+                    if (!ent) return;
+                    var ek = entityKey(ent);
+                    if (!nestedTitlesByEntity[ek]) nestedTitlesByEntity[ek] = [];
+                    (nested[typ] || []).forEach(function(t) {
+                        if (t && nestedTitlesByEntity[ek].indexOf(t) < 0) nestedTitlesByEntity[ek].push(t);
+                    });
+                    if (!expanded.some(function(x) { return entityKey(x) === ek; })) {
+                        expanded.push({ type: 'smart_process', entity_key: ent.entity_key, title: ent.title || ent.entity_key });
+                    }
+                });
+            });
+            return { expandedEntities: expanded, nestedTitlesByEntity: nestedTitlesByEntity };
+        });
+    }
+
     function fetchPage(ent, titles, key, offset, limit, filterFieldMaps) {
         var url = API.metaData + '?type=' + encodeURIComponent(ent.type) + '&limit=' + limit + '&offset=' + offset;
         if (ent.entity_key && ent.type === 'smart_process') url += '&entity_key=' + encodeURIComponent(ent.entity_key);
@@ -2283,7 +2321,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function loadData(tableIndex, skipMetaWarmup) {
+    function loadData(tableIndex, skipMetaWarmup, skipEntityExpansion) {
         var st = tableStates[tableIndex];
         if (!st || !st.selectedEntities.length) return;
         if (!skipMetaWarmup) {
@@ -2294,12 +2332,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 Promise.all(missingMetaEntities.map(function(ent) {
                     return loadFieldsForEntity(ent).catch(function() { return { fields: [], nested: [] }; });
                 })).then(function() {
-                    loadData(tableIndex, true);
+                    loadData(tableIndex, true, false);
                 }).catch(function() {
-                    loadData(tableIndex, true);
+                    loadData(tableIndex, true, false);
                 });
                 return;
             }
+        }
+        if (!skipEntityExpansion) {
+            expandEntitiesFromNestedFields(st).then(function(ctx) {
+                st._expandedLoadEntities = (ctx && ctx.expandedEntities) ? ctx.expandedEntities : null;
+                st._nestedTitlesByEntity = (ctx && ctx.nestedTitlesByEntity) ? ctx.nestedTitlesByEntity : {};
+                loadData(tableIndex, true, true);
+            }).catch(function() {
+                st._expandedLoadEntities = null;
+                st._nestedTitlesByEntity = {};
+                loadData(tableIndex, true, true);
+            });
+            return;
         }
         var els = getSectionEls(tableIndex);
         var previousAllColumns = Array.isArray(st.allColumns) ? st.allColumns.slice() : [];
@@ -2329,10 +2379,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 filterFieldMapsByEntityKey[ek].push({ title: title, aliases: aliases });
             }
         });
-        st.selectedEntities.forEach(function(ent) {
+        var entitiesForLoad = (st._expandedLoadEntities && st._expandedLoadEntities.length) ? st._expandedLoadEntities : st.selectedEntities;
+        var nestedTitlesByEntity = st._nestedTitlesByEntity || {};
+        entitiesForLoad.forEach(function(ent) {
             var key = entityKey(ent);
             var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
             var displayTitles = (sel && sel.human_titles) ? sel.human_titles.slice() : [];
+            if (!displayTitles.length && nestedTitlesByEntity[key] && nestedTitlesByEntity[key].length) {
+                displayTitles = nestedTitlesByEntity[key].slice();
+            }
             // Also restore titles from currently rendered headers (before reload)
             if (previousDomColumnKeys && previousDomColumnKeys.length) {
                 previousDomColumnKeys.forEach(function(colKey) {
