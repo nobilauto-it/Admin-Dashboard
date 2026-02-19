@@ -804,12 +804,12 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) { return null; }
     }
 
-    /** Порядок колонок: приоритет у локального (localStorage после перетаскивания), иначе с сервера. */
+    /** Порядок колонок: приоритет у серверного конфига, локальный — только fallback. */
     function getColumnOrderForTable(tableIndex) {
-        var local = loadColumnOrder(tableIndex);
-        if (local && local.length) return local;
         var st = tableStates[tableIndex];
         if (st && st.columnOrderFromServer && st.columnOrderFromServer.length) return st.columnOrderFromServer;
+        var local = loadColumnOrder(tableIndex);
+        if (local && local.length) return local;
         return null;
     }
 
@@ -1800,7 +1800,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function saveConfig(opts) {
         opts = opts || {};
-        if (isGuestUser() && !opts.force) return Promise.resolve();
+        // Guest/anonymous users must never persist shared server config.
+        if (isGuestUser()) return Promise.resolve();
         var slug = getPageSlug();
         var tables = tableStates.map(function(st, i) {
             var keys = (st.allColumns && st.allColumns.length) ? st.allColumns.map(function(c) { return c.key; }) : [];
