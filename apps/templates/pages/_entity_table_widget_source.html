@@ -2303,6 +2303,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         var els = getSectionEls(tableIndex);
         var previousAllColumns = Array.isArray(st.allColumns) ? st.allColumns.slice() : [];
+        var previousDomColumnKeys = getColumnKeysFromSection(tableIndex);
+        var savedOrderKeys = getColumnOrderForTable(tableIndex) || [];
         st.fullData = [];
         st.allColumns = [];
         showLoading(tableIndex, true, 'Загрузка данных...');
@@ -2331,6 +2333,24 @@ document.addEventListener('DOMContentLoaded', function() {
             var key = entityKey(ent);
             var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
             var displayTitles = (sel && sel.human_titles) ? sel.human_titles.slice() : [];
+            // Also restore titles from currently rendered headers (before reload)
+            if (previousDomColumnKeys && previousDomColumnKeys.length) {
+                previousDomColumnKeys.forEach(function(colKey) {
+                    var k = String(colKey || '');
+                    if (k.indexOf(key + '::') !== 0) return;
+                    var t = k.slice((key + '::').length);
+                    if (t && displayTitles.indexOf(t) < 0) displayTitles.push(t);
+                });
+            }
+            // Restore from persisted column order (server/local) for mixed-entity cases after reload.
+            if (savedOrderKeys && savedOrderKeys.length) {
+                savedOrderKeys.forEach(function(colKey) {
+                    var k = String(colKey || '');
+                    if (k.indexOf(key + '::') !== 0) return;
+                    var t = k.slice((key + '::').length);
+                    if (t && displayTitles.indexOf(t) < 0) displayTitles.push(t);
+                });
+            }
             // Fallback: if selectedFields lost titles for an entity, restore from current columns for that entity
             if (!displayTitles.length && previousAllColumns.length) {
                 previousAllColumns.forEach(function(col) {
@@ -2373,6 +2393,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (ent.type === 'deal' && ent.category_id != null && displayTitles.indexOf(FUNNEL_FIELD) < 0) {
                 fetchTitles.push(FUNNEL_FIELD);
             }
+            // console.debug helper: helps verify all selected entities are requested
+            if (typeof console !== 'undefined' && console.debug) {
+                console.debug('[entity-table] request entity', key, { type: ent.type, titles: displayTitles.length, fetchTitles: fetchTitles.length });
+            }
             displayTitles.forEach(function(t) {
                 st.allColumns.push({ key: key + '::' + t, label: t, entityKey: key, entityTitle: ent.title || entityTitleForNested(ent) });
             });
@@ -2384,6 +2408,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 filterFieldMaps: (selectedFieldMaps || []).concat(filterFieldMapsByEntityKey[key] || [])
             });
         });
+        if (typeof console !== 'undefined' && console.debug) {
+            console.debug('[entity-table] columnsByKey', columnsByKey.map(function(x) { return x.key + ' [' + x.displayTitles.length + ']'; }));
+        }
         if (columnsByKey.length === 0) {
             showLoading(tableIndex, false);
             st.fullData = [];
