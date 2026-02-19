@@ -167,7 +167,6 @@
     .entity-report-card-section .report-card-main-value { font-size: 1.25rem; font-weight: 600; margin: 0.25rem 0; }
     .entity-report-card-section .report-card-secondary-value { font-size: 0.875rem; color: var(--bs-secondary-color); margin-bottom: 0; }
     .entity-report-card-section .report-card-icon-wrap { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
-    .entity-report-card-section .report-card-actions { position: absolute; top: 0.5rem; right: 0.5rem; }
     .entity-table-section .filterDropdownInSection { position: absolute; left: 0; top: calc(100% + 6px); width: min(380px, 96vw); display: none; z-index: 1070; }
     .entity-table-section .filterDropdownInSection.open { display: block; }
     .entity-table-section .filterDropdownCardInSection { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; background: var(--bs-body-bg, #fff); box-shadow: 0 10px 24px rgba(0,0,0,.12); padding: 12px; max-height: 65vh; overflow: auto; }
@@ -244,11 +243,8 @@
                         <option value="hide">Скрыть</option>
                     </select>
                 </div>
-                <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddTableBlock" title="Добавить ещё одну таблицу на страницу">
-                    <i class="iconoir-plus"></i> Добавить таблицу
-                </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAddCardBlock" title="Добавить карточку отчёта (KPI по данным сущности)">
-                    <i class="iconoir-report-columns"></i> Добавить карточку
+                <button type="button" class="btn btn-sm btn-soft-primary" id="btnAddWidget" title="Добавить таблицу или карточку на эту страницу" aria-label="Добавить">
+                    <i class="iconoir-plus"></i>
                 </button>
             </div>
             <div id="entityTablesContainer">
@@ -447,6 +443,29 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalAddTableOrCard" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Добавить</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-0">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-add-choice py-3 d-flex align-items-center justify-content-center gap-2" id="btnChoiceTable" data-choice="table">
+                        <i class="iconoir-list fs-4"></i>
+                        <span>Таблицу</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-add-choice py-3 d-flex align-items-center justify-content-center gap-2" id="btnChoiceCard" data-choice="card">
+                        <i class="iconoir-report-columns fs-4"></i>
+                        <span>Карточку</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalInsertTableGrid" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -532,8 +551,13 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-primary" id="modalAddCardSave">Сохранить</button>
+                <div class="me-auto">
+                    <button type="button" class="btn btn-outline-danger btn-sm d-none" id="modalAddCardDelete" title="Удалить карточку">Удалить карточку</button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="modalAddCardSave">Сохранить</button>
+                </div>
             </div>
         </div>
     </div>
@@ -578,16 +602,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 toolbar.style.display = '';
             }
         }
-        var b1 = document.getElementById('btnAddTableBlock');
-        if (b1) { if (hide) { b1.style.setProperty('display', 'none', 'important'); b1.classList.add(DASHBOARD_HIDE_CLASS); } else { b1.classList.remove(DASHBOARD_HIDE_CLASS); b1.style.display = ''; } }
-        var bCard = document.getElementById('btnAddCardBlock');
-        if (bCard) { if (hide) { bCard.style.setProperty('display', 'none', 'important'); bCard.classList.add(DASHBOARD_HIDE_CLASS); } else { bCard.classList.remove(DASHBOARD_HIDE_CLASS); bCard.style.display = ''; } }
+        var btnAddWidget = document.getElementById('btnAddWidget');
+        if (btnAddWidget) { if (hide) { btnAddWidget.style.setProperty('display', 'none', 'important'); btnAddWidget.classList.add(DASHBOARD_HIDE_CLASS); } else { btnAddWidget.classList.remove(DASHBOARD_HIDE_CLASS); btnAddWidget.style.display = ''; } }
         if (entityTablesContainer) {
             entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection, .btnDeleteTableInSection').forEach(function(el) {
                 if (hide) { el.style.setProperty('display', 'none', 'important'); el.classList.add(DASHBOARD_HIDE_CLASS); } else { el.classList.remove(DASHBOARD_HIDE_CLASS); el.style.display = ''; }
-            });
-            entityTablesContainer.querySelectorAll('.card-actions-in-section').forEach(function(el) {
-                if (hide) { el.classList.add('d-none'); } else { el.classList.remove('d-none'); }
             });
         }
     }
@@ -1685,18 +1704,13 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="datatable-bottom paginationBlockInSection d-none"><div class="pagination-left-in-section d-flex align-items-center flex-wrap gap-2"><span class="datatable-info small text-muted paginationInfoInSection">Показано 0 — 0 из 0 записей</span><span class="small text-muted">На странице:</span><select class="datatable-input pageSizeInSection" style="width:70px;"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></div><nav class="datatable-pagination paginationNavInSection" aria-label="Пагинация таблицы"></nav></div></div>';
     }
 
-    /** Report card section HTML: title, main value, secondary, icon; same visual as Dastone report-card */
+    /** Report card section HTML: title, main value, secondary, icon; settings on double-click, delete in modal */
     function createCardSectionHtml(cardIndex) {
         var st = tableStates[cardIndex];
-        var title = (st && st.cardTitle) ? String(st.cardTitle).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
         var icon = (st && st.icon) ? st.icon : 'iconoir-activity';
         var iconClass = 'bg-primary-subtle text-primary';
-        return '<div class="entity-report-card-section" data-card-index="' + cardIndex + '">' +
-            '<div class="card report-card position-relative">' +
-            '<div class="report-card-actions card-actions-in-section">' +
-            '<button type="button" class="btn btn-sm btn-outline-secondary btnEditCardInSection" title="Настроить карточку"><i class="iconoir-settings"></i></button>' +
-            '<button type="button" class="btn btn-sm btn-outline-danger btnDeleteCardInSection" title="Удалить карточку"><i class="iconoir-trash"></i></button>' +
-            '</div>' +
+        return '<div class="entity-report-card-section" data-card-index="' + cardIndex + '" role="button" tabindex="0" title="Двойной клик — настройки">' +
+            '<div class="card report-card">' +
             '<div class="card-body">' +
             '<div class="row d-flex justify-content-center align-items-center">' +
             '<div class="col">' +
@@ -1808,18 +1822,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeFilterDropdown(idx);
             };
         });
-        entityTablesContainer.querySelectorAll('.btnDeleteCardInSection').forEach(function(btn) {
-            var section = btn.closest('.entity-report-card-section');
-            if (!section) return;
-            var idx = parseInt(section.getAttribute('data-card-index'), 10);
-            btn.onclick = function() { deleteTableAtIndex(idx); };
-        });
-        entityTablesContainer.querySelectorAll('.btnEditCardInSection').forEach(function(btn) {
-            var section = btn.closest('.entity-report-card-section');
-            if (!section) return;
-            var idx = parseInt(section.getAttribute('data-card-index'), 10);
-            btn.onclick = function() { openAddCardModal(idx); };
-        });
+        if (entityTablesContainer && !entityTablesContainer._cardDblclickBound) {
+            entityTablesContainer._cardDblclickBound = true;
+            entityTablesContainer.addEventListener('dblclick', function(e) {
+                var section = e.target && e.target.closest && e.target.closest('.entity-report-card-section');
+                if (!section || isGuestUser()) return;
+                var idx = parseInt(section.getAttribute('data-card-index'), 10);
+                if (!isNaN(idx)) openAddCardModal(idx);
+            });
+        }
         var addFilterFieldInModalEl = document.getElementById('addFilterFieldInModal');
         if (addFilterFieldInModalEl) addFilterFieldInModalEl.onclick = function(e) {
             e.preventDefault();
@@ -3626,10 +3637,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     (function setupAddTableGrid() {
-        var btn = document.getElementById('btnAddTableBlock');
         var modalEl = document.getElementById('modalInsertTableGrid');
         var gridEl = document.getElementById('insertTableGrid');
-        if (!btn || !modalEl || !gridEl) return;
+        if (!modalEl || !gridEl) return;
         var modal = new bootstrap.Modal(modalEl);
         var GRID_ROWS = 3;
         var GRID_COLS = 3;
@@ -3653,9 +3663,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     cell.setAttribute('tabindex', disabled ? '-1' : '0');
                     if (isOccupied) {
                         var st = tableStates[idx];
-                        var label = (st && st.tableTitle && st.tableTitle.trim()) ? st.tableTitle.trim() : (st && st.selectedEntities && st.selectedEntities[0]) ? (st.selectedEntities[0].title || st.selectedEntities[0].type || '') : '';
+                        var isCard = st && st.type === 'card';
+                        var label = isCard ? (st.cardTitle && st.cardTitle.trim()) ? st.cardTitle.trim() : 'Карточка' : (st && st.tableTitle && st.tableTitle.trim()) ? st.tableTitle.trim() : (st && st.selectedEntities && st.selectedEntities[0]) ? (st.selectedEntities[0].title || st.selectedEntities[0].type || '') : '';
                         if (label.length > 20) label = label.slice(0, 17) + '…';
-                        cell.setAttribute('title', label ? ('Таблица ' + (idx + 1) + ': ' + label) : ('Таблица ' + (idx + 1)));
+                        cell.setAttribute('title', label ? ((isCard ? 'Карточка ' : 'Таблица ') + (idx + 1) + ': ' + label) : ((isCard ? 'Карточка ' : 'Таблица ') + (idx + 1)));
                         cell.innerHTML = '<span class="cell-placeholder cell-occupied">' + (idx + 1) + '</span>';
                     } else {
                         cell.innerHTML = '<span class="cell-placeholder">' + (disabled ? '—' : '+') + '</span>';
@@ -3691,20 +3702,47 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        btn.addEventListener('click', function() {
+        window.openInsertTableGrid = function() {
             if (tableStates.length >= MAX_CELLS) {
-                alert('Достигнут максимум таблиц на странице (' + MAX_CELLS + ').');
+                alert('Достигнут максимум виджетов на странице (' + MAX_CELLS + ').');
                 return;
             }
             renderInsertModalGrid();
             modal.show();
-        });
+        };
+    })();
+
+    (function setupAddTableOrCardChoice() {
+        var choiceModalEl = document.getElementById('modalAddTableOrCard');
+        var btnAddWidget = document.getElementById('btnAddWidget');
+        var btnChoiceTable = document.getElementById('btnChoiceTable');
+        var btnChoiceCard = document.getElementById('btnChoiceCard');
+        if (!choiceModalEl) return;
+        var choiceModal = new bootstrap.Modal(choiceModalEl);
+        if (btnAddWidget) {
+            btnAddWidget.addEventListener('click', function() {
+                if (isGuestUser()) return;
+                choiceModal.show();
+            });
+        }
+        if (btnChoiceTable) {
+            btnChoiceTable.addEventListener('click', function() {
+                choiceModal.hide();
+                if (typeof window.openInsertTableGrid === 'function') window.openInsertTableGrid();
+            });
+        }
+        if (btnChoiceCard) {
+            btnChoiceCard.addEventListener('click', function() {
+                choiceModal.hide();
+                if (typeof window.openAddCardModal === 'function') window.openAddCardModal(null);
+            });
+        }
     })();
 
     (function setupAddCardModal() {
         var modalEl = document.getElementById('modalAddCard');
-        var btnAdd = document.getElementById('btnAddCardBlock');
         var btnSave = document.getElementById('modalAddCardSave');
+        var btnDelete = document.getElementById('modalAddCardDelete');
         var cardTitleInput = document.getElementById('cardTitleInput');
         var cardEntitySelect = document.getElementById('cardEntitySelect');
         var cardMainAggregate = document.getElementById('cardMainAggregate');
@@ -3761,6 +3799,7 @@ document.addEventListener('DOMContentLoaded', function() {
         function openAddCardModal(cardIndex) {
             editingCardIndex = cardIndex;
             if (modalTitleEl) modalTitleEl.textContent = (cardIndex != null) ? 'Настроить карточку' : 'Добавить карточку отчёта';
+            if (btnDelete) btnDelete.classList.toggle('d-none', cardIndex == null);
             loadEntitiesList().then(function() {
                 fillEntitySelect();
                 if (cardIndex != null && tableStates[cardIndex] && tableStates[cardIndex].type === 'card') {
@@ -3805,11 +3844,13 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        if (btnAdd) {
-            btnAdd.addEventListener('click', function() {
-                if (isGuestUser()) return;
-                editingCardIndex = null;
-                openAddCardModal(null);
+        if (btnDelete) {
+            btnDelete.addEventListener('click', function() {
+                if (editingCardIndex == null) return;
+                if (!confirm('Удалить эту карточку?')) return;
+                var idx = editingCardIndex;
+                modal.hide();
+                deleteTableAtIndex(idx);
             });
         }
 

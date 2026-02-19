@@ -8,16 +8,16 @@
 
 {% block styles %}
 <style>
-/* Для гостей (не залогинен): скрыть тулбар, «Добавить таблицу», шестерёнки, плюс. Залогиненный админ видит всё. */
+/* Для гостей (не залогинен): скрыть тулбар, кнопку «Добавить» (таблицу/карточку), шестерёнки. Залогиненный админ видит всё. */
 .dashboard-toolbar-hidden,
 body.page-dashboard-readonly #entityTableAdminToolbar,
-body.page-dashboard-readonly #btnAddTableBlock,
+body.page-dashboard-readonly #btnAddWidget,
 body.page-dashboard-readonly .btnAddEntityInSection,
 body.page-dashboard-readonly .btnFieldsInSection { display: none !important; }
 /* Скрыть кнопку «плюс» (добавить сущность) везде — во всех блоках таблиц */
 .btn.btn-primary.btn-plus-content.btnAddEntityInSection,
 .btnAddEntityInSection { display: none !important; }
-body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-2.mb-2:has(#btnAddTableBlock) { display: none !important; }
+body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-2.mb-2:has(#btnAddWidget) { display: none !important; }
 </style>
 {% endblock styles %}
 
@@ -59,8 +59,8 @@ body.page-dashboard-readonly .d-flex.justify-content-end.align-items-center.gap-
         if (!document.body.classList.contains('page-dashboard-readonly')) return;
         var t = document.getElementById('entityTableAdminToolbar');
         if (t) { t.style.setProperty('display', 'none', 'important'); t.classList.add('dashboard-toolbar-hidden'); }
-        var b1 = document.getElementById('btnAddTableBlock');
-        if (b1) { b1.style.setProperty('display', 'none', 'important'); b1.classList.add('dashboard-toolbar-hidden'); }
+        var bAdd = document.getElementById('btnAddWidget');
+        if (bAdd) { bAdd.style.setProperty('display', 'none', 'important'); bAdd.classList.add('dashboard-toolbar-hidden'); }
         var c = document.getElementById('entityTablesContainer');
         if (c) c.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection').forEach(function(el) { el.style.setProperty('display', 'none', 'important'); el.classList.add('dashboard-toolbar-hidden'); });
     }
