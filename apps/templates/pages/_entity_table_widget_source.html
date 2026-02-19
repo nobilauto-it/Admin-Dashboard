@@ -2137,7 +2137,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (fieldsModalForFilterTableIndex != null) {
             var st = tableStates[fieldsModalForFilterTableIndex];
             if (!st) { fieldsModalForFilterTableIndex = null; fieldsModalForFilterSource = null; return; }
-            var existingLabels = (st.filterFields || []).map(function(f) { return (f.label || '').toLowerCase(); });
+            var existingKeys = {};
+            (st.filterFields || []).forEach(function(f) {
+                var fk = String((f && f.key) || '').trim().toLowerCase();
+                if (fk) existingKeys[fk] = true;
+            });
             fieldsList.querySelectorAll('.field-cb:checked').forEach(function(cb) {
                 var k = (cb.getAttribute('data-entitykey') || '').trim();
                 var ht = (cb.getAttribute('data-human-title') || '').trim();
@@ -2146,9 +2150,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 var columnName = (cb.getAttribute('data-column-name') || '').trim();
                 var nt = (cb.getAttribute('data-nested-type') || '').trim();
                 if (!k || !ht || nt) return;
-                if (existingLabels.indexOf(ht.toLowerCase()) >= 0) return;
-                existingLabels.push(ht.toLowerCase());
                 var key = k + '::' + ht;
+                var normKey = key.toLowerCase();
+                if (existingKeys[normKey]) return;
+                existingKeys[normKey] = true;
                 var type = (isStageLikeField(ht, key) || isDropdownFieldType(fType)) ? 'multiselect' : 'text';
                 st.filterFields = st.filterFields || [];
                 st.filterFields.push({ label: ht, key: key, type: type, sourceFieldType: fType, sourceB24Field: b24Field, sourceColumnName: columnName });
@@ -2248,12 +2253,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     var kk = keys[i];
                     if (normalizeSearchText(kk) === target) return row[kk];
                 }
-                for (var j = 0; j < keys.length; j++) {
-                    var k2 = keys[j];
-                    var kn = normalizeSearchText(k2);
-                    if (!kn) continue;
-                    if (kn.indexOf(target) >= 0 || target.indexOf(kn) >= 0) return row[k2];
-                }
                 return '';
             }
             list.forEach(function(row) {
@@ -2334,9 +2333,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (b24 && aliases.indexOf(b24) < 0) aliases.push(b24);
                     });
                 }
-                aliases.forEach(function(a) {
-                    if (a && fetchTitles.indexOf(a) < 0) fetchTitles.push(a);
-                });
                 if (aliases.length) selectedFieldMaps.push({ title: title, aliases: aliases });
             });
             var extraFilterTitles = filterTitlesByEntityKey[key] || [];
@@ -2384,10 +2380,12 @@ document.addEventListener('DOMContentLoaded', function() {
         st.allColumns = st.allColumns.filter(function(c) { return !isSystemColumn(c.key) && validKeys[c.key]; });
         var labelCount = {};
         st.allColumns.forEach(function(c) {
-            labelCount[c.label] = (labelCount[c.label] || 0) + 1;
+            var ln = normalizeFieldLabel(c.label || '');
+            labelCount[ln] = (labelCount[ln] || 0) + 1;
         });
         st.allColumns.forEach(function(c) {
-            if (labelCount[c.label] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
+            var ln = normalizeFieldLabel(c.label || '');
+            if (labelCount[ln] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
         });
         st.allColumns = applyColumnOrder(st.allColumns, getColumnOrderForTable(tableIndex));
         if (!st.columnWidths || !Object.keys(st.columnWidths).length) st.columnWidths = loadColumnWidths(tableIndex);
@@ -2543,8 +2541,14 @@ document.addEventListener('DOMContentLoaded', function() {
         var validKeys = getValidColumnKeysFromSelectedFields(st);
         cols = cols.filter(function(c) { return validKeys[c.key]; });
         var labelCount = {};
-        cols.forEach(function(c) { labelCount[c.label] = (labelCount[c.label] || 0) + 1; });
-        cols.forEach(function(c) { if (labelCount[c.label] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')'; });
+        cols.forEach(function(c) {
+            var ln = normalizeFieldLabel(c.label || '');
+            labelCount[ln] = (labelCount[ln] || 0) + 1;
+        });
+        cols.forEach(function(c) {
+            var ln = normalizeFieldLabel(c.label || '');
+            if (labelCount[ln] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
+        });
         st.allColumns = applyColumnOrder(cols, getColumnOrderForTable(tableIndex));
     }
 
