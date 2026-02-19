@@ -118,7 +118,7 @@ Author: Mannatthemes
   --bs-highlight-bg: #fff1d3;
   --bs-border-width: 1px;
   --bs-border-style: solid;
-  --bs-border-color: #c7cfdc;
+  --bs-border-color: #a9b2c0;
   --bs-border-color-translucent: rgba(0, 0, 0, 0.5);
   --bs-border-radius: 4px;
   --bs-border-radius: 0.25rem;
@@ -2423,10 +2423,10 @@ textarea.form-control-lg {
 .form-check {
   display: block;
   min-height: 19.5px;
-  min-height: 1.5rem;
+  min-height: 2rem;
   padding-left: 1.7em;
   margin-bottom: 2px;
-  margin-bottom: 0.125rem;
+  margin-bottom: 0.4rem;
 }
 .form-check .form-check-input {
   float: left;
