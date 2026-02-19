@@ -2329,7 +2329,17 @@ document.addEventListener('DOMContentLoaded', function() {
         st.selectedEntities.forEach(function(ent) {
             var key = entityKey(ent);
             var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
-            var displayTitles = (sel && sel.human_titles) ? sel.human_titles : [];
+            var displayTitles = (sel && sel.human_titles) ? sel.human_titles.slice() : [];
+            // Fallback: if selectedFields lost titles for an entity, restore from current columns for that entity
+            if (!displayTitles.length && st.allColumns && st.allColumns.length) {
+                st.allColumns.forEach(function(col) {
+                    if (!col || !col.key) return;
+                    var k = String(col.key);
+                    if (k.indexOf(key + '::') !== 0) return;
+                    var t = k.slice((key + '::').length);
+                    if (t && displayTitles.indexOf(t) < 0) displayTitles.push(t);
+                });
+            }
             if (!displayTitles.length) return;
             var fetchTitles = displayTitles.slice();
             var selectedFieldMaps = [];
