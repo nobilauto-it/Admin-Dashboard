@@ -140,7 +140,7 @@
     .entity-table-grid-wrap th.entity-table-th-wrap { position: relative; padding-right: 16px; }
     /* auto — ширина колонок по содержимому; при ручном ресайзе сохраняем width в columnWidths */
     .entity-table-grid-wrap .datatable-table { table-layout: auto; }
-    .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; }
+    .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 10px; cursor: col-resize; user-select: none; }
     .entity-table-grid-wrap th .entity-table-col-resize:hover { background: rgba(var(--bs-primary-rgb), 0.2); }
     #entityTablesContainer { display: grid; gap: 1rem; align-items: start; }
     .entity-table-section { min-width: 0; margin-bottom: 0; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; padding: 1rem; background: var(--bs-body-bg, #fff); display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
@@ -874,6 +874,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var MIN_COL_WIDTH = 40;
     /** Минимальная ширина (px), при которой применяем сохранённую ширину; иначе колонка подстраивается под содержимое (даты, заголовки не обрезаются). */
     var MIN_CONTENT_SAFE_WIDTH = 180;
+    var suppressHeaderSortUntil = 0;
 
     function getColumnWidthStorageKey() {
         return COLUMN_WIDTH_KEY_PREFIX + getPageSlug();
@@ -2918,7 +2919,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var sortIcon = '';
             if (st.sortKey === c.key) sortIcon = (st.sortDir === 'asc') ? '&#9650;' : (st.sortDir === 'desc' ? '&#9660;' : '');
             var w = st.columnWidths[c.key];
-            var style = (w && w >= MIN_CONTENT_SAFE_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
+            var style = (w && w >= MIN_COL_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
             var isDateColumn = isLikelyDateColumn(st, c);
             var showTime = isTimeVisibleForColumn(st, c.key);
             var timeToggle = isDateColumn
@@ -2989,6 +2990,7 @@ document.addEventListener('DOMContentLoaded', function() {
         els.gridHead.querySelectorAll('th[data-column-key]').forEach(function(th) {
             th.onclick = null;
             th.onclick = function(e) {
+                if (Date.now() < suppressHeaderSortUntil) return;
                 if (e.target && e.target.closest && e.target.closest('.entity-table-col-resize')) return;
                 if (e.target && e.target.closest && e.target.closest('.entity-table-time-toggle')) return;
                 var key = th.getAttribute('data-column-key');
@@ -3048,6 +3050,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.removeEventListener('mouseup', onUp);
                     document.body.style.userSelect = '';
                     document.body.style.cursor = '';
+                    // Prevent accidental sort click right after resize drag end
+                    suppressHeaderSortUntil = Date.now() + 250;
                     saveColumnWidths();
                     updateThLabelByWidth(th);
                 }
