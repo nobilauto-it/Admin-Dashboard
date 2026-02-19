@@ -2089,6 +2089,10 @@ document.addEventListener('DOMContentLoaded', function() {
             row.style.display = 'none';
         });
         fieldsList.querySelectorAll('.field-row:not([data-entity-header="1"])').forEach(function(row) {
+            if (row.classList && row.classList.contains('fields-modal-group-label')) {
+                row.style.display = 'none';
+                return;
+            }
             var text = normalizeSearchText(row.getAttribute('data-search-text') || row.textContent || '');
             var entityKeyVal = row.getAttribute('data-entitykey') || '';
             if (entityKeyVal && !allowedEntityKeys[entityKeyVal]) { row.style.display = 'none'; return; }
@@ -2104,6 +2108,23 @@ document.addEventListener('DOMContentLoaded', function() {
             var show = (passesSearch && nestedVisible);
             row.style.display = show ? '' : 'none';
             if (show && entityMeta[entityKeyVal]) entityMeta[entityKeyVal].visibleCount++;
+        });
+        // Показываем заголовок nested-группы, если в ней есть видимые поля после поиска.
+        fieldsList.querySelectorAll('.fields-modal-group-label.field-row').forEach(function(labelRow) {
+            var entityKeyVal = labelRow.getAttribute('data-entitykey') || '';
+            var nestedType = labelRow.getAttribute('data-nested-type') || '';
+            if (!entityKeyVal || !nestedType || (entityKeyVal && !allowedEntityKeys[entityKeyVal])) {
+                labelRow.style.display = 'none';
+                return;
+            }
+            var hasVisibleRows = false;
+            fieldsList.querySelectorAll('.field-row[data-entitykey="' + entityKeyVal + '"][data-nested-type="' + nestedType + '"]').forEach(function(r) {
+                if (hasVisibleRows) return;
+                if (r === labelRow) return;
+                if (r.classList && r.classList.contains('fields-modal-group-label')) return;
+                if (r.style.display !== 'none') hasVisibleRows = true;
+            });
+            labelRow.style.display = hasVisibleRows ? '' : 'none';
         });
         Object.keys(entityMeta).forEach(function(ek) {
             var meta = entityMeta[ek];
