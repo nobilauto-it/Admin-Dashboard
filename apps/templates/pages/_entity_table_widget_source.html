@@ -41,8 +41,9 @@
         padding: 0.5rem 0.75rem;
         border-bottom: 1px solid var(--bs-border-color, #dee2e6);
         overflow: hidden;
-        max-width: 220px;
-        min-width: 4rem;
+        min-width: 2rem;
+        width: 1%;
+        white-space: nowrap;
     }
     .entity-table-section .entity-table-grid-wrap .datatable-table > thead > tr > th .entity-table-th-inline {
         display: inline-flex;
@@ -70,8 +71,8 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 220px;
-        min-width: 4rem;
+        min-width: 2rem;
+        width: 1%;
     }
     .entity-table-section .entity-table-grid-wrap .datatable-table th a {
         text-decoration: none;
@@ -850,6 +851,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!raw) return;
             var obj = JSON.parse(raw);
             if (obj && obj[tableIndex] !== undefined) { delete obj[tableIndex]; localStorage.setItem(getColumnOrderStorageKey(), JSON.stringify(obj)); }
+        } catch (e) {}
+    }
+
+    /** Clear saved column widths for a table so columns auto-fit to content after create/change. */
+    function clearColumnWidthsForTable(tableIndex) {
+        var st = tableStates[tableIndex];
+        if (st) st.columnWidths = {};
+        try {
+            var raw = localStorage.getItem(getColumnWidthStorageKey());
+            if (!raw) return;
+            var obj = JSON.parse(raw);
+            if (obj && obj[tableIndex] !== undefined) { delete obj[tableIndex]; localStorage.setItem(getColumnWidthStorageKey(), JSON.stringify(obj)); }
         } catch (e) {}
     }
 
@@ -2348,6 +2361,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (descField) st.tableDescription = (descField.value && String(descField.value).trim()) ? descField.value.trim() : '';
         updateTableTitleBlock(currentTableIndex);
         clearColumnOrderForTable(currentTableIndex);
+        clearColumnWidthsForTable(currentTableIndex);
         saveConfig();
         saveConfigToStorage();
         loadData(currentTableIndex);
