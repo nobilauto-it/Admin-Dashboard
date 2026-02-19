@@ -2100,10 +2100,10 @@ document.addEventListener('DOMContentLoaded', function() {
             var passesSearch = forceShowByEntity || !q || text.indexOf(q) >= 0;
             var nestedType = row.getAttribute('data-nested-type');
             var nestedVisible = true;
-            if (!q && nestedType && entityKeyVal) {
+            if (nestedType && entityKeyVal) {
                 var safeId = (entityKeyVal + '_' + nestedType).replace(/[^a-zA-Z0-9_]/g, '_');
                 var toggleEl = document.getElementById('nested_cb_' + safeId);
-                nestedVisible = toggleEl && (toggleEl.checked === true || toggleEl.getAttribute('data-active') === 'true');
+                nestedVisible = !toggleEl || (toggleEl.checked === true || toggleEl.getAttribute('data-active') === 'true');
             }
             var show = (passesSearch && nestedVisible);
             row.style.display = show ? '' : 'none';
