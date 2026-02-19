@@ -804,6 +804,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function getValidColumnKeysFromSelectedFields(st) {
         if (!st || !st.selectedEntities || !st.selectedFields) return {};
         var valid = {};
+        var knownEntities = [];
+        if (st._expandedLoadEntities && Array.isArray(st._expandedLoadEntities)) knownEntities = knownEntities.concat(st._expandedLoadEntities);
+        if (st.selectedEntities && Array.isArray(st.selectedEntities)) knownEntities = knownEntities.concat(st.selectedEntities);
+        if (entitiesList && Array.isArray(entitiesList)) knownEntities = knownEntities.concat(entitiesList);
         st.selectedEntities.forEach(function(ent) {
             var key = entityKey(ent);
             var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
@@ -817,6 +821,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     (sel.nestedFields[typ] || []).forEach(function(t) {
                         var colKey = key + '::' + t;
                         if (!isSystemColumn(colKey)) valid[colKey] = true;
+                        if (String(typ || '').indexOf('smart_process::') === 0) {
+                            var smartEnt = resolveSmartEntityByNestedType(typ, knownEntities);
+                            if (smartEnt) {
+                                var smartKey = entityKey(smartEnt) + '::' + t;
+                                if (!isSystemColumn(smartKey)) valid[smartKey] = true;
+                            }
+                        }
                     });
                 });
             }
@@ -2491,7 +2502,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var ln = normalizeFieldLabel(c.label || '');
             labelCount[ln] = (labelCount[ln] || 0) + 1;
         });
-        var multiEntityMode = st.selectedEntities && st.selectedEntities.length > 1;
+        var multiEntityMode = ((st._expandedLoadEntities && st._expandedLoadEntities.length) || (st.selectedEntities && st.selectedEntities.length) || 0) > 1;
         st.allColumns.forEach(function(c) {
             var ln = normalizeFieldLabel(c.label || '');
             if (multiEntityMode || labelCount[ln] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
@@ -2654,7 +2665,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var ln = normalizeFieldLabel(c.label || '');
             labelCount[ln] = (labelCount[ln] || 0) + 1;
         });
-        var multiEntityMode = st.selectedEntities && st.selectedEntities.length > 1;
+        var multiEntityMode = ((st._expandedLoadEntities && st._expandedLoadEntities.length) || (st.selectedEntities && st.selectedEntities.length) || 0) > 1;
         cols.forEach(function(c) {
             var ln = normalizeFieldLabel(c.label || '');
             if (multiEntityMode || labelCount[ln] > 1) c.label = c.label + ' (' + (c.entityTitle || c.entityKey) + ')';
