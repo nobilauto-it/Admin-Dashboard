@@ -83,7 +83,7 @@
     .fields-modal-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 16px; max-height: 70vh; overflow-y: auto; }
     .fields-modal-grid .form-check { min-width: 0; }
     .fields-modal-grid .form-check-label { white-space: normal; word-wrap: break-word; overflow-wrap: break-word; min-width: 0; }
-    .fields-modal-grid .fields-modal-entity-header { grid-column: 1 / -1; font-weight: 700; color: var(--bs-dark, #212529); padding-top: 6px; margin-top: 2px; border-top: 1px dashed var(--bs-border-color, #dee2e6); }
+    .fields-modal-grid .fields-modal-entity-header { grid-column: 1 / -1; font-weight: 500; color: var(bs-label-color, #656d9a); padding-top: 6px; margin-top: 2px; border-top: 1px dashed var(--bs-border-color, #dee2e6); }
     .fields-modal-grid .fields-modal-entity-header:first-child { border-top: 0; padding-top: 0; }
     .fields-modal-nested { margin-bottom: 12px; }
     .fields-modal-nested .nested-title { font-weight: 600; margin-bottom: 6px; }
@@ -368,12 +368,12 @@
                 <div class="tab-content">
                     <div class="tab-pane active" id="fieldsTabPane" role="tabpanel">
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                            <div class="flex-grow-1" style="min-width: 200px;">
+                            <div id="nestedCheckboxesRow" class="d-flex flex-wrap gap-2 align-items-center"></div>
+                            <div class="flex-grow-1" style="min-width: 150px;">
                                 <div class="input-group input-group-sm">
                                     <input type="text" class="form-control" id="fieldsSearchInput" placeholder="Поиск полей" autocomplete="off">
                                 </div>
-                            </div>
-                            <div id="nestedCheckboxesRow" class="d-flex flex-wrap gap-2 align-items-center"></div>
+                            </div>                        
                         </div>
                         <div class="fields-modal-grid" id="fieldsList"></div>
                     </div>
