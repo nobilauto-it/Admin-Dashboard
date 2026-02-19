@@ -34,7 +34,7 @@
     .entity-table-section .entity-table-grid-wrap .datatable-table > thead > tr > th {
         color: var(--bs-secondary-color, #495057);
         font-weight: 500;
-        font-size: 0.875rem;
+        font-size: 13px;
         background-color: var(--bs-light, #f8f9fa);
         vertical-align: middle;
         text-align: left;
@@ -66,7 +66,7 @@
     .entity-table-section .entity-table-grid-wrap .datatable-table > thead > tr > td {
         vertical-align: middle;
         padding: 0.5rem 0.75rem;
-        font-size: 0.875rem;
+        font-size: 13px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -241,7 +241,6 @@
                         <button type="button" class="btn btn-primary btn-plus-content btnAddEntityInSection" title="Добавить сущность / настройки таблицы">
                             <i class="iconoir-plus"></i>
                         </button>
-                        <span class="text-muted small selectedEntitiesLabelInSection ms-2"></span>
                         <span class="entity-table-section-hidden-label text-muted small d-none">Блок скрыт</span>
                         <div class="table-mode-admin ms-2" style="display: none !important;">
                             <select class="form-select form-select-sm tableModeSelect" title="Режим таблицы" data-table-index="0" style="width: auto; min-width: 120px;">
@@ -258,11 +257,7 @@
                     <div class="d-flex align-items-start mb-3 gridTopRowInSection d-none">
                         <div class="tableTitleBlockInSection d-none flex-grow-1">
                             <h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4>
-                            <p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p>
                         </div>
-                        <button type="button" class="btn btn-outline-danger btnDeleteTableInSection d-none ms-auto" title="Удалить таблицу" aria-label="Удалить таблицу">
-                            <i class="iconoir-trash"></i>
-                        </button>
                     </div>
                     <div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2">
                         <div class="input-group input-group-sm searchFilterInputWrap">
@@ -379,6 +374,14 @@
                     </div>
                     <div class="tab-pane" id="settingsTabPane" role="tabpanel">
                         <div class="mb-3">
+                            <label class="form-label text-muted small">Сущность таблицы</label>
+                            <p class="mb-0 small" id="settingsModalEntityLabel">—</p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="settingsModalTableDescription">Описание таблицы</label>
+                            <textarea class="form-control" id="settingsModalTableDescription" rows="2" placeholder="Описание таблицы"></textarea>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label" for="tableStyleSelect">Стиль таблицы</label>
                             <select class="form-select" id="tableStyleSelect">
                                 <option value="default">Default</option>
@@ -393,6 +396,11 @@
                                 <option value="table_head_options">Table Head Options</option>
                                 <option value="bordered_table">Bordered Table</option>
                             </select>
+                        </div>
+                        <div class="mt-4 pt-3 border-top">
+                            <button type="button" class="btn btn-outline-danger btn-sm" id="settingsModalDeleteTableBtn" title="Удалить таблицу" aria-label="Удалить таблицу">
+                                <i class="iconoir-trash"></i> Удалить таблицу
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -633,7 +641,6 @@ document.addEventListener('DOMContentLoaded', function() {
             loadingBlock: section.querySelector('.loadingBlockInSection'),
             loadingText: section.querySelector('.loadingTextInSection'),
             gridTopRow: section.querySelector('.gridTopRowInSection'),
-            btnDeleteTable: section.querySelector('.btnDeleteTableInSection'),
             gridBlock: section.querySelector('.gridBlockInSection'),
             searchFilterRow: section.querySelector('.searchFilterRowInSection'),
             emptyBlock: section.querySelector('.emptyBlockInSection'),
@@ -643,7 +650,6 @@ document.addEventListener('DOMContentLoaded', function() {
             pageSizeSelect: section.querySelector('.pageSizeInSection'),
             paginationInfo: section.querySelector('.paginationInfoInSection'),
             paginationNav: section.querySelector('.paginationNavInSection'),
-            selectedEntitiesLabel: section.querySelector('.selectedEntitiesLabelInSection'),
             btnFields: section.querySelector('.btnFieldsInSection'),
             filterDropdown: section.querySelector('.filterDropdownInSection'),
             filterDropdownRowsContainer: section.querySelector('.filterDropdownRowsContainerInSection'),
@@ -651,8 +657,7 @@ document.addEventListener('DOMContentLoaded', function() {
             filterDropdownSave: section.querySelector('.filterDropdownSaveInSection'),
             filterDropdownClose: section.querySelector('.filterDropdownCloseInSection'),
             tableTitleBlock: section.querySelector('.tableTitleBlockInSection'),
-            tableTitleText: section.querySelector('.tableTitleTextInSection'),
-            tableDescriptionText: section.querySelector('.tableDescriptionTextInSection')
+            tableTitleText: section.querySelector('.tableTitleTextInSection')
         };
     }
 
@@ -757,10 +762,6 @@ document.addEventListener('DOMContentLoaded', function() {
         var els = getSectionEls(tableIndex);
         var hasEntities = st.selectedEntities.length > 0;
         if (els.btnFields) els.btnFields.classList.toggle('d-none', !hasEntities);
-        if (els.btnDeleteTable) els.btnDeleteTable.classList.toggle('d-none', !hasEntities);
-        if (els.selectedEntitiesLabel) els.selectedEntitiesLabel.textContent = hasEntities
-            ? 'Сущности: ' + st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ')
-            : '';
         var plusBtn = els.section && els.section.querySelector('.btnAddEntityInSection');
         if (plusBtn) plusBtn.classList.toggle('d-none', !hasEntities);
     }
@@ -1488,12 +1489,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return '<div class="entity-table-section" data-table-index="' + tableIndex + '">' +
             '<div class="entity-table-toolbar d-flex align-items-center flex-wrap">' +
             '<button type="button" class="btn btn-primary btn-plus-content btnAddEntityInSection" title="Добавить сущность / настройки таблицы"><i class="iconoir-plus"></i></button>' +
-            '<span class="text-muted small selectedEntitiesLabelInSection ms-2"></span>' +
             '<span class="entity-table-section-hidden-label text-muted small d-none">Блок скрыт</span>' +
             '<div class="table-mode-admin ms-2" style="display:none!important"><select class="form-select form-select-sm tableModeSelect" title="Режим таблицы" data-table-index="' + tableIndex + '" style="width:auto;min-width:120px">' +
             '<option value="edit">Редактирование</option><option value="read_only">Только просмотр</option><option value="hide">Скрыть</option></select></div></div>' +
             '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +
-            '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div><button type="button" class="btn btn-outline-danger btnDeleteTableInSection d-none ms-auto" title="Удалить таблицу" aria-label="Удалить таблицу"><i class="iconoir-trash"></i></button></div>' +
+            '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4></div></div>' +
             '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button><div class="filterDropdownInSection"><div class="filterDropdownCardInSection filterPanelInSection"><div class="filterDropdownRowsContainerInSection"></div><a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a><div class="d-flex justify-content-end gap-2 mt-3"><button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button><button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button></div></div></div></div>' +
             '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="' + tableCls + '">' +
             (hasCaption ? captionHtml : '') + '<thead class="' + theadCls + '"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
@@ -1888,14 +1888,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var els = getSectionEls(tableIndex);
         if (!els.tableTitleBlock) return;
         var titleText = (st.tableTitle && String(st.tableTitle).trim()) || '';
-        var descText = (st.tableDescription && String(st.tableDescription).trim()) || '';
         if (els.tableTitleText) {
             els.tableTitleText.textContent = titleText || els.tableTitleText.getAttribute('data-placeholder') || 'Название таблицы';
             els.tableTitleText.classList.toggle('text-muted', !titleText);
-        }
-        if (els.tableDescriptionText) {
-            els.tableDescriptionText.textContent = descText || els.tableDescriptionText.getAttribute('data-placeholder') || 'Описание';
-            els.tableDescriptionText.classList.toggle('text-muted', !descText);
         }
         var gridHidden = !els.gridBlock || els.gridBlock.classList.contains('d-none');
         els.tableTitleBlock.classList.toggle('d-none', gridHidden);
@@ -2083,6 +2078,10 @@ document.addEventListener('DOMContentLoaded', function() {
         var isFilterMode = (fieldsModalForFilterTableIndex != null);
         var tableStyleSelect = document.getElementById('tableStyleSelect');
         if (tableStyleSelect && TABLE_STYLES[st.tableStyle]) tableStyleSelect.value = st.tableStyle;
+        var entityLabel = document.getElementById('settingsModalEntityLabel');
+        if (entityLabel) entityLabel.textContent = st.selectedEntities.length ? st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ') : '—';
+        var descField = document.getElementById('settingsModalTableDescription');
+        if (descField) descField.value = (st.tableDescription && String(st.tableDescription).trim()) ? st.tableDescription.trim() : '';
         var settingsTab = document.querySelector('#modalFields [href="#settingsTabPane"]');
         var settingsPane = document.getElementById('settingsTabPane');
         if (settingsTab && settingsPane) {
@@ -2338,6 +2337,9 @@ document.addEventListener('DOMContentLoaded', function() {
             st.tableStyle = tableStyleSelect.value;
             applyTableStyleToSection(currentTableIndex);
         }
+        var descField = document.getElementById('settingsModalTableDescription');
+        if (descField) st.tableDescription = (descField.value && String(descField.value).trim()) ? descField.value.trim() : '';
+        updateTableTitleBlock(currentTableIndex);
         clearColumnOrderForTable(currentTableIndex);
         saveConfig();
         saveConfigToStorage();
@@ -2346,6 +2348,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Автосохранение шаблона на сервере (общий для всех пользователей) после выбора полей
         saveTemplateSnapshot(currentTableIndex);
     });
+
+    var settingsModalDeleteTableBtn = document.getElementById('settingsModalDeleteTableBtn');
+    if (settingsModalDeleteTableBtn) {
+        settingsModalDeleteTableBtn.addEventListener('click', function() {
+            var idx = currentTableIndex;
+            modalFields.hide();
+            deleteTableAtIndex(idx);
+        });
+    }
 
     function loadFieldsThenData(tableIndex, openModalIfNoFields) {
         if (openModalIfNoFields === undefined) openModalIfNoFields = true;
