@@ -1777,7 +1777,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function saveConfig(opts) {
         opts = opts || {};
-        if (isGuestUser()) return Promise.resolve();
+        if (isGuestUser() && !opts.force) return Promise.resolve();
         var slug = getPageSlug();
         var tables = tableStates.map(function(st, i) {
             var keys = getColumnKeysFromSection(i);
@@ -2234,11 +2234,9 @@ document.addEventListener('DOMContentLoaded', function() {
             modalFields.hide();
             filterModalTableIndex = fieldsModalForFilterTableIndex;
             loadData(fieldsModalForFilterTableIndex);
-            if (!isGuestUser()) {
-                saveConfigToStorage();
-                saveConfig();
-                saveTemplateSnapshot(filterCfgTableIndex);
-            }
+            saveConfigToStorage();
+            saveConfig({ force: true });
+            saveTemplateSnapshot(filterCfgTableIndex);
             if (fieldsModalForFilterSource === 'modal') {
                 openFilterModal(fieldsModalForFilterTableIndex);
             } else {
@@ -2275,7 +2273,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return { entityKey: k, human_titles: byKey[k] || [], activeNestedTypes: activeNestedByKey[k] || [], nestedFields: nestedFieldsByKey[k] || {} };
         });
         clearColumnOrderForTable(currentTableIndex);
-        saveConfig();
+        saveConfig({ force: true });
         saveConfigToStorage();
         loadData(currentTableIndex);
         modalFields.hide();
