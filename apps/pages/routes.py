@@ -737,17 +737,44 @@ def entity_table_templates():
     tables = data.get('tables') if isinstance(data.get('tables'), list) else []
 
     templates = _read_templates_file()
-    new_id = max([t.get("id", 0) for t in templates], default=0) + 1
-    templates.append({
-        "id": new_id,
-        "name": name,
-        "entities": [],
-        "fields": [],
-        "tables": tables,
-    })
+    normalized = name.strip().casefold()
+    same_name_indexes = [
+        i for i, t in enumerate(templates)
+        if str((t or {}).get("name", "")).strip().casefold() == normalized
+    ]
+
+    if same_name_indexes:
+        # Upsert by template name: update first match and remove duplicate entries.
+        keep_idx = same_name_indexes[0]
+        keep_item = templates[keep_idx] if isinstance(templates[keep_idx], dict) else {}
+        keep_id = int(keep_item.get("id", 0) or 0)
+        if keep_id <= 0:
+            keep_id = max([t.get("id", 0) for t in templates if isinstance(t, dict)], default=0) + 1
+
+        templates[keep_idx] = {
+            "id": keep_id,
+            "name": name,
+            "entities": [],
+            "fields": [],
+            "tables": tables,
+        }
+        templates = [t for i, t in enumerate(templates) if i == keep_idx or i not in same_name_indexes]
+        status_code = 200
+        response_id = keep_id
+    else:
+        new_id = max([t.get("id", 0) for t in templates if isinstance(t, dict)], default=0) + 1
+        templates.append({
+            "id": new_id,
+            "name": name,
+            "entities": [],
+            "fields": [],
+            "tables": tables,
+        })
+        status_code = 201
+        response_id = new_id
     try:
         _write_templates_file(templates)
-        return jsonify({"ok": True, "id": new_id}), 201
+        return jsonify({"ok": True, "id": response_id}), status_code
     except Exception as e:
         current_app.logger.exception("POST templates file: %s", e)
         return make_response(jsonify({"ok": False, "error": str(e)}), 500)
