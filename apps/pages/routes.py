@@ -327,14 +327,11 @@ def create_page():
     # Шаблон с виджетом таблицы сущностей (кнопка «+», модалки, грид) или пустая страница
     widget_source = PAGES_DIR / "_entity_table_widget_source.html"
     if widget_source.exists():
-        try:
-            template_content = widget_source.read_text(encoding="utf-8")
-        except Exception as exc:
-            current_app.logger.warning(f"Не удалось прочитать шаблон виджета: {exc}")
-            template_content = None
+        template_content = """{% extends 'pages/_entity_table_widget_source.html' %}
+
+{% block title %}__PAGE_TITLE__{% endblock %}
+"""
     else:
-        template_content = None
-    if not template_content:
         template_content = """{% extends 'layouts/vertical.html' %}
 
 {% block title %}__PAGE_TITLE__{% endblock %}
@@ -348,7 +345,7 @@ def create_page():
 </div>
 {% endblock %}
 """
-    template_content = template_content.replace("__PAGE_TITLE__", page_title).replace("__PAGE_SLUG__", slug)
+    template_content = template_content.replace("__PAGE_TITLE__", page_title)
 
     try:
         with open(target_path, 'w', encoding='utf-8') as fp:
@@ -830,7 +827,12 @@ def route_template(template):
             )
 
         # Serve the file (if exists) from app/templates/pages/FILE.html
-        return render_template("pages/" + template_name, segment=segment, is_dashboard_page=is_dashboard_page)
+        return render_template(
+            "pages/" + template_name,
+            segment=segment,
+            is_dashboard_page=is_dashboard_page,
+            page_slug=page_slug,
+        )
 
     except TemplateNotFound:
         return render_template('pages/error-404.html'), 404
