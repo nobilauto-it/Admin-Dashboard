@@ -421,85 +421,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="modalAddCard" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalAddCardTitle">Добавить карточку отчёта</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted small mb-3">Карточка показывает сводные данные по выбранной сущности (сумма, среднее, количество и т.д.) с теми же фильтрами, что и таблицы.</p>
-                <div class="mb-3">
-                    <label class="form-label" for="cardTitleInput">Название карточки <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="cardTitleInput" placeholder="Например: Сделки за месяц">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label" for="cardEntitySelect">Сущность <span class="text-danger">*</span></label>
-                    <select class="form-select" id="cardEntitySelect">
-                        <option value="">— Выберите сущность —</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Главное значение (формула)</label>
-                    <div class="row g-2">
-                        <div class="col-sm-4">
-                            <select class="form-select" id="cardMainAggregate">
-                                <option value="count">Количество записей</option>
-                                <option value="sum">Сумма</option>
-                                <option value="avg">Среднее</option>
-                                <option value="min">Минимум</option>
-                                <option value="max">Максимум</option>
-                            </select>
-                        </div>
-                        <div class="col-sm-8">
-                            <select class="form-select" id="cardMainField">
-                                <option value="">— Поле (для count не обязательно) —</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Второстепенное значение (подпись или вторая формула)</label>
-                    <div class="row g-2 mb-2">
-                        <div class="col-sm-4">
-                            <select class="form-select" id="cardSecondaryAggregate">
-                                <option value="count">Количество</option>
-                                <option value="sum">Сумма</option>
-                                <option value="avg">Среднее</option>
-                                <option value="min">Минимум</option>
-                                <option value="max">Максимум</option>
-                            </select>
-                        </div>
-                        <div class="col-sm-4">
-                            <select class="form-select" id="cardSecondaryField">
-                                <option value="">— Поле —</option>
-                            </select>
-                        </div>
-                        <div class="col-sm-4">
-                            <input type="text" class="form-control" id="cardSecondaryLabel" placeholder="Подпись (например: за период)">
-                        </div>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label" for="cardIconSelect">Иконка</label>
-                    <select class="form-select" id="cardIconSelect">
-                        <!-- filled by JS from REPORT_CARD_ICONS -->
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <div class="me-auto">
-                    <button type="button" class="btn btn-outline-danger btn-sm d-none" id="modalAddCardDelete" title="Удалить карточку">Удалить карточку</button>
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="button" class="btn btn-primary" id="modalAddCardSave">Сохранить</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{% include 'partials/entity_card_modal.html' %}
 
 {% endblock %}
 
@@ -1067,6 +989,9 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             var key = STORAGE_KEY_PREFIX + getPageSlug();
             var tables = tableStates.map(function(st, i) {
+                if (st.type === 'card' && window.EntityCard && typeof window.EntityCard.serializeCardState === 'function') {
+                    return window.EntityCard.serializeCardState(st);
+                }
                 if (st.type === 'card') {
                     return {
                         type: 'card',
@@ -1116,6 +1041,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (openModalIfNoFields === undefined) openModalIfNoFields = true;
         if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
             tableStates = data.tables.map(function(t) {
+                if (t.type === 'card' && window.EntityCard && typeof window.EntityCard.parseCardStateFromSaved === 'function') {
+                    return window.EntityCard.parseCardStateFromSaved(t);
+                }
                 var norm = normalizeEntitiesAndFields(t.entities || [], t.fields || []);
                 if (t.type === 'card') {
                     return {
@@ -2075,7 +2003,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function saveConfig(opts) {
         opts = opts || {};
         var slug = getPageSlug();
-        var tables = tableStates.map(function(st, i) {
+            var tables = tableStates.map(function(st, i) {
+            if (st.type === 'card' && window.EntityCard && typeof window.EntityCard.serializeCardState === 'function') {
+                return window.EntityCard.serializeCardState(st);
+            }
             if (st.type === 'card') {
                 return {
                     type: 'card',
@@ -3108,7 +3039,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function loadCardData(cardIndex) {
         var st = tableStates[cardIndex];
-        if (!st || st.type !== 'card' || !st.selectedEntities.length) {
+        if (!st || st.type !== 'card') {
+            if (st && st.type === 'card') updateCardUI(cardIndex);
+            return;
+        }
+        if (window.EntityCard && typeof window.EntityCard.loadCardData === 'function') {
+            window.EntityCard.loadCardData(cardIndex);
+            return;
+        }
+        if (!st.selectedEntities.length) {
             updateCardUI(cardIndex);
             return;
         }
@@ -3174,6 +3113,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateCardUI(cardIndex) {
         var st = tableStates[cardIndex];
         if (!st || st.type !== 'card') return;
+        if (window.EntityCard && typeof window.EntityCard.updateCardUI === 'function') {
+            window.EntityCard.updateCardUI(cardIndex);
+            return;
+        }
         var els = getSectionEls(cardIndex);
         if (!els.section) return;
         if (els.cardTitleEl) els.cardTitleEl.textContent = (st.cardTitle && st.cardTitle.trim()) ? st.cardTitle.trim() : 'Карточка';
@@ -3767,172 +3710,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     })();
 
-    (function setupAddCardModal() {
-        var modalEl = document.getElementById('modalAddCard');
-        var btnSave = document.getElementById('modalAddCardSave');
-        var btnDelete = document.getElementById('modalAddCardDelete');
-        var cardTitleInput = document.getElementById('cardTitleInput');
-        var cardEntitySelect = document.getElementById('cardEntitySelect');
-        var cardMainAggregate = document.getElementById('cardMainAggregate');
-        var cardMainField = document.getElementById('cardMainField');
-        var cardSecondaryAggregate = document.getElementById('cardSecondaryAggregate');
-        var cardSecondaryField = document.getElementById('cardSecondaryField');
-        var cardSecondaryLabel = document.getElementById('cardSecondaryLabel');
-        var cardIconSelect = document.getElementById('cardIconSelect');
-        var modalTitleEl = document.getElementById('modalAddCardTitle');
-        if (!modalEl || !btnSave) return;
-        var modal = new bootstrap.Modal(modalEl);
-        var editingCardIndex = null;
-
-        function fillIconSelect() {
-            if (!cardIconSelect) return;
-            cardIconSelect.innerHTML = REPORT_CARD_ICONS.map(function(ic) {
-                return '<option value="' + ic + '">' + ic + '</option>';
-            }).join('');
-        }
-        fillIconSelect();
-
-        function fillEntitySelect() {
-            if (!cardEntitySelect) return;
-            var prev = cardEntitySelect.value;
-            cardEntitySelect.innerHTML = '<option value="">— Выберите сущность —</option>' +
-                (entitiesList || []).map(function(ent) {
-                    var key = entityKey(ent);
-                    var title = (ent.title || ent.type || key || '').trim();
-                    return '<option value="' + key + '">' + title + '</option>';
-                }).join('');
-            if (prev) cardEntitySelect.value = prev;
-        }
-
-        function fillFieldDropdowns(ent) {
-            var key = ent ? entityKey(ent) : '';
-            var opts = '<option value="">— Поле (для count не обязательно) —</option>';
-            if (ent) {
-                var cache = fieldsCache[key];
-                var titles = [];
-                if (cache && cache.fields && Array.isArray(cache.fields)) {
-                    cache.fields.forEach(function(meta) {
-                        var ht = String(meta.human_title || '').trim();
-                        if (ht) titles.push({ key: key + '::' + ht, label: ht });
-                    });
-                }
-                titles.forEach(function(t) {
-                    opts += '<option value="' + t.key + '">' + t.label + '</option>';
-                });
-            }
-            if (cardMainField) { cardMainField.innerHTML = opts; }
-            if (cardSecondaryField) { cardSecondaryField.innerHTML = opts.replace('— Поле (для count не обязательно) —', '— Поле —'); }
-        }
-
-        function openAddCardModal(cardIndex) {
-            editingCardIndex = cardIndex;
-            if (modalTitleEl) modalTitleEl.textContent = (cardIndex != null) ? 'Настроить карточку' : 'Добавить карточку отчёта';
-            if (btnDelete) btnDelete.classList.toggle('d-none', cardIndex == null);
-            loadEntitiesList().then(function() {
-                fillEntitySelect();
-                if (cardIndex != null && tableStates[cardIndex] && tableStates[cardIndex].type === 'card') {
-                    var st = tableStates[cardIndex];
-                    if (cardTitleInput) cardTitleInput.value = (st.cardTitle || '').trim();
-                    if (cardEntitySelect && st.selectedEntities && st.selectedEntities[0]) {
-                        cardEntitySelect.value = entityKey(st.selectedEntities[0]);
-                        loadFieldsForEntity(st.selectedEntities[0]).then(function() {
-                            fillFieldDropdowns(st.selectedEntities[0]);
-                            if (cardMainAggregate) cardMainAggregate.value = (st.mainFormula && st.mainFormula.aggregate) ? st.mainFormula.aggregate : 'count';
-                            if (cardMainField) cardMainField.value = (st.mainFormula && st.mainFormula.fieldKey) ? st.mainFormula.fieldKey : '';
-                            if (cardSecondaryAggregate) cardSecondaryAggregate.value = (st.secondaryFormula && st.secondaryFormula.aggregate) ? st.secondaryFormula.aggregate : 'count';
-                            if (cardSecondaryField) cardSecondaryField.value = (st.secondaryFormula && st.secondaryFormula.fieldKey) ? st.secondaryFormula.fieldKey : '';
-                            if (cardSecondaryLabel) cardSecondaryLabel.value = (st.secondaryFormula && st.secondaryFormula.label) ? st.secondaryFormula.label : '';
-                            if (cardIconSelect) cardIconSelect.value = (st.icon || 'iconoir-activity');
-                        });
-                    } else {
-                        if (cardMainAggregate) cardMainAggregate.value = 'count';
-                        if (cardIconSelect) cardIconSelect.value = (st.icon || 'iconoir-activity');
-                    }
-                } else {
-                    if (cardTitleInput) cardTitleInput.value = '';
-                    if (cardEntitySelect) cardEntitySelect.value = '';
-                    fillFieldDropdowns(null);
-                    if (cardMainAggregate) cardMainAggregate.value = 'count';
-                    if (cardSecondaryAggregate) cardSecondaryAggregate.value = 'count';
-                    if (cardSecondaryLabel) cardSecondaryLabel.value = '';
-                    if (cardIconSelect) cardIconSelect.value = 'iconoir-activity';
-                }
-                modal.show();
-            });
-        }
-        window.openAddCardModal = openAddCardModal;
-
-        if (cardEntitySelect) {
-            cardEntitySelect.addEventListener('change', function() {
-                var key = this.value;
-                if (!key) { fillFieldDropdowns(null); return; }
-                var ent = (entitiesList || []).find(function(e) { return entityKey(e) === key; });
-                if (ent) loadFieldsForEntity(ent).then(function() { fillFieldDropdowns(ent); });
-                else fillFieldDropdowns(null);
-            });
-        }
-
-        if (btnDelete) {
-            btnDelete.addEventListener('click', function() {
-                if (editingCardIndex == null) return;
-                if (!confirm('Удалить эту карточку?')) return;
-                var idx = editingCardIndex;
-                modal.hide();
-                deleteTableAtIndex(idx);
-            });
-        }
-
-        if (btnSave) {
-            btnSave.addEventListener('click', function() {
-                var title = (cardTitleInput && cardTitleInput.value) ? cardTitleInput.value.trim() : '';
-                var key = (cardEntitySelect && cardEntitySelect.value) ? cardEntitySelect.value : '';
-                if (!key) {
-                    alert('Выберите сущность.');
-                    return;
-                }
-                var ent = (entitiesList || []).find(function(e) { return entityKey(e) === key; });
-                if (!ent) {
-                    alert('Сущность не найдена.');
-                    return;
-                }
-                var titles = [];
-                var mainKey = (cardMainField && cardMainField.value) ? cardMainField.value : '';
-                var secKey = (cardSecondaryField && cardSecondaryField.value) ? cardSecondaryField.value : '';
-                if (mainKey && mainKey.indexOf('::') >= 0) titles.push(mainKey.split('::').slice(1).join('::'));
-                if (secKey && secKey.indexOf('::') >= 0) {
-                    var t = secKey.split('::').slice(1).join('::');
-                    if (titles.indexOf(t) < 0) titles.push(t);
-                }
-                if (titles.length === 0) titles = ['ID'];
-                var norm = normalizeEntitiesAndFields([ent], [{ entityKey: key, human_titles: titles }]);
-                var cardState = {
-                    type: 'card',
-                    cardTitle: title || 'Карточка',
-                    icon: (cardIconSelect && cardIconSelect.value) ? cardIconSelect.value : 'iconoir-activity',
-                    selectedEntities: norm.entities,
-                    selectedFields: norm.fields,
-                    filterFields: (editingCardIndex != null && tableStates[editingCardIndex] && tableStates[editingCardIndex].filterFields) ? tableStates[editingCardIndex].filterFields : [{ label: 'Название', key: '', type: 'text' }],
-                    mainFormula: { aggregate: (cardMainAggregate && cardMainAggregate.value) ? cardMainAggregate.value : 'count', fieldKey: mainKey || null },
-                    secondaryFormula: { aggregate: (cardSecondaryAggregate && cardSecondaryAggregate.value) ? cardSecondaryAggregate.value : 'count', fieldKey: secKey || null, label: (cardSecondaryLabel && cardSecondaryLabel.value) ? cardSecondaryLabel.value.trim() : '' },
-                    fullData: []
-                };
-                if (editingCardIndex != null) {
-                    tableStates[editingCardIndex] = cardState;
-                    ensureSections();
-                    updateCardUI(editingCardIndex);
-                    loadCardData(editingCardIndex);
-                } else {
-                    tableStates.push(cardState);
-                    ensureSections();
-                    updateCardUI(tableStates.length - 1);
-                    loadCardData(tableStates.length - 1);
-                }
-                saveConfigToStorage();
-                saveConfig();
-                modal.hide();
-            });
-        }
-    })();
+    /* Card add/edit modal and logic moved to partial entity_card_modal.html + entity-card-widget.js; window.openAddCardModal is set by that script. */
 
     // --- Шаблоны: с сервера (общие для всех), выпадающий список по кнопке «Шаблоны» ---
     function loadTemplates() {
@@ -4040,6 +3818,26 @@ document.addEventListener('DOMContentLoaded', function() {
     /* ensureSections() is called inside loadConfig() / applyConfig() / tryApplyStored() / showDashboardLoadError() */
 
     window.addEventListener('beforeunload', saveConfigBeforeUnload);
+
+    // Dependencies for entity-card-widget.js (BI-style card: separate data config per main/secondary value)
+    window.__cardDeps = {
+        getTableStates: function() { return tableStates; },
+        entityKey: entityKey,
+        fetchPage: fetchPage,
+        getSectionEls: getSectionEls,
+        ensureSections: ensureSections,
+        saveConfigToStorage: saveConfigToStorage,
+        saveConfig: saveConfig,
+        deleteTableAtIndex: deleteTableAtIndex,
+        loadEntitiesList: loadEntitiesList,
+        loadFieldsForEntity: loadFieldsForEntity,
+        normalizeEntitiesAndFields: normalizeEntitiesAndFields,
+        getFieldsCache: function() { return fieldsCache; },
+        getEntitiesList: function() { return entitiesList; },
+        API: API,
+        getPageSlug: getPageSlug
+    };
 });
 </script>
+<script src="{{ config.ASSETS_ROOT }}/js/entity-card-widget.js"></script>
 {% endblock %}
