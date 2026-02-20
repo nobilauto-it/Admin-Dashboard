@@ -204,8 +204,6 @@
     .entity-table-section .entity-table-cell-link { color: var(--bs-primary, #6f6af8); text-decoration: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: middle; }
     .entity-table-section .entity-table-cell-link:hover { text-decoration: underline; }
     .entity-table-section .entity-table-grid-wrap td.entity-table-cell-numeric { text-align: right; }
-    .entity-table-section .emptyBlockInSection { cursor: pointer; padding: 1.5rem; border: 2px dashed var(--bs-border-color); border-radius: 8px; transition: border-color .15s, background-color .15s; }
-    .entity-table-section .emptyBlockInSection:hover { border-color: var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.04); }
     .entity-insert-grid .insert-grid-cell { min-height: 72px; border: 2px dashed var(--bs-border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color .15s, background-color .15s; }
     .entity-insert-grid .insert-grid-cell:hover:not(.disabled) { border-color: var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.06); }
     .entity-insert-grid .insert-grid-cell.disabled { opacity: 0.4; cursor: not-allowed; }
@@ -225,8 +223,9 @@
     .entity-table-section-hidden .searchFilterRowInSection,
     .entity-table-section-hidden .filterPanelInSection,
     .entity-table-section-hidden .entity-table-grid-wrap,
-    .entity-table-section-hidden .emptyBlockInSection,
     .entity-table-section-hidden .datatable-bottom.paginationBlockInSection { display: none !important; }
+    .entity-section-draggable { cursor: grab; }
+    .entity-section-draggable:active { cursor: grabbing; }
 </style>
 {% endblock %}
 
@@ -245,72 +244,8 @@
                 </div>
             </div>
             <div id="entityTablesContainer">
-                <div class="entity-table-section" data-table-index="0">
-                    <div class="entity-table-toolbar d-flex align-items-center flex-wrap">
-                        <button type="button" class="btn btn-primary btn-plus-content btnAddEntityInSection" title="Добавить сущность / настройки таблицы">
-                            <i class="iconoir-plus"></i>
-                        </button>
-                        <span class="entity-table-section-hidden-label text-muted small d-none">Блок скрыт</span>
-                        <div class="table-mode-admin ms-2" style="display: none !important;">
-                            <select class="form-select form-select-sm tableModeSelect" title="Режим таблицы" data-table-index="0" style="width: auto; min-width: 120px;">
-                                <option value="edit">Редактирование</option>
-                                <option value="read_only">Только просмотр</option>
-                                <option value="hide">Скрыть</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="entity-table-loading loadingBlockInSection d-none">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p>
-                    </div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap gridTopRowInSection searchFilterRowInSection table-title-search-row d-none mb-2">
-                        <div class="tableTitleBlockInSection d-none flex-grow-1">
-                            <h4 class="mb-0 tableTitleTextInSection" data-placeholder="Название таблицы"></h4>
-                        </div>
-                        <div class="input-group input-group-sm searchFilterInputWrap">
-                            <span class="input-group-text"><i class="iconoir-search"></i></span>
-                            <input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице">
-                        </div>
-                        <button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска">
-                            <i class="iconoir-settings"></i>
-                        </button>
-                        <div class="flex-grow-1"></div>
-                        <button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы">
-                            <i class="iconoir-settings"></i>
-                        </button>
-                        <div class="filterDropdownInSection">
-                            <div class="filterDropdownCardInSection filterPanelInSection">
-                                <div class="filterDropdownRowsContainerInSection"></div>
-                                <a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a>
-                                <div class="d-flex justify-content-end gap-2 mt-3">
-                                    <button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button>
-                                    <button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none">
-                        <table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">
-                            <thead class="table-light entity-table-grid-head"></thead>
-                            <tbody class="entity-table-grid-body"></tbody>
-                        </table>
-                    </div>
-                    <div class="entity-table-loading emptyBlockInSection">
-                        <p class="text-muted mb-0">Выберите сущности или шаблон.</p>
-                    </div>
-                    <div class="datatable-bottom paginationBlockInSection d-none">
-                        <div class="pagination-left-in-section d-flex align-items-center flex-wrap gap-2">
-                            <span class="datatable-info small text-muted paginationInfoInSection">Показано 0 — 0 из 0 записей</span>
-                            <span class="small text-muted">На странице:</span>
-                            <select class="datatable-input pageSizeInSection" style="width:70px;">
-                                <option value="10">10</option>
-                                <option value="25" selected>25</option>
-                                <option value="50">50</option>
-                            </select>
-                        </div>
-                        <nav class="datatable-pagination paginationNavInSection" aria-label="Пагинация таблицы"></nav>
-                    </div>
-                </div>
+                <!-- Sections (tables/cards) added via + in topbar; drag to reorder -->
+                <div id="entityTablesError" class="d-none text-center text-muted py-4 small" role="alert"></div>
             </div>
         </div>
     </div>
@@ -443,11 +378,11 @@
 <div class="modal fade" id="modalAddTableOrCard" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title">Добавить</h5>
+            <div class="modal-header border-0 pb-3">
+                <h5 class="modal-title">Добавить визуал</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body pt-0">
+            <div class="modal-body pt-3">
                 <div class="d-grid gap-2">
                     <button type="button" class="btn btn-outline-primary btn-add-choice py-3 d-flex align-items-center justify-content-center gap-2" id="btnChoiceTable" data-choice="table">
                         <i class="iconoir-list fs-4"></i>
@@ -742,7 +677,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    let tableStates = [defaultTableState()];
+    let tableStates = [];
     let currentTableIndex = 0;
     let entitiesList = [];
     let fieldsCache = {};
@@ -944,8 +879,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function deleteTableAtIndex(index) {
         if (index == null || isNaN(index) || index < 0 || index >= tableStates.length) return;
         tableStates.splice(index, 1);
-        if (!tableStates.length) tableStates = [defaultTableState()];
-        currentTableIndex = Math.min(Math.max(0, currentTableIndex), tableStates.length - 1);
+        currentTableIndex = tableStates.length ? Math.min(Math.max(0, currentTableIndex), tableStates.length - 1) : 0;
         ensureSections();
         for (var i = 0; i < tableStates.length; i++) {
             if (tableStates[i].type === 'card') {
@@ -1697,7 +1631,6 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="d-flex align-items-center gap-2 flex-wrap gridTopRowInSection searchFilterRowInSection table-title-search-row d-none mb-2"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-0 tableTitleTextInSection" data-placeholder="Название таблицы"></h4></div><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button><div class="filterDropdownInSection"><div class="filterDropdownCardInSection filterPanelInSection"><div class="filterDropdownRowsContainerInSection"></div><a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a><div class="d-flex justify-content-end gap-2 mt-3"><button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button><button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button></div></div></div></div>' +
             '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="' + tableCls + '">' +
             (hasCaption ? captionHtml : '') + '<thead class="' + theadCls + '"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
-            '<div class="entity-table-loading emptyBlockInSection" role="button" tabindex="0" title="Выберите сущности и поля"><p class="text-muted mb-0">Выберите сущности или шаблон.</p></div>' +
             '<div class="datatable-bottom paginationBlockInSection d-none"><div class="pagination-left-in-section d-flex align-items-center flex-wrap gap-2"><span class="datatable-info small text-muted paginationInfoInSection">Показано 0 — 0 из 0 записей</span><span class="small text-muted">На странице:</span><select class="datatable-input pageSizeInSection" style="width:70px;"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></div><nav class="datatable-pagination paginationNavInSection" aria-label="Пагинация таблицы"></nav></div></div>';
     }
 
@@ -1727,18 +1660,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function ensureSections() {
         if (!entityTablesContainer) return;
-        var existing = entityTablesContainer.children.length;
+        var sectionNodes = [].slice.call(entityTablesContainer.children).filter(function(c) {
+            return c.classList && (c.classList.contains('entity-table-section') || c.classList.contains('entity-report-card-section'));
+        });
+        var existing = sectionNodes.length;
         for (var i = existing; i < tableStates.length; i++) {
             var st = tableStates[i];
             var div = document.createElement('div');
             div.innerHTML = (st.type === 'card') ? createCardSectionHtml(i) : createSectionHtml(i);
+            var errEl = document.getElementById('entityTablesError');
+            if (errEl && errEl.parentNode === entityTablesContainer) errEl.classList.add('d-none');
             entityTablesContainer.appendChild(div.firstElementChild);
         }
-        while (entityTablesContainer.children.length > tableStates.length) {
-            if (entityTablesContainer.lastElementChild) entityTablesContainer.lastElementChild.remove();
+        for (var s = 0; s < 100; s++) {
+            sectionNodes = [].slice.call(entityTablesContainer.children).filter(function(c) {
+                return c.classList && (c.classList.contains('entity-table-section') || c.classList.contains('entity-report-card-section'));
+            });
+            if (sectionNodes.length <= tableStates.length) break;
+            if (sectionNodes[sectionNodes.length - 1]) sectionNodes[sectionNodes.length - 1].remove();
         }
-        for (var idx = 0; idx < entityTablesContainer.children.length; idx++) {
-            var section = entityTablesContainer.children[idx];
+        sectionNodes = [].slice.call(entityTablesContainer.children).filter(function(c) {
+            return c.classList && (c.classList.contains('entity-table-section') || c.classList.contains('entity-report-card-section'));
+        });
+        for (var idx = 0; idx < sectionNodes.length; idx++) {
+            var section = sectionNodes[idx];
             if (section.classList.contains('entity-report-card-section')) {
                 section.setAttribute('data-card-index', String(idx));
             } else {
@@ -1748,7 +1693,55 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         bindSectionListeners();
+        bindSectionDragDrop();
         renderComponentModesAdmin();
+    }
+
+    function bindSectionDragDrop() {
+        if (!entityTablesContainer || isGuestUser()) return;
+        var sectionNodes = [].slice.call(entityTablesContainer.children).filter(function(c) {
+            return c.classList && (c.classList.contains('entity-table-section') || c.classList.contains('entity-report-card-section'));
+        });
+        var draggedIndex = null;
+        sectionNodes.forEach(function(section, idx) {
+            section.setAttribute('data-section-index', String(idx));
+            section.draggable = true;
+            section.classList.add('entity-section-draggable');
+        });
+        entityTablesContainer.querySelectorAll('.entity-table-section, .entity-report-card-section').forEach(function(section) {
+            section.ondragstart = function(e) {
+                var i = section.getAttribute('data-table-index');
+                if (i == null) i = section.getAttribute('data-card-index');
+                draggedIndex = i != null ? parseInt(i, 10) : -1;
+                e.dataTransfer.setData('text/plain', String(draggedIndex));
+                e.dataTransfer.effectAllowed = 'move';
+            };
+            section.ondragover = function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            };
+            section.ondrop = function(e) {
+                e.preventDefault();
+                var toIdx = section.getAttribute('data-table-index');
+                if (toIdx == null) toIdx = section.getAttribute('data-card-index');
+                toIdx = toIdx != null ? parseInt(toIdx, 10) : -1;
+                if (draggedIndex < 0 || toIdx < 0 || draggedIndex === toIdx) return;
+                var state = tableStates.splice(draggedIndex, 1)[0];
+                tableStates.splice(toIdx, 0, state);
+                var sections = [].slice.call(entityTablesContainer.children).filter(function(c) {
+                    return c.classList && (c.classList.contains('entity-table-section') || c.classList.contains('entity-report-card-section'));
+                });
+                var fromEl = sections[draggedIndex];
+                var toEl = sections[toIdx];
+                if (fromEl && toEl && fromEl !== toEl) {
+                    if (toIdx < draggedIndex) entityTablesContainer.insertBefore(fromEl, toEl);
+                    else entityTablesContainer.insertBefore(fromEl, toEl.nextSibling || null);
+                }
+                ensureSections();
+                saveConfigToStorage();
+                saveConfig();
+            };
+        });
     }
 
     function bindSectionListeners() {
@@ -1765,12 +1758,6 @@ document.addEventListener('DOMContentLoaded', function() {
             var section = btn.closest('.entity-table-section');
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
             btn.onclick = function() { currentTableIndex = idx; openEntityModal(); };
-        });
-        entityTablesContainer.querySelectorAll('.emptyBlockInSection').forEach(function(block) {
-            var section = block.closest('.entity-table-section');
-            if (!section) return;
-            var idx = parseInt(section.getAttribute('data-table-index'), 10);
-            block.onclick = function() { currentTableIndex = idx; openEntityModal(); };
         });
         entityTablesContainer.querySelectorAll('.btnFieldsInSection').forEach(function(btn) {
             var section = btn.closest('.entity-table-section');
@@ -2005,10 +1992,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     showDashboardLoadError();
                     return;
                 }
-                tableStates = [defaultTableState()];
+                tableStates = [];
                 ensureSections();
                 applyTableModes(data.table_modes);
-                updateUI(0);
                 isReadOnly = isGuestUser();
                 currentPageMode = (data.page_mode || 'edit').toLowerCase();
                 currentTableModes = data.table_modes && typeof data.table_modes === 'object' ? Object.assign({}, data.table_modes) : {};
@@ -2022,13 +2008,12 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(function() { if (isDashboardSlug()) showDashboardLoadError(); else tryApplyStored(); });
 
         function showDashboardLoadError() {
-            tableStates = [defaultTableState()];
+            tableStates = [];
             ensureSections();
-            updateUI(0);
             isReadOnly = isGuestUser();
             applyReadOnlyMode();
-            var msg = document.querySelector('.emptyBlockInSection p');
-            if (msg) msg.textContent = 'Не удалось загрузить дэшборд. Проверьте подключение или обновите страницу.';
+            var errEl = document.getElementById('entityTablesError');
+            if (errEl) { errEl.classList.remove('d-none'); errEl.textContent = 'Не удалось загрузить дэшборд. Проверьте подключение или обновите страницу.'; }
         }
 
         function tryApplyStored() {
@@ -2038,9 +2023,8 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (stored) {
                 applyConfig(stored, false);
             } else {
-                tableStates = [defaultTableState()];
+                tableStates = [];
                 ensureSections();
-                updateUI(0);
             }
             isReadOnly = isGuestUser();
             applyReadOnlyMode();
