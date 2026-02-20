@@ -3994,7 +3994,7 @@ document.addEventListener('DOMContentLoaded', function() {
     isReadOnly = isGuestUser();
     applyReadOnlyMode();
     loadConfig();
-    ensureSections();
+    /* ensureSections() is called inside loadConfig() / applyConfig() / tryApplyStored() / showDashboardLoadError() */
 
     window.addEventListener('beforeunload', saveConfigBeforeUnload);
 });
