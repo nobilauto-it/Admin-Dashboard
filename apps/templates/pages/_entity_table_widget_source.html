@@ -226,6 +226,12 @@
     .entity-table-section-hidden .datatable-bottom.paginationBlockInSection { display: none !important; }
     .entity-section-draggable { cursor: grab; }
     .entity-section-draggable:active { cursor: grabbing; }
+    /* Force next section to new row when startNewRow is set; responsive: natural wrap still applies */
+    .entity-table-row-break { flex-basis: 100%; width: 100%; height: 0; min-height: 0; margin: 0; padding: 0; overflow: hidden; flex-shrink: 0; }
+    .entity-table-section.entity-drop-new-row,
+    .entity-report-card-section.entity-drop-new-row { position: relative; }
+    .entity-table-section.entity-drop-new-row::before,
+    .entity-report-card-section.entity-drop-new-row::before { content: ''; position: absolute; left: 0; right: 0; top: 0; bottom: 0; border: 2px dashed var(--bs-primary, #6f6af8); border-radius: 8px; pointer-events: none; }
 </style>
 {% endblock %}
 
@@ -650,7 +656,8 @@ document.addEventListener('DOMContentLoaded', function() {
             showTime: false,
             dateTimeDisplayByColumn: {},
             guestFilterInitialized: false,
-            filterFields: [{ label: 'Название', key: '', type: 'text' }]
+            filterFields: [{ label: 'Название', key: '', type: 'text' }],
+            startNewRow: false
         };
     }
 
@@ -673,7 +680,8 @@ document.addEventListener('DOMContentLoaded', function() {
             filterFields: [{ label: 'Название', key: '', type: 'text' }],
             mainFormula: { aggregate: 'count', fieldKey: null },
             secondaryFormula: { aggregate: 'count', fieldKey: null, label: '' },
-            fullData: []
+            fullData: [],
+            startNewRow: false
         };
     }
 
@@ -1068,7 +1076,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         fields: st.selectedFields,
                         filter_fields: (st.filterFields && st.filterFields.length) ? st.filterFields : [],
                         main_formula: st.mainFormula || { aggregate: 'count', fieldKey: null },
-                        secondary_formula: st.secondaryFormula || null
+                        secondary_formula: st.secondaryFormula || null,
+                        start_new_row: (st.startNewRow === true)
                     };
                 }
                 var keys = getColumnKeysFromSection(i);
@@ -1085,7 +1094,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     sort_key: st.sortKey || null,
                     sort_dir: st.sortDir || null,
                     show_time: (st.showTime === true),
-                    date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null
+                    date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null,
+                    start_new_row: (st.startNewRow === true)
                 };
             });
             localStorage.setItem(key, JSON.stringify({ tables: tables }));
@@ -1117,7 +1127,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }],
                         mainFormula: (t.main_formula && typeof t.main_formula === 'object') ? { aggregate: t.main_formula.aggregate || 'count', fieldKey: t.main_formula.fieldKey != null ? t.main_formula.fieldKey : null } : { aggregate: 'count', fieldKey: null },
                         secondaryFormula: (t.secondary_formula && typeof t.secondary_formula === 'object') ? { aggregate: t.secondary_formula.aggregate || 'count', fieldKey: t.secondary_formula.fieldKey != null ? t.secondary_formula.fieldKey : null, label: (t.secondary_formula.label != null) ? String(t.secondary_formula.label) : '' } : null,
-                        fullData: []
+                        fullData: [],
+                        startNewRow: (t.start_new_row === true)
                     };
                 }
                 var orderFromServer = (t.column_order && Array.isArray(t.column_order)) ? t.column_order : null;
@@ -1139,7 +1150,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
                     showTime: (t.show_time === true),
                     dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
-                    filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
+                    filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }],
+                    startNewRow: (t.start_new_row === true)
                 };
             });
             ensureSections();
@@ -1692,9 +1704,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (modeSel) modeSel.setAttribute('data-table-index', String(idx));
             }
         }
+        syncRowBreaks();
         bindSectionListeners();
         bindSectionDragDrop();
         renderComponentModesAdmin();
+    }
+
+    /** Insert row-break elements before sections that have startNewRow so layout shows custom rows; responsive wrap unchanged. */
+    function syncRowBreaks() {
+        if (!entityTablesContainer) return;
+        entityTablesContainer.querySelectorAll('.entity-table-row-break').forEach(function(el) { el.remove(); });
+        var sectionNodes = [].slice.call(entityTablesContainer.children).filter(function(c) {
+            return c.classList && (c.classList.contains('entity-table-section') || c.classList.contains('entity-report-card-section'));
+        });
+        for (var i = 0; i < sectionNodes.length; i++) {
+            if (tableStates[i] && tableStates[i].startNewRow === true) {
+                var br = document.createElement('div');
+                br.className = 'entity-table-row-break';
+                br.setAttribute('aria-hidden', 'true');
+                entityTablesContainer.insertBefore(br, sectionNodes[i]);
+            }
+        }
     }
 
     function bindSectionDragDrop() {
@@ -1716,18 +1746,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.dataTransfer.setData('text/plain', String(draggedIndex));
                 e.dataTransfer.effectAllowed = 'move';
             };
+            section.ondragend = function() {
+                entityTablesContainer.querySelectorAll('.entity-drop-new-row').forEach(function(el) { el.classList.remove('entity-drop-new-row'); });
+            };
             section.ondragover = function(e) {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
+                var rect = section.getBoundingClientRect();
+                var inLowerHalf = e.clientY >= rect.top + rect.height / 2;
+                if (inLowerHalf) section.classList.add('entity-drop-new-row'); else section.classList.remove('entity-drop-new-row');
             };
+            section.ondragleave = function() { section.classList.remove('entity-drop-new-row'); };
             section.ondrop = function(e) {
                 e.preventDefault();
+                section.classList.remove('entity-drop-new-row');
                 var toIdx = section.getAttribute('data-table-index');
                 if (toIdx == null) toIdx = section.getAttribute('data-card-index');
                 toIdx = toIdx != null ? parseInt(toIdx, 10) : -1;
                 if (draggedIndex < 0 || toIdx < 0 || draggedIndex === toIdx) return;
+                var rect = section.getBoundingClientRect();
+                var dropNewRow = e.clientY >= rect.top + rect.height / 2;
                 var state = tableStates.splice(draggedIndex, 1)[0];
                 tableStates.splice(toIdx, 0, state);
+                state.startNewRow = dropNewRow;
                 var sections = [].slice.call(entityTablesContainer.children).filter(function(c) {
                     return c.classList && (c.classList.contains('entity-table-section') || c.classList.contains('entity-report-card-section'));
                 });
@@ -2044,7 +2085,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     fields: st.selectedFields,
                     filter_fields: (st.filterFields && st.filterFields.length) ? st.filterFields : [],
                     main_formula: st.mainFormula || { aggregate: 'count', fieldKey: null },
-                    secondary_formula: st.secondaryFormula || null
+                    secondary_formula: st.secondaryFormula || null,
+                    start_new_row: (st.startNewRow === true)
                 };
             }
             var keys = getColumnKeysFromSection(i);
@@ -2061,7 +2103,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 sort_key: st.sortKey || null,
                 sort_dir: st.sortDir || null,
                 show_time: (st.showTime === true),
-                date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null
+                date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null,
+                start_new_row: (st.startNewRow === true)
             };
         });
         var payload = { page_slug: slug, tables: tables };
