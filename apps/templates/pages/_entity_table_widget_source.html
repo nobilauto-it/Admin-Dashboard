@@ -1225,6 +1225,30 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!st) return;
         var cols = (st.allColumns || []).filter(function(c) { return c && c.key && !isSystemColumn(c.key); });
         if (!cols.length) return;
+        var colKeyMap = {};
+        cols.forEach(function(c) { colKeyMap[c.key] = true; });
+        var firstRow = (st.fullData && st.fullData.length) ? (st.fullData[0] || {}) : {};
+        var keyedFilters = (st.filterFields || []).filter(function(f) { return !!(f && String(f.key || '').trim()); });
+        function guestFilterKeyResolvable(f) {
+            var key = String((f && f.key) || '').trim();
+            if (!key) return false;
+            if (colKeyMap[key] || Object.prototype.hasOwnProperty.call(firstRow, key)) return true;
+            var idx = key.indexOf('::');
+            if (idx <= 0) return false;
+            var prefix = key.slice(0, idx);
+            var aliases = [];
+            if (f && f.sourceB24Field) aliases.push(prefix + '::' + String(f.sourceB24Field).trim());
+            if (f && f.sourceColumnName) aliases.push(prefix + '::' + String(f.sourceColumnName).trim());
+            return aliases.some(function(a) {
+                return !!a && (colKeyMap[a] || Object.prototype.hasOwnProperty.call(firstRow, a));
+            });
+        }
+        // Preserve admin-configured guest filters as-is when keys are already valid.
+        // Rebuilding by label causes drift in mixed-entity tables with duplicate labels.
+        if (keyedFilters.length && keyedFilters.every(guestFilterKeyResolvable)) {
+            st.guestFilterInitialized = true;
+            return;
+        }
         var existingByKey = {};
         var existingByLabel = {};
         function labelNorm(v) {
@@ -3027,6 +3051,31 @@ document.addEventListener('DOMContentLoaded', function() {
         }).map(function(x) { return x.row; });
     }
 
+    function getDefaultSortColumn(st) {
+        var cols = (st && st.allColumns && Array.isArray(st.allColumns)) ? st.allColumns : [];
+        if (!cols.length) return '';
+        function score(col) {
+            var sample = normalizeSearchText(String((col && col.label) || '') + ' ' + String((col && col.key) || ''));
+            if (!sample) return 0;
+            if (sample.indexOf('когда создан') >= 0) return 100;
+            if (sample.indexOf('дата создан') >= 0 || sample.indexOf('created at') >= 0) return 95;
+            if (sample.indexOf('created') >= 0 || sample.indexOf('дата') >= 0 || sample.indexOf('date') >= 0) return 80;
+            var key = String((col && col.key) || '').toLowerCase();
+            if (key === 'id' || /::id$/.test(key)) return 70;
+            return 0;
+        }
+        var bestKey = '';
+        var bestScore = 0;
+        cols.forEach(function(c) {
+            var s = score(c);
+            if (s > bestScore && c && c.key) {
+                bestScore = s;
+                bestKey = c.key;
+            }
+        });
+        return bestKey;
+    }
+
     function renderGrid(tableIndex) {
         var st = tableStates[tableIndex];
         if (!st) return;
@@ -3053,7 +3102,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         }
-        var sortedRows = sortRowsByColumn(filteredRows, st.sortKey, st.sortDir);
+        var effectiveSortKey = st.sortKey;
+        var effectiveSortDir = st.sortDir;
+        if (!effectiveSortKey || (effectiveSortDir !== 'asc' && effectiveSortDir !== 'desc')) {
+            var fallbackSortKey = getDefaultSortColumn(st);
+            if (fallbackSortKey) {
+                effectiveSortKey = fallbackSortKey;
+                effectiveSortDir = 'desc';
+            }
+        }
+        var sortedRows = sortRowsByColumn(filteredRows, effectiveSortKey, effectiveSortDir);
         var totalRows = sortedRows.length;
         var totalPages = totalRows ? Math.ceil(totalRows / st.pageSize) : 0;
         if (totalPages > 0 && st.currentPage > totalPages) st.currentPage = totalPages;
