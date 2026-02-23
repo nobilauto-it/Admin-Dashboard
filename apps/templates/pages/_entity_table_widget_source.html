@@ -2870,6 +2870,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // Keep them only under real smart entity to avoid duplicate columns.
             if (ent.type !== 'smart_process' && sel && sel.nestedFields && typeof sel.nestedFields === 'object') {
                 var mirroredNorm = {};
+                var baseFieldsMeta = (fieldsCache[key] && Array.isArray(fieldsCache[key].fields)) ? fieldsCache[key].fields : [];
+                function hasDirectFieldWithTitle(title) {
+                    var wanted = normalizeSearchText(title);
+                    if (!wanted) return false;
+                    for (var mf = 0; mf < baseFieldsMeta.length; mf++) {
+                        var meta = baseFieldsMeta[mf];
+                        if (!meta) continue;
+                        if (normalizeSearchText(String(meta.human_title || '')) === wanted) return true;
+                        if (normalizeSearchText(String(meta.column_name || '')) === wanted) return true;
+                    }
+                    return false;
+                }
                 Object.keys(sel.nestedFields).forEach(function(typ) {
                     var typBase = String(typ || '').split('::')[0].toLowerCase();
                     if (typBase !== 'smart_process' && typBase !== 'contact' && typBase !== 'lead' && typBase !== 'company') return;
@@ -2885,7 +2897,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!mappedSmart) return;
                     if (entityKey(mappedSmart) === key) return;
                     (sel.nestedFields[typ] || []).forEach(function(t) {
-                        mirroredNorm[normalizeSearchText(t)] = true;
+                        var normTitle = normalizeSearchText(t);
+                        if (!normTitle) return;
+                        // Do not hide a real field of the current entity just because another entity has the same title.
+                        if (hasDirectFieldWithTitle(t)) return;
+                        mirroredNorm[normTitle] = true;
                     });
                 });
                 if (Object.keys(mirroredNorm).length) {
