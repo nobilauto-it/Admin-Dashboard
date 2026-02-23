@@ -607,6 +607,10 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
+    function isConfiguredSectionState(st) {
+        return !!(st && Array.isArray(st.selectedEntities) && st.selectedEntities.length > 0);
+    }
+
     let tableStates = [];
     let currentTableIndex = 0;
     let entitiesList = [];
@@ -987,12 +991,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function saveConfigToStorage() {
         try {
             var key = STORAGE_KEY_PREFIX + getPageSlug();
-            var tables = tableStates.map(function(st, i) {
+            var tables = [];
+            tableStates.forEach(function(st, i) {
+                if (!isConfiguredSectionState(st)) return;
                 if (st.type === 'card' && window.EntityCard && typeof window.EntityCard.serializeCardState === 'function') {
-                    return window.EntityCard.serializeCardState(st);
+                    tables.push(window.EntityCard.serializeCardState(st));
+                    return;
                 }
                 if (st.type === 'card') {
-                    return {
+                    tables.push({
                         type: 'card',
                         card_title: st.cardTitle,
                         icon: st.icon || 'iconoir-activity',
@@ -1002,11 +1009,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         main_formula: st.mainFormula || { aggregate: 'count', fieldKey: null },
                         secondary_formula: st.secondaryFormula || null,
                         start_new_row: (st.startNewRow === true)
-                    };
+                    });
+                    return;
                 }
                 var keys = getColumnKeysFromSection(i);
                 if (!keys.length && st.allColumns && st.allColumns.length) keys = st.allColumns.map(function(c) { return c.key; });
-                return {
+                tables.push({
                     type: 'table',
                     table_title: st.tableTitle,
                     table_description: st.tableDescription,
@@ -1020,7 +1028,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     show_time: (st.showTime === true),
                     date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null,
                     start_new_row: (st.startNewRow === true)
-                };
+                });
             });
             localStorage.setItem(key, JSON.stringify({ tables: tables }));
         } catch (e) {}
@@ -1081,6 +1089,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     startNewRow: (t.start_new_row === true)
                 };
             });
+            tableStates = tableStates.filter(isConfiguredSectionState);
             ensureSections();
             tableStates.forEach(function(st, i) {
                 if (st.type === 'card') {
@@ -1925,6 +1934,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {}
                         };
                     });
+                    tableStates = tableStates.filter(isConfiguredSectionState);
                     var stored = loadConfigFromStorage();
                     if (stored && stored.tables && Array.isArray(stored.tables)) {
                         tableStates.forEach(function(st, i) {
@@ -2031,12 +2041,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function saveConfig(opts) {
         opts = opts || {};
         var slug = getPageSlug();
-            var tables = tableStates.map(function(st, i) {
+            var tables = [];
+            tableStates.forEach(function(st, i) {
+            if (!isConfiguredSectionState(st)) return;
             if (st.type === 'card' && window.EntityCard && typeof window.EntityCard.serializeCardState === 'function') {
-                return window.EntityCard.serializeCardState(st);
+                tables.push(window.EntityCard.serializeCardState(st));
+                return;
             }
             if (st.type === 'card') {
-                return {
+                tables.push({
                     type: 'card',
                     card_title: st.cardTitle,
                     icon: st.icon || 'iconoir-activity',
@@ -2046,11 +2059,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     main_formula: st.mainFormula || { aggregate: 'count', fieldKey: null },
                     secondary_formula: st.secondaryFormula || null,
                     start_new_row: (st.startNewRow === true)
-                };
+                });
+                return;
             }
             var keys = getColumnKeysFromSection(i);
             if (!keys.length && st.allColumns && st.allColumns.length) keys = st.allColumns.map(function(c) { return c.key; });
-            return {
+            tables.push({
                 type: 'table',
                 table_title: st.tableTitle,
                 table_description: st.tableDescription,
@@ -2064,7 +2078,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 show_time: (st.showTime === true),
                 date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null,
                 start_new_row: (st.startNewRow === true)
-            };
+            });
         });
         var payload = { page_slug: slug, tables: tables };
         var fetchOpts = {
@@ -2087,7 +2101,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function saveConfigBeforeUnload() {
-        if (!tableStates.some(function(st) { return st.selectedEntities.length > 0; })) return;
+        if (!tableStates.some(isConfiguredSectionState)) return;
         saveConfigToStorage();
         saveConfig({ keepalive: true });
     }
