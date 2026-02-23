@@ -8,6 +8,7 @@ GET /api/entity-meta-data/?type=smart_process&entity_key=sp:1114&limit=10&offset
 """
 import sys
 import json
+import re
 import unicodedata
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -166,6 +167,168 @@ def _load_meta_column_types(conn, entity_key: str) -> Dict[str, str]:
         t = (row.get("b24_type") or "").strip().lower()
         if t:
             out[col] = t
+    return out
+
+
+def _entity_key_from_parent_id(name: str) -> Optional[str]:
+    """Из имени поля вида parentId1114 / parentid2 извлекает entity_key."""
+    if not name:
+        return None
+    m = re.match(r"parentid(\d+)$", str(name).strip().lower())
+    if not m:
+        return None
+    num = int(m.group(1))
+    if num == 2:
+        return "deal"
+    if num == 3:
+        return "contact"
+    if num == 4:
+        return "lead"
+    return f"sp:{num}"
+
+
+def _load_crm_entity_targets(conn, entity_key: str) -> Dict[str, str]:
+    """
+    column_name -> target_entity_key для полей-связей crm_entity.
+    Определяем по parentId<N> в имени поля или по settings.entityTypeId.
+    """
+    out: Dict[str, str] = {}
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT column_name, b24_field, b24_type, settings
+                FROM b24_meta_fields
+                WHERE entity_key = %s
+                """,
+                (entity_key,),
+            )
+            rows = cur.fetchall() or []
+        for row in rows:
+            col = str(row.get("column_name") or "").strip()
+            b24_field = str(row.get("b24_field") or "").strip()
+            b24_type = str(row.get("b24_type") or "").strip().lower()
+            if not col:
+                continue
+
+            target = _entity_key_from_parent_id(col) or _entity_key_from_parent_id(b24_field)
+            if not target and b24_type == "crm_entity":
+                settings = row.get("settings")
+                if isinstance(settings, str):
+                    try:
+                        settings = json.loads(settings)
+                    except Exception:
+                        settings = {}
+                if isinstance(settings, dict):
+                    etid = settings.get("entityTypeId") or settings.get("entity_type_id")
+                    if etid not in (None, ""):
+                        try:
+                            num = int(str(etid).strip())
+                            if num == 2:
+                                target = "deal"
+                            elif num == 3:
+                                target = "contact"
+                            elif num == 4:
+                                target = "lead"
+                            else:
+                                target = f"sp:{num}"
+                        except Exception:
+                            pass
+
+            if target:
+                out[col] = target
+    except Exception as e:
+        print(f"WARNING: _load_crm_entity_targets: {e}", file=sys.stderr, flush=True)
+    return out
+
+
+def _extract_ref_ids(val: Any) -> List[int]:
+    """Достает ID(ы) из значения поля-ссылки (scalar/list/'1192|...'/etc)."""
+    if val is None:
+        return []
+
+    def _parse_one(x: Any) -> Optional[int]:
+        if x is None or isinstance(x, bool):
+            return None
+        if isinstance(x, (int, float)):
+            try:
+                n = int(x)
+                return n if n > 0 else None
+            except Exception:
+                return None
+        s = str(x).strip()
+        if not s:
+            return None
+        if "|" in s:
+            s = s.split("|", 1)[0].strip()
+        m = re.search(r"(\d+)$", s)
+        if not m:
+            return None
+        try:
+            n = int(m.group(1))
+            return n if n > 0 else None
+        except Exception:
+            return None
+
+    if isinstance(val, list):
+        out: List[int] = []
+        for item in val:
+            n = _parse_one(item)
+            if n:
+                out.append(n)
+        return list(dict.fromkeys(out))
+
+    n = _parse_one(val)
+    return [n] if n else []
+
+
+def _load_generic_entity_titles(conn, entity_key: str, ids: List[int]) -> Dict[str, str]:
+    """Универсальный id -> title/name для deal/contact/lead/company/sp:*."""
+    if not ids:
+        return {}
+    ids_unique = list(dict.fromkeys(int(i) for i in ids if int(i) > 0))
+    if not ids_unique:
+        return {}
+
+    if entity_key == "contact":
+        return _load_contact_names(conn, ids_unique)
+    if entity_key == "lead":
+        return _load_lead_titles(conn, ids_unique)
+    if entity_key == "company":
+        return _load_company_titles(conn, ids_unique)
+
+    out: Dict[str, str] = {}
+    try:
+        table_name = table_name_for_entity(entity_key)
+        existing_cols = _table_existing_columns(conn, table_name)
+        select_cols = ["id"]
+        if "title" in existing_cols:
+            select_cols.append("title")
+        if "name" in existing_cols:
+            select_cols.append("name")
+        if "raw" in existing_cols:
+            select_cols.append("raw")
+        cols_sql = ", ".join(f'"{c}"' for c in select_cols)
+
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(f'SELECT {cols_sql} FROM "{table_name}" WHERE id = ANY(%s)', (ids_unique,))
+            for row in cur.fetchall() or []:
+                rid = row.get("id")
+                if rid is None:
+                    continue
+                raw = row.get("raw") if isinstance(row.get("raw"), dict) else {}
+                title = (
+                    row.get("title")
+                    or row.get("name")
+                    or raw.get("TITLE")
+                    or raw.get("title")
+                    or raw.get("NAME")
+                    or raw.get("name")
+                    or rid
+                )
+                out[str(rid)] = normalize_string(title if title is not None else str(rid))
+    except Exception as e:
+        print(f"WARNING: _load_generic_entity_titles({entity_key}): {e}", file=sys.stderr, flush=True)
     return out
 
 
@@ -662,6 +825,8 @@ def _decode_record(
     sp_categories_map: Optional[Dict[str, str]] = None,
     iblock_field_ids: Optional[Dict[str, str]] = None,
     iblock_element_names: Optional[Dict[Tuple[str, str], str]] = None,
+    crm_entity_targets: Optional[Dict[str, str]] = None,
+    crm_entity_titles: Optional[Dict[Tuple[str, str], str]] = None,
 ) -> None:
     """
     Подставляет в record человекочитаемые значения вместо ID для полей типа user, crm_contact, crm_lead,
@@ -681,6 +846,8 @@ def _decode_record(
     sp_categories_map = sp_categories_map or {}
     iblock_field_ids = iblock_field_ids or {}
     iblock_element_names = iblock_element_names or {}
+    crm_entity_targets = crm_entity_targets or {}
+    crm_entity_titles = crm_entity_titles or {}
     for title, col in output_to_col.items():
         val = record.get(title)
         if val is None and title not in record:
@@ -771,6 +938,23 @@ def _decode_record(
                 record[title] = obj if obj else company_titles.get(key, val)
             else:
                 record[title] = company_titles.get(key, val)
+        elif t == "crm_entity":
+            if val is None:
+                continue
+            target_entity_key = crm_entity_targets.get(col)
+            if not target_entity_key:
+                continue
+
+            def _decode_crm_entity_value(x: Any) -> Any:
+                ref_ids = _extract_ref_ids(x)
+                if not ref_ids:
+                    return x
+                return crm_entity_titles.get((target_entity_key, str(ref_ids[0])), x)
+
+            if isinstance(val, list):
+                record[title] = [_decode_crm_entity_value(x) for x in val]
+            else:
+                record[title] = _decode_crm_entity_value(val)
         elif t == "iblock_element":
             b24_f = col_to_b24_field.get(col)
             decoded = _iblock_value_to_title(
@@ -1093,6 +1277,7 @@ def get_entity_meta_data(
         col_types = _col_types_with_infer(
             conn, final_entity_key, query_columns, _load_meta_column_types(conn, final_entity_key)
         )
+        crm_entity_targets = _load_crm_entity_targets(conn, final_entity_key)
 
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             if where_sql:
@@ -1111,6 +1296,7 @@ def get_entity_meta_data(
         lead_ids: List[int] = []
         company_ids: List[int] = []
         user_ids: List[str] = []
+        crm_entity_ids_by_target: Dict[str, List[int]] = {}
         for col, t in col_types.items():
             if t in ("crm_contact", "contact"):
                 for row in rows:
@@ -1141,6 +1327,13 @@ def get_entity_meta_data(
                     v = row.get(col)
                     if v is not None and str(v).strip():
                         user_ids.append(str(v).strip())
+            elif t == "crm_entity":
+                target_entity_key = crm_entity_targets.get(col)
+                if not target_entity_key:
+                    continue
+                bucket = crm_entity_ids_by_target.setdefault(target_entity_key, [])
+                for row in rows:
+                    bucket.extend(_extract_ref_ids(row.get(col)))
 
         sources_map = (
             _load_sources_classifier(conn)
@@ -1159,6 +1352,13 @@ def get_entity_meta_data(
         )
         user_ids_unique = list(dict.fromkeys(user_ids))
         user_names_map = _load_user_names(conn, user_ids_unique) if user_ids_unique else {}
+        crm_entity_titles: Dict[Tuple[str, str], str] = {}
+        for target_entity_key, ref_ids in crm_entity_ids_by_target.items():
+            ids_unique = list(dict.fromkeys(ref_ids))
+            if not ids_unique:
+                continue
+            for rid, title in _load_generic_entity_titles(conn, target_entity_key, ids_unique).items():
+                crm_entity_titles[(target_entity_key, str(rid))] = title
 
         categories_map = _load_deal_categories(conn) if final_entity_key == "deal" else {}
         sp_entity_type_id = (final_entity_key or "").split(":")[-1] if (final_entity_key or "").startswith("sp:") else ""
@@ -1218,6 +1418,8 @@ def get_entity_meta_data(
                 sp_categories_map=sp_categories_map,
                 iblock_field_ids=iblock_field_ids,
                 iblock_element_names=iblock_element_names,
+                crm_entity_targets=crm_entity_targets,
+                crm_entity_titles=crm_entity_titles,
             )
             if final_entity_key == "company":
                 raw_obj = row.get("raw") if isinstance(row.get("raw"), dict) else {}
