@@ -3122,6 +3122,16 @@ def _enqueue_webhook_event(entity_key: str, entity_id: int, event_name: str, pay
 
 def _bitrix_get_one(entity_key: str, entity_id: int) -> Optional[Dict[str, Any]]:
     try:
+        if entity_key == "user":
+            resp = b24.call("user.get", {"ID": str(int(entity_id))})
+            if isinstance(resp, dict) and resp.get("error") == "OVERLOAD_LIMIT":
+                return None
+            result = resp.get("result") if isinstance(resp, dict) else None
+            if isinstance(result, list) and result:
+                first = result[0]
+                return first if isinstance(first, dict) else None
+            return None
+
         if entity_key == "deal":
             resp = b24.call("crm.deal.get", {"id": entity_id})
             if isinstance(resp, dict) and resp.get("error") == "OVERLOAD_LIMIT":
@@ -3157,6 +3167,17 @@ def _bitrix_get_one(entity_key: str, entity_id: int) -> Optional[Dict[str, Any]]
     return None
 
 def _upsert_single_item(conn, entity_key: str, item: Dict[str, Any]) -> bool:
+    if entity_key == "user":
+        raw_id = item.get("ID") if "ID" in item else item.get("id")
+        user_id = _extract_int(raw_id)
+        if not user_id:
+            return False
+        user_name = _user_record_to_name(item)
+        if not user_name:
+            return False
+        _upsert_b24_user(conn, int(user_id), user_name)
+        return True
+
     table = table_name_for_entity(entity_key)
     ensure_pk_index(conn, table)
     colmap = load_entity_colmap(conn, entity_key)
