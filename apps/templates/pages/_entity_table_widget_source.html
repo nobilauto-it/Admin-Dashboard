@@ -43,7 +43,7 @@
         padding: 0.5rem 0.75rem;
         border-bottom: 1px solid var(--bs-border-color, #dee2e6);
         overflow: hidden;
-        min-width: 2rem;
+        min-width: 0;
         width: 1%;
         white-space: nowrap;
     }
@@ -73,7 +73,7 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        min-width: 2rem;
+        min-width: 0;
         width: 1%;
     }
     .entity-table-section .entity-table-grid-wrap .datatable-table th a {
@@ -142,7 +142,7 @@
     .entity-table-grid-wrap .entity-table-time-toggle i { font-size: 13px; line-height: 1; }
     .entity-table-grid-wrap th.entity-table-th-wrap { position: relative; padding-right: 16px; }
     /* auto — ширина колонок по содержимому; при ручном ресайзе сохраняем width в columnWidths */
-    .entity-table-grid-wrap .datatable-table { table-layout: auto; }
+    .entity-table-grid-wrap .datatable-table { table-layout: fixed; }
     .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; }
     .entity-table-section .entity-table-grid-wrap table caption.entity-table-caption { padding: 0.5rem 0; font-size: 0.875rem; color: var(--bs-secondary-color, #6c757d); caption-side: top; }
     /* Contextual Classes: alternating row colors like Dastone tables-basic */
@@ -963,6 +963,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var MIN_COL_WIDTH = 40;
     /** Минимальная ширина (px), при которой применяем сохранённую ширину; иначе колонка подстраивается под содержимое (даты, заголовки не обрезаются). */
     var MIN_CONTENT_SAFE_WIDTH = 180;
+    var RESIZE_SORT_CLICK_SUPPRESS_MS = 350;
 
     function getColumnWidthStorageKey() {
         return COLUMN_WIDTH_KEY_PREFIX + getPageSlug();
@@ -3513,7 +3514,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (st.sortKey === c.key) sortIcon = (st.sortDir === 'asc') ? '&#9650;' : (st.sortDir === 'desc' ? '&#9660;' : '');
             var w = st.columnWidths[c.key];
             /* Apply saved width even if smaller than content so user can narrow columns; content truncates with ellipsis. */
-            var style = (w != null && w >= MIN_COL_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
+            var style = (w != null && w >= 1) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
             var isDateColumn = isLikelyDateColumn(st, c);
             var showTime = isTimeVisibleForColumn(st, c.key);
             var timeToggle = isDateColumn
@@ -3584,6 +3585,11 @@ document.addEventListener('DOMContentLoaded', function() {
         els.gridHead.querySelectorAll('th[data-column-key]').forEach(function(th) {
             th.onclick = null;
             th.onclick = function(e) {
+                if (th._suppressSortClickUntil && Date.now() < th._suppressSortClickUntil) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
                 if (e.target && e.target.closest && e.target.closest('.entity-table-col-resize')) return;
                 if (e.target && e.target.closest && e.target.closest('.entity-table-time-toggle')) return;
                 var key = th.getAttribute('data-column-key');
@@ -3622,18 +3628,28 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         els.gridHead.querySelectorAll('.entity-table-col-resize').forEach(function(handle) {
+            handle.onclick = null;
+            handle.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            };
             handle.onmousedown = null;
             handle.onmousedown = function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 var th = handle.closest('th');
                 if (!th) return;
                 var columnKey = th.getAttribute('data-column-key');
                 if (!columnKey) return;
                 var startX = e.clientX;
                 var startWidth = th.offsetWidth;
+                var didResize = false;
+                var dynamicMinWidth = Math.max(24, Math.floor(startWidth * 0.1));
+                th._suppressSortClickUntil = Date.now() + RESIZE_SORT_CLICK_SUPPRESS_MS;
                 function onMove(e2) {
                     var dx = e2.clientX - startX;
-                    var newWidth = Math.max(MIN_COL_WIDTH, startWidth + dx);
+                    if (Math.abs(dx) > 1) didResize = true;
+                    var newWidth = Math.max(dynamicMinWidth, startWidth + dx);
                     th.style.width = newWidth + 'px';
                     th.style.minWidth = newWidth + 'px';
                     st.columnWidths[columnKey] = newWidth;
@@ -3643,8 +3659,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.removeEventListener('mouseup', onUp);
                     document.body.style.userSelect = '';
                     document.body.style.cursor = '';
+                    th._suppressSortClickUntil = Date.now() + RESIZE_SORT_CLICK_SUPPRESS_MS;
                     saveColumnWidths();
-                    updateThLabelByWidth(th);
+                    if (didResize) updateThLabelByWidth(th);
                 }
                 document.body.style.userSelect = 'none';
                 document.body.style.cursor = 'col-resize';
