@@ -89,7 +89,7 @@ Author: Mannatthemes
   --bs-font-monospace: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --bs-gradient: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
   --bs-body-font-family: var(--bs-font-sans-serif);
-  --bs-body-font-size: 13px;
+  --bs-body-font-size: 14px;
   --bs-body-font-size: 0.8125rem;
   --bs-body-font-weight: 400;
   --bs-body-line-height: 1.5;
@@ -118,7 +118,7 @@ Author: Mannatthemes
   --bs-highlight-bg: #fff1d3;
   --bs-border-width: 1px;
   --bs-border-style: solid;
-  --bs-border-color: #eaf0f9;
+  --bs-border-color: #a9b2c0;
   --bs-border-color-translucent: rgba(0, 0, 0, 0.5);
   --bs-border-radius: 4px;
   --bs-border-radius: 0.25rem;
@@ -2423,14 +2423,13 @@ textarea.form-control-lg {
 .form-check {
   display: block;
   min-height: 19.5px;
-  min-height: 1.21875rem;
+  min-height: 2rem;
   padding-left: 1.7em;
   margin-bottom: 2px;
-  margin-bottom: 0.125rem;
+  margin-bottom: 0.4rem;
 }
 .form-check .form-check-input {
   float: left;
-  margin-left: -1.7em;
 }
 
 .form-check-reverse {
@@ -3557,11 +3556,10 @@ textarea.form-control-lg {
 
 .btn-sm, .btn-group-sm > .btn {
   --bs-btn-padding-y: 4px;
-  --bs-btn-padding-y: 0.25rem;
+  --bs-btn-padding-y: 0.4rem;
   --bs-btn-padding-x: 8px;
-  --bs-btn-padding-x: 0.5rem;
-  --bs-btn-font-size: 11.36px;
-  --bs-btn-font-size: 0.71rem;
+  --bs-btn-padding-x: 0.6rem;
+  --bs-btn-font-size: 14px;
   --bs-btn-border-radius: var(--bs-border-radius-sm);
 }
 
@@ -5967,7 +5965,7 @@ textarea.form-control-lg {
 @media (min-width: 992px) {
   .modal-lg,
   .modal-xl {
-    --bs-modal-width: 800px;
+    --bs-modal-width: 1100px;
   }
 }
 @media (min-width: 1200px) {
@@ -8504,7 +8502,7 @@ textarea.form-control-lg {
 
 .mb-3 {
   margin-bottom: 16px !important;
-  margin-bottom: 1rem !important;
+  margin-bottom: 1.5rem !important;
 }
 
 .mb-4 {
@@ -8985,7 +8983,7 @@ textarea.form-control-lg {
 
 .gap-2 {
   gap: 8px !important;
-  gap: 0.5rem !important;
+  gap: 0.8rem !important;
 }
 
 .gap-3 {

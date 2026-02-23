@@ -1,0 +1,123 @@
+{# BI-style card modal: Main value and Secondary value each have full data config (entity, fields, filters) + field + formula #}
+<div class="modal fade" id="modalAddCard" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalAddCardTitle">Добавить карточку отчёта</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Настройте набор данных для главного и второстепенного значений: сущность, поля и фильтры (как в таблице). Затем выберите поле для расчёта и формулу.</p>
+                <div class="mb-3">
+                    <label class="form-label" for="cardTitleInput">Название карточки <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="cardTitleInput" placeholder="Например: Сделки за месяц">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="cardIconSelect">Иконка</label>
+                    <select class="form-select" id="cardIconSelect"></select>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header bg-light py-2">
+                        <strong>Главное значение</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-muted mb-2">Набор данных: сущность, поля, фильтры (как в таблице). Затем выберите поле и формулу для отображения.</p>
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0">Сущность</label>
+                                <select class="form-select form-select-sm" id="cardMainEntitySelect">
+                                    <option value="">— Выберите сущность —</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">Поля (выберите поля для набора данных)</label>
+                            <div id="cardMainFieldsWrap" class="border rounded p-2 bg-light" style="max-height: 160px; overflow-y: auto;"></div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">Фильтры</label>
+                            <div id="cardMainFiltersWrap" class="card-main-filters"></div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1" id="cardMainAddFilter">+ Добавить фильтр</button>
+                        </div>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-5">
+                                <label class="form-label small mb-0">Поле для значения</label>
+                                <select class="form-select form-select-sm" id="cardMainFieldSelect">
+                                    <option value="">— Выберите поле —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0">Формула</label>
+                                <select class="form-select form-select-sm" id="cardMainAggregate">
+                                    <option value="count">Количество записей</option>
+                                    <option value="sum">Сумма</option>
+                                    <option value="avg">Среднее</option>
+                                    <option value="min">Минимум</option>
+                                    <option value="max">Максимум</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header bg-light py-2">
+                        <strong>Второстепенное значение</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-muted mb-2">Отдельный набор данных и расчёт (сущность, поля, фильтры, поле, формула).</p>
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0">Сущность</label>
+                                <select class="form-select form-select-sm" id="cardSecondaryEntitySelect">
+                                    <option value="">— Выберите сущность —</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">Поля</label>
+                            <div id="cardSecondaryFieldsWrap" class="border rounded p-2 bg-light" style="max-height: 160px; overflow-y: auto;"></div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">Фильтры</label>
+                            <div id="cardSecondaryFiltersWrap" class="card-secondary-filters"></div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1" id="cardSecondaryAddFilter">+ Добавить фильтр</button>
+                        </div>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0">Поле для значения</label>
+                                <select class="form-select form-select-sm" id="cardSecondaryFieldSelect">
+                                    <option value="">— Выберите поле —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-0">Формула</label>
+                                <select class="form-select form-select-sm" id="cardSecondaryAggregate">
+                                    <option value="count">Количество</option>
+                                    <option value="sum">Сумма</option>
+                                    <option value="avg">Среднее</option>
+                                    <option value="min">Минимум</option>
+                                    <option value="max">Максимум</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-0">Подпись</label>
+                                <input type="text" class="form-control form-control-sm" id="cardSecondaryLabel" placeholder="например: за период">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="me-auto">
+                    <button type="button" class="btn btn-outline-danger btn-sm d-none" id="modalAddCardDelete" title="Удалить карточку">Удалить карточку</button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="modalAddCardSave">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

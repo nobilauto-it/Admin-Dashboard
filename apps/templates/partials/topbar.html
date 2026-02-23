@@ -9,8 +9,8 @@
                         <i class="iconoir-menu"></i>
                     </button>
                 </li> 
-                <li class="mx-2 welcome-text">
-                    <a class="btn btn-sm btn-soft-primary" href="#" role="button" id="topbarBtnAddEntity" title="Добавить сущность"><i class="iconoir-plus"></i></a>
+                <li class="mx-2 welcome-text d-none" id="topbarBtnAddEntityWrap">
+                    <a class="btn btn-sm btn-soft-primary" href="#" role="button" id="topbarBtnAddEntity" title="Добавить таблицу или карточку"><i class="iconoir-plus"></i></a>
                 </li>
             </ul>
             <ul class="topbar-item list-unstyled d-inline-flex align-items-center mb-0">
@@ -280,11 +280,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        var btn = document.getElementById('topbarBtnAddEntity');
-        if (btn) btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            /* Заглушка: функциональный плюс и шаблоны — в контенте страницы таблицы сущностей */
-        });
+        /* topbarBtnAddEntity is shown and bound only on entity-table pages (see _entity_table_widget_source) */
         renderUserBlock();
     });
 })();

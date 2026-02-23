@@ -16,9 +16,10 @@
     .entity-table-section .searchFilterRowInSection .btn-search-filter-gear { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .entity-table-section .gridTopRowInSection .btnDeleteTableInSection { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-color: rgba(220,53,69,.35); color: var(--bs-danger, #dc3545); }
     .entity-table-section .gridTopRowInSection .btnDeleteTableInSection:hover { background: rgba(220,53,69,.08); border-color: rgba(220,53,69,.5); }
-    .entity-table-section .searchFilterRowInSection .searchFilterInputWrap { width: min(560px, 60%); min-width: 240px; }
+    /* Title + search + buttons in one row when they fit; search input flexible (e.g. 30%), can shrink. */
+    .entity-table-section .searchFilterRowInSection .searchFilterInputWrap { flex: 0 1 30%; min-width: 8rem; max-width: 560px; }
     .entity-table-loading { padding: 24px; text-align: center; color: #64748b; }
-    .entity-table-grid-wrap { min-width: 0; overflow: auto; max-height: 70vh; }
+    .entity-table-grid-wrap { min-width: 0; overflow: auto;}
     /* Те же стили, что у шаблонных table.datatable.datatable-table (simple-datatables + _tables.scss) */
     .entity-table-section .entity-table-grid-wrap .datatable-table,
     .entity-table-section .entity-table-grid-wrap table.datatable-table {
@@ -27,6 +28,7 @@
         border-spacing: 0;
         border-collapse: separate;
         white-space: nowrap;
+        table-layout: fixed;
     }
     .entity-table-section .entity-table-grid-wrap .datatable-table > thead {
         background-color: var(--bs-light, #f8f9fa) !important;
@@ -34,15 +36,16 @@
     .entity-table-section .entity-table-grid-wrap .datatable-table > thead > tr > th {
         color: var(--bs-secondary-color, #495057);
         font-weight: 500;
-        font-size: 0.875rem;
+        font-size: 13px;
         background-color: var(--bs-light, #f8f9fa);
         vertical-align: middle;
         text-align: left;
         padding: 0.5rem 0.75rem;
         border-bottom: 1px solid var(--bs-border-color, #dee2e6);
         overflow: hidden;
-        max-width: 220px;
-        min-width: 4rem;
+        min-width: 2rem;
+        width: 1%;
+        white-space: nowrap;
     }
     .entity-table-section .entity-table-grid-wrap .datatable-table > thead > tr > th .entity-table-th-inline {
         display: inline-flex;
@@ -66,12 +69,12 @@
     .entity-table-section .entity-table-grid-wrap .datatable-table > thead > tr > td {
         vertical-align: middle;
         padding: 0.5rem 0.75rem;
-        font-size: 0.875rem;
+        font-size: 13px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 220px;
-        min-width: 4rem;
+        min-width: 2rem;
+        width: 1%;
     }
     .entity-table-section .entity-table-grid-wrap .datatable-table th a {
         text-decoration: none;
@@ -80,10 +83,10 @@
     .modal-entity-list .entity-group { margin-bottom: 16px; }
     .modal-entity-list .entity-group-title { font-weight: 700; margin-bottom: 8px; }
     .modal-entity-list .form-check { margin-bottom: 4px; }
-    .fields-modal-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 16px; max-height: 400px; overflow-y: auto; }
+    .fields-modal-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 16px; max-height: 70vh; overflow-y: auto; }
     .fields-modal-grid .form-check { min-width: 0; }
     .fields-modal-grid .form-check-label { white-space: normal; word-wrap: break-word; overflow-wrap: break-word; min-width: 0; }
-    .fields-modal-grid .fields-modal-entity-header { grid-column: 1 / -1; font-weight: 700; color: var(--bs-dark, #212529); padding-top: 6px; margin-top: 2px; border-top: 1px dashed var(--bs-border-color, #dee2e6); }
+    .fields-modal-grid .fields-modal-entity-header { grid-column: 1 / -1; font-weight: 500; color: var(bs-label-color, #656d9a); padding-top: 6px; margin-top: 2px; border-top: 1px dashed var(--bs-border-color, #dee2e6); }
     .fields-modal-grid .fields-modal-entity-header:first-child { border-top: 0; padding-top: 0; }
     .fields-modal-nested { margin-bottom: 12px; }
     .fields-modal-nested .nested-title { font-weight: 600; margin-bottom: 6px; }
@@ -140,14 +143,30 @@
     .entity-table-grid-wrap th.entity-table-th-wrap { position: relative; padding-right: 16px; }
     /* auto — ширина колонок по содержимому; при ручном ресайзе сохраняем width в columnWidths */
     .entity-table-grid-wrap .datatable-table { table-layout: auto; }
-    .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 10px; cursor: col-resize; user-select: none; }
+    .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; }
+    .entity-table-section .entity-table-grid-wrap table caption.entity-table-caption { padding: 0.5rem 0; font-size: 0.875rem; color: var(--bs-secondary-color, #6c757d); caption-side: top; }
+    /* Contextual Classes: alternating row colors like Dastone tables-basic */
+    .entity-table-section .entity-table-grid-wrap table.table-contextual-rows tbody tr:nth-child(6n+1) { background-color: rgba(var(--bs-primary-rgb), 0.1); }
+    .entity-table-section .entity-table-grid-wrap table.table-contextual-rows tbody tr:nth-child(6n+2) { background-color: transparent; }
+    .entity-table-section .entity-table-grid-wrap table.table-contextual-rows tbody tr:nth-child(6n+3) { background-color: rgba(var(--bs-secondary-rgb), 0.15); }
+    .entity-table-section .entity-table-grid-wrap table.table-contextual-rows tbody tr:nth-child(6n+4) { background-color: transparent; }
+    .entity-table-section .entity-table-grid-wrap table.table-contextual-rows tbody tr:nth-child(6n+5) { background-color: rgba(var(--bs-success-rgb), 0.1); }
     .entity-table-grid-wrap th .entity-table-col-resize:hover { background: rgba(var(--bs-primary-rgb), 0.2); }
-    #entityTablesContainer { display: grid; gap: 1rem; align-items: start; }
-    .entity-table-section { min-width: 0; margin-bottom: 0; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; padding: 1rem; background: var(--bs-body-bg, #fff); display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    /* Layout: sections take only the width they need; next table/widget can sit beside if room (like Dastone row/col cards). */
+    #entityTablesContainer { display: flex; flex-wrap: wrap; gap: 1rem; align-items: start; }
+    .entity-table-section { width: fit-content; max-width: 100%; min-width: min(320px, 100%); margin-bottom: 0; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; padding: 1rem; background: var(--bs-body-bg, #fff); display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
     .entity-table-section .entity-table-toolbar { margin-bottom: 12px; }
     .entity-table-section .gridTopRowInSection { margin-bottom: 12px; }
-    .entity-table-section .searchFilterRowInSection { margin-bottom: 12px; }
-    .entity-table-section .searchFilterRowInSection { position: relative; overflow: visible; }
+    .entity-table-section .searchFilterRowInSection { margin-bottom: 12px; position: relative; overflow: visible; }
+    .entity-table-section .gridTopRowInSection.table-title-search-row { flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+    .entity-table-section .gridTopRowInSection .tableTitleBlockInSection { min-width: 0; }
+    /* Report card widget: same layout as Dastone report-card, fits in entityTablesContainer flex */
+    .entity-report-card-section { width: fit-content; max-width: 100%; min-width: min(260px, 100%); }
+    .entity-report-card-section .card.report-card { margin-bottom: 0; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .entity-report-card-section .report-card-title { font-weight: 600; margin-bottom: 0.25rem; }
+    .entity-report-card-section .report-card-main-value { font-size: 1.25rem; font-weight: 600; margin: 0.25rem 0; }
+    .entity-report-card-section .report-card-secondary-value { font-size: 0.875rem; color: var(--bs-secondary-color); margin-bottom: 0; }
+    .entity-report-card-section .report-card-icon-wrap { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
     .entity-table-section .filterDropdownInSection { position: absolute; left: 0; top: calc(100% + 6px); width: min(380px, 96vw); display: none; z-index: 1070; }
     .entity-table-section .filterDropdownInSection.open { display: block; }
     .entity-table-section .filterDropdownCardInSection { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 8px; background: var(--bs-body-bg, #fff); box-shadow: 0 10px 24px rgba(0,0,0,.12); padding: 12px; max-height: 65vh; overflow: auto; }
@@ -180,13 +199,11 @@
     #modalFilter .filterPanelInSection .filter-multiselect-dropdown .filter-option-item { display: flex; align-items: center; gap: 8px; }
     #modalFilter .filterPanelInSection .filter-multiselect-dropdown .filter-multiselect-search-wrap { position: sticky; top: 0; background: var(--bs-body-bg); padding: 8px; border-bottom: 1px solid var(--bs-border-color); z-index: 1; }
     #modalFilter .filterPanelInSection .filter-multiselect-dropdown .filter-multiselect-search { font-size: 0.85rem; }
-    .entity-table-section .entity-table-grid-wrap { flex: 1 1 auto; min-height: 0; border-radius: 6px; border: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,.08)); }
+    .entity-table-section .entity-table-grid-wrap { flex: 1 1 auto; min-height: 0; border-radius: 6px;}
     .entity-table-section .entity-table-section-table { width: 100%; margin-bottom: 0; }
-    .entity-table-section .entity-table-cell-link { color: var(--bs-primary, #6f6af8); text-decoration: none; word-break: break-all; }
+    .entity-table-section .entity-table-cell-link { color: var(--bs-primary, #6f6af8); text-decoration: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: middle; }
     .entity-table-section .entity-table-cell-link:hover { text-decoration: underline; }
     .entity-table-section .entity-table-grid-wrap td.entity-table-cell-numeric { text-align: right; }
-    .entity-table-section .emptyBlockInSection { cursor: pointer; padding: 1.5rem; border: 2px dashed var(--bs-border-color); border-radius: 8px; transition: border-color .15s, background-color .15s; }
-    .entity-table-section .emptyBlockInSection:hover { border-color: var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.04); }
     .entity-insert-grid .insert-grid-cell { min-height: 72px; border: 2px dashed var(--bs-border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color .15s, background-color .15s; }
     .entity-insert-grid .insert-grid-cell:hover:not(.disabled) { border-color: var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.06); }
     .entity-insert-grid .insert-grid-cell.disabled { opacity: 0.4; cursor: not-allowed; }
@@ -206,8 +223,15 @@
     .entity-table-section-hidden .searchFilterRowInSection,
     .entity-table-section-hidden .filterPanelInSection,
     .entity-table-section-hidden .entity-table-grid-wrap,
-    .entity-table-section-hidden .emptyBlockInSection,
     .entity-table-section-hidden .datatable-bottom.paginationBlockInSection { display: none !important; }
+    .entity-section-draggable { cursor: grab; }
+    .entity-section-draggable:active { cursor: grabbing; }
+    /* Force next section to new row when startNewRow is set; responsive: natural wrap still applies */
+    .entity-table-row-break { flex-basis: 100%; width: 100%; height: 0; min-height: 0; margin: 0; padding: 0; overflow: hidden; flex-shrink: 0; }
+    .entity-table-section.entity-drop-new-row,
+    .entity-report-card-section.entity-drop-new-row { position: relative; }
+    .entity-table-section.entity-drop-new-row::before,
+    .entity-report-card-section.entity-drop-new-row::before { content: ''; position: absolute; left: 0; right: 0; top: 0; bottom: 0; border: 2px dashed var(--bs-primary, #6f6af8); border-radius: 8px; pointer-events: none; }
 </style>
 {% endblock %}
 
@@ -224,84 +248,10 @@
                         <option value="hide">Скрыть</option>
                     </select>
                 </div>
-                <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddTableBlock" title="Добавить ещё одну таблицу на страницу">
-                    <i class="iconoir-plus"></i> Добавить таблицу
-                </button>
             </div>
             <div id="entityTablesContainer">
-                <div class="entity-table-section" data-table-index="0">
-                    <div class="entity-table-toolbar d-flex align-items-center flex-wrap">
-                        <button type="button" class="btn btn-primary btn-plus-content btnAddEntityInSection" title="Добавить сущность / настройки таблицы">
-                            <i class="iconoir-plus"></i>
-                        </button>
-                        <span class="text-muted small selectedEntitiesLabelInSection ms-2"></span>
-                        <span class="entity-table-section-hidden-label text-muted small d-none">Блок скрыт</span>
-                        <div class="table-mode-admin ms-2" style="display: none !important;">
-                            <select class="form-select form-select-sm tableModeSelect" title="Режим таблицы" data-table-index="0" style="width: auto; min-width: 120px;">
-                                <option value="edit">Редактирование</option>
-                                <option value="read_only">Только просмотр</option>
-                                <option value="hide">Скрыть</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="entity-table-loading loadingBlockInSection d-none">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p>
-                    </div>
-                    <div class="d-flex align-items-start mb-3 gridTopRowInSection d-none">
-                        <div class="tableTitleBlockInSection d-none flex-grow-1">
-                            <h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4>
-                            <p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p>
-                        </div>
-                        <button type="button" class="btn btn-outline-danger btnDeleteTableInSection d-none ms-auto" title="Удалить таблицу" aria-label="Удалить таблицу">
-                            <i class="iconoir-trash"></i>
-                        </button>
-                    </div>
-                    <div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2">
-                        <div class="input-group input-group-sm searchFilterInputWrap">
-                            <span class="input-group-text"><i class="iconoir-search"></i></span>
-                            <input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице">
-                        </div>
-                        <button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска">
-                            <i class="iconoir-settings"></i>
-                        </button>
-                        <div class="flex-grow-1"></div>
-                        <button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы">
-                            <i class="iconoir-settings"></i>
-                        </button>
-                        <div class="filterDropdownInSection">
-                            <div class="filterDropdownCardInSection filterPanelInSection">
-                                <div class="filterDropdownRowsContainerInSection"></div>
-                                <a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a>
-                                <div class="d-flex justify-content-end gap-2 mt-3">
-                                    <button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button>
-                                    <button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none">
-                        <table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">
-                            <thead class="table-light entity-table-grid-head"></thead>
-                            <tbody class="entity-table-grid-body"></tbody>
-                        </table>
-                    </div>
-                    <div class="entity-table-loading emptyBlockInSection">
-                        <p class="text-muted mb-0">Выберите сущности или шаблон (кнопка «+»).</p>
-                    </div>
-                    <div class="datatable-bottom paginationBlockInSection d-none">
-                        <div class="pagination-left-in-section d-flex align-items-center flex-wrap gap-2">
-                            <span class="datatable-info small text-muted paginationInfoInSection">Показано 0 — 0 из 0 записей</span>
-                            <span class="small text-muted">На странице:</span>
-                            <select class="datatable-input pageSizeInSection" style="width:70px;">
-                                <option value="10">10</option>
-                                <option value="25" selected>25</option>
-                                <option value="50">50</option>
-                            </select>
-                        </div>
-                        <nav class="datatable-pagination paginationNavInSection" aria-label="Пагинация таблицы"></nav>
-                    </div>
-                </div>
+                <!-- Sections (tables/cards) added via + in topbar; drag to reorder -->
+                <div id="entityTablesError" class="d-none text-center text-muted py-4 small" role="alert"></div>
             </div>
         </div>
     </div>
@@ -347,20 +297,62 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Поля для таблицы</h5>
+                <h5 class="modal-title">Настройка таблицы</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                    <div class="flex-grow-1" style="min-width: 200px;">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text"><i class="iconoir-search"></i></span>
-                            <input type="text" class="form-control" id="fieldsSearchInput" placeholder="Поиск полей" autocomplete="off">
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#fieldsTabPane" role="tab">Поля для таблицы</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#settingsTabPane" role="tab">Настройки таблицы</a>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane active" id="fieldsTabPane" role="tabpanel">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                            <div id="nestedCheckboxesRow" class="d-flex flex-wrap gap-2 align-items-center"></div>
+                            <div class="flex-grow-1" style="min-width: 150px; max-width: 250px;">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control" id="fieldsSearchInput" placeholder="Поиск полей" autocomplete="off">
+                                </div>
+                            </div>                        
+                        </div>
+                        <div class="fields-modal-grid" id="fieldsList"></div>
+                    </div>
+                    <div class="tab-pane" id="settingsTabPane" role="tabpanel">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Сущность таблицы</label>
+                            <p class="mb-0 small" id="settingsModalEntityLabel">—</p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="settingsModalTableDescription">Описание таблицы</label>
+                            <textarea class="form-control" id="settingsModalTableDescription" rows="2" placeholder="Описание таблицы"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="tableStyleSelect">Стиль таблицы</label>
+                            <select class="form-select" id="tableStyleSelect">
+                                <option value="default">Default</option>
+                                <option value="customers_details">Customers Details</option>
+                                <option value="basic_example">Basic Example</option>
+                                <option value="striped_rows">Striped Rows</option>
+                                <option value="hoverable_rows">Hoverable Rows</option>
+                                <option value="contextual_classes">Contextual Classes</option>
+                                <option value="captions_table">Captions Table</option>
+                                <option value="small_table">Small Table</option>
+                                <option value="dark_table">Dark Table</option>
+                                <option value="table_head_options">Table Head Options</option>
+                                <option value="bordered_table">Bordered Table</option>
+                            </select>
+                        </div>
+                        <div class="mt-4 pt-3 border-top">
+                            <button type="button" class="btn btn-outline-danger btn-sm" id="settingsModalDeleteTableBtn" title="Удалить таблицу" aria-label="Удалить таблицу">
+                                <i class="iconoir-trash"></i> Удалить таблицу
+                            </button>
                         </div>
                     </div>
-                    <div id="nestedCheckboxesRow" class="d-flex flex-wrap gap-2 align-items-center"></div>
                 </div>
-                <div class="fields-modal-grid" id="fieldsList"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -389,6 +381,29 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalAddTableOrCard" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-3">
+                <h5 class="modal-title">Добавить визуал</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-add-choice py-3 d-flex align-items-center justify-content-center gap-2" id="btnChoiceTable" data-choice="table">
+                        <i class="iconoir-list fs-4"></i>
+                        <span>Таблицу</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-add-choice py-3 d-flex align-items-center justify-content-center gap-2" id="btnChoiceCard" data-choice="card">
+                        <i class="iconoir-report-columns fs-4"></i>
+                        <span>Карточку</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalInsertTableGrid" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -406,6 +421,8 @@
     </div>
 </div>
 
+{% include 'partials/entity_card_modal.html' %}
+
 {% endblock %}
 
 {% block javascripts %}
@@ -419,39 +436,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (PAGE_SLUG === '__PAGE_SLUG__' || !PAGE_SLUG) {
         PAGE_SLUG = 'entity-table';
     }
-    // Keep entity-table API same-origin by default to avoid browser CORS
-    // when UI and API run on different ports (e.g. 7474 -> 7070).
-    // Optional override is allowed only for same-origin URLs/prefixes.
-    const API_BASE = (function() {
-        var raw = (window.ENTITY_TABLE_API_BASE || '').trim();
-        if (!raw) return '';
-        try {
-            var u = new URL(raw, window.location.origin);
-            if (u.origin !== window.location.origin) {
-                if (typeof console !== 'undefined' && console.warn) {
-                    console.warn('[entity-table] Cross-origin API base is blocked by CORS in browser, falling back to same-origin.');
-                }
-                return '';
-            }
-            return (u.origin + u.pathname).replace(/\/+$/, '');
-        } catch (e) {
-            return '';
-        }
-    })();
     const API = {
-        processesDeals: API_BASE + '/api/entity-table/processes-deals/',
-        dealCategories: API_BASE + '/api/entity-table/deal-categories/',
-        metaFields: API_BASE + '/api/entity-table/entity-meta-fields/',
-        metaData: API_BASE + '/api/entity-table/entity-meta-data/',
-        config: API_BASE + '/api/entity-table/config',
-        templates: API_BASE + '/api/entity-table/templates',
-        componentModes: API_BASE + '/api/entity-table/component-modes',
+        processesDeals: '/api/entity-table/processes-deals/',
+        dealCategories: '/api/entity-table/deal-categories/',
+        metaFields: '/api/entity-table/entity-meta-fields/',
+        metaData: '/api/entity-table/entity-meta-data/',
+        config: '/api/entity-table/config',
+        templates: '/api/entity-table/templates',
+        componentModes: '/api/entity-table/component-modes',
     };
 
     var isReadOnly = false;
     var currentPageMode = 'edit';
     var currentTableModes = {};
-    var currentConfigVersion = 2;
     var DASHBOARD_HIDE_CLASS = 'dashboard-toolbar-hidden';
     function applyReadOnlyMode() {
         var hide = isGuestUser();
@@ -465,8 +462,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 toolbar.style.display = '';
             }
         }
-        var b1 = document.getElementById('btnAddTableBlock');
-        if (b1) { if (hide) { b1.style.setProperty('display', 'none', 'important'); b1.classList.add(DASHBOARD_HIDE_CLASS); } else { b1.classList.remove(DASHBOARD_HIDE_CLASS); b1.style.display = ''; } }
+        var topbarWrap = document.getElementById('topbarBtnAddEntityWrap');
+        if (topbarWrap) { if (hide) { topbarWrap.style.setProperty('display', 'none', 'important'); topbarWrap.classList.add(DASHBOARD_HIDE_CLASS); } else { topbarWrap.classList.remove(DASHBOARD_HIDE_CLASS); topbarWrap.style.display = ''; } }
         if (entityTablesContainer) {
             entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection, .btnDeleteTableInSection').forEach(function(el) {
                 if (hide) { el.style.setProperty('display', 'none', 'important'); el.classList.add(DASHBOARD_HIDE_CLASS); } else { el.classList.remove(DASHBOARD_HIDE_CLASS); el.style.display = ''; }
@@ -548,12 +545,29 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    /** Table style mapping: Dastone tables-basic / tables-datatable classes */
+    var TABLE_STYLES = {
+        default: { tableClass: 'table table-sm border-dashed', theadClass: 'table-light', caption: false },
+        customers_details: { tableClass: 'table table-centered mb-0', theadClass: 'table-light', caption: false },
+        basic_example: { tableClass: 'table mb-0 table-centered', theadClass: 'table-light', caption: false },
+        striped_rows: { tableClass: 'table table-striped mb-0', theadClass: 'table-light', caption: false },
+        hoverable_rows: { tableClass: 'table table-hover mb-0', theadClass: 'table-light', caption: false },
+        contextual_classes: { tableClass: 'table mb-0 table-contextual-rows', theadClass: 'table-light', caption: false },
+        captions_table: { tableClass: 'table mb-0', theadClass: 'table-light', caption: true },
+        small_table: { tableClass: 'table table-sm mb-0', theadClass: 'table-light', caption: false },
+        dark_table: { tableClass: 'table table-dark mb-0', theadClass: '', caption: false },
+        table_head_options: { tableClass: 'table mb-0', theadClass: 'table-light', caption: false },
+        bordered_table: { tableClass: 'table table-bordered mb-0 table-centered', theadClass: '', caption: false }
+    };
+
     function defaultTableState() {
         return {
+            type: 'table',
             selectedEntities: [],
             selectedFields: [],
             tableTitle: '',
             tableDescription: '',
+            tableStyle: 'hoverable_rows',
             fullData: [],
             allColumns: [],
             currentPage: 1,
@@ -564,11 +578,36 @@ document.addEventListener('DOMContentLoaded', function() {
             showTime: false,
             dateTimeDisplayByColumn: {},
             guestFilterInitialized: false,
-            filterFields: [{ label: 'Название', key: '', type: 'text' }]
+            filterFields: [{ label: 'Название', key: '', type: 'text' }],
+            startNewRow: false
         };
     }
 
-    let tableStates = [defaultTableState()];
+    /** Report card: title, main value (formula), secondary value (formula), icon. Same entities/fields/filters as tables. */
+    var CARD_AGGREGATES = [
+        { value: 'count', label: 'Количество записей' },
+        { value: 'sum', label: 'Сумма' },
+        { value: 'avg', label: 'Среднее' },
+        { value: 'min', label: 'Минимум' },
+        { value: 'max', label: 'Максимум' }
+    ];
+    var REPORT_CARD_ICONS = ['iconoir-activity', 'iconoir-handbag', 'iconoir-clock', 'iconoir-user', 'iconoir-dollar-circle', 'iconoir-report-columns', 'iconoir-reports-solid', 'iconoir-trophy', 'iconoir-chat-bubble', 'iconoir-mail', 'iconoir-fire-flame', 'iconoir-suitcase', 'iconoir-bell', 'iconoir-calendar', 'iconoir-list', 'iconoir-candlestick-chart', 'iconoir-map-pin', 'iconoir-send-mail', 'iconoir-page-star', 'iconoir-heart-solid'];
+    function defaultCardState() {
+        return {
+            type: 'card',
+            cardTitle: '',
+            icon: 'iconoir-activity',
+            selectedEntities: [],
+            selectedFields: [],
+            filterFields: [{ label: 'Название', key: '', type: 'text' }],
+            mainFormula: { aggregate: 'count', fieldKey: null },
+            secondaryFormula: { aggregate: 'count', fieldKey: null, label: '' },
+            fullData: [],
+            startNewRow: false
+        };
+    }
+
+    let tableStates = [];
     let currentTableIndex = 0;
     let entitiesList = [];
     let fieldsCache = {};
@@ -594,15 +633,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function getSectionEls(tableIndex) {
-        var section = entityTablesContainer && entityTablesContainer.querySelector('.entity-table-section[data-table-index="' + tableIndex + '"]');
+    function getSectionEls(sectionIndex) {
+        var st = tableStates[sectionIndex];
+        if (!st) return {};
+        if (st.type === 'card') {
+            var section = entityTablesContainer && entityTablesContainer.querySelector('.entity-report-card-section[data-card-index="' + sectionIndex + '"]');
+            if (!section) return {};
+            return {
+                section: section,
+                cardTitleEl: section.querySelector('.report-card-title'),
+                mainValueEl: section.querySelector('.report-card-main-value'),
+                secondaryValueEl: section.querySelector('.report-card-secondary-value'),
+                iconWrap: section.querySelector('.report-card-icon-wrap'),
+                iconEl: section.querySelector('.report-card-icon-wrap i'),
+                cardActions: section.querySelector('.card-actions-in-section'),
+                btnEditCard: section.querySelector('.btnEditCardInSection'),
+                btnDeleteCard: section.querySelector('.btnDeleteCardInSection')
+            };
+        }
+        var section = entityTablesContainer && entityTablesContainer.querySelector('.entity-table-section[data-table-index="' + sectionIndex + '"]');
         if (!section) return {};
         return {
             section: section,
             loadingBlock: section.querySelector('.loadingBlockInSection'),
             loadingText: section.querySelector('.loadingTextInSection'),
             gridTopRow: section.querySelector('.gridTopRowInSection'),
-            btnDeleteTable: section.querySelector('.btnDeleteTableInSection'),
             gridBlock: section.querySelector('.gridBlockInSection'),
             searchFilterRow: section.querySelector('.searchFilterRowInSection'),
             emptyBlock: section.querySelector('.emptyBlockInSection'),
@@ -612,7 +667,6 @@ document.addEventListener('DOMContentLoaded', function() {
             pageSizeSelect: section.querySelector('.pageSizeInSection'),
             paginationInfo: section.querySelector('.paginationInfoInSection'),
             paginationNav: section.querySelector('.paginationNavInSection'),
-            selectedEntitiesLabel: section.querySelector('.selectedEntitiesLabelInSection'),
             btnFields: section.querySelector('.btnFieldsInSection'),
             filterDropdown: section.querySelector('.filterDropdownInSection'),
             filterDropdownRowsContainer: section.querySelector('.filterDropdownRowsContainerInSection'),
@@ -620,8 +674,7 @@ document.addEventListener('DOMContentLoaded', function() {
             filterDropdownSave: section.querySelector('.filterDropdownSaveInSection'),
             filterDropdownClose: section.querySelector('.filterDropdownCloseInSection'),
             tableTitleBlock: section.querySelector('.tableTitleBlockInSection'),
-            tableTitleText: section.querySelector('.tableTitleTextInSection'),
-            tableDescriptionText: section.querySelector('.tableDescriptionTextInSection')
+            tableTitleText: section.querySelector('.tableTitleTextInSection')
         };
     }
 
@@ -726,10 +779,6 @@ document.addEventListener('DOMContentLoaded', function() {
         var els = getSectionEls(tableIndex);
         var hasEntities = st.selectedEntities.length > 0;
         if (els.btnFields) els.btnFields.classList.toggle('d-none', !hasEntities);
-        if (els.btnDeleteTable) els.btnDeleteTable.classList.toggle('d-none', !hasEntities);
-        if (els.selectedEntitiesLabel) els.selectedEntitiesLabel.textContent = hasEntities
-            ? 'Сущности: ' + st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ')
-            : '';
         var plusBtn = els.section && els.section.querySelector('.btnAddEntityInSection');
         if (plusBtn) plusBtn.classList.toggle('d-none', !hasEntities);
     }
@@ -741,11 +790,11 @@ document.addEventListener('DOMContentLoaded', function() {
             return {
                 table_title: t.tableTitle || '',
                 table_description: t.tableDescription || '',
+                table_style: t.tableStyle || 'hoverable_rows',
                 entities: t.selectedEntities || [],
                 fields: t.selectedFields || [],
                 show_time: (t.showTime === true),
-                date_time_display: (t.dateTimeDisplayByColumn && Object.keys(t.dateTimeDisplayByColumn).length) ? t.dateTimeDisplayByColumn : null,
-                filter_fields: isGuestUser() ? null : serializeFilterFields(t.filterFields)
+                date_time_display: (t.dateTimeDisplayByColumn && Object.keys(t.dateTimeDisplayByColumn).length) ? t.dateTimeDisplayByColumn : null
             };
         });
         if (!tablesPayload.some(function(t) { return t.entities && t.entities.length > 0 && t.fields && t.fields.length > 0; })) return;
@@ -760,12 +809,16 @@ document.addEventListener('DOMContentLoaded', function() {
     function deleteTableAtIndex(index) {
         if (index == null || isNaN(index) || index < 0 || index >= tableStates.length) return;
         tableStates.splice(index, 1);
-        if (!tableStates.length) tableStates = [defaultTableState()];
-        currentTableIndex = Math.min(Math.max(0, currentTableIndex), tableStates.length - 1);
+        currentTableIndex = tableStates.length ? Math.min(Math.max(0, currentTableIndex), tableStates.length - 1) : 0;
         ensureSections();
         for (var i = 0; i < tableStates.length; i++) {
-            updateUI(i);
-            loadFieldsThenData(i, false);
+            if (tableStates[i].type === 'card') {
+                updateCardUI(i);
+                loadCardData(i);
+            } else {
+                updateUI(i);
+                loadFieldsThenData(i, false);
+            }
         }
         saveConfigToStorage();
         saveConfig();
@@ -791,8 +844,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             localStorage.setItem(getColumnOrderStorageKey(), JSON.stringify(obj));
         } catch (e) {}
-        // Persist for all browsers/sessions (admin scope).
-        saveConfig({ force: true });
     }
 
     function loadColumnOrder(tableIndex) {
@@ -804,12 +855,12 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) { return null; }
     }
 
-    /** Порядок колонок: приоритет у серверного конфига, локальный — только fallback. */
+    /** Порядок колонок: приоритет у локального (localStorage после перетаскивания), иначе с сервера. */
     function getColumnOrderForTable(tableIndex) {
-        var st = tableStates[tableIndex];
-        if (st && st.columnOrderFromServer && st.columnOrderFromServer.length) return st.columnOrderFromServer;
         var local = loadColumnOrder(tableIndex);
         if (local && local.length) return local;
+        var st = tableStates[tableIndex];
+        if (st && st.columnOrderFromServer && st.columnOrderFromServer.length) return st.columnOrderFromServer;
         return null;
     }
 
@@ -820,6 +871,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!raw) return;
             var obj = JSON.parse(raw);
             if (obj && obj[tableIndex] !== undefined) { delete obj[tableIndex]; localStorage.setItem(getColumnOrderStorageKey(), JSON.stringify(obj)); }
+        } catch (e) {}
+    }
+
+    /** Clear saved column widths for a table so columns auto-fit to content after create/change. */
+    function clearColumnWidthsForTable(tableIndex) {
+        var st = tableStates[tableIndex];
+        if (st) st.columnWidths = {};
+        try {
+            var raw = localStorage.getItem(getColumnWidthStorageKey());
+            if (!raw) return;
+            var obj = JSON.parse(raw);
+            if (obj && obj[tableIndex] !== undefined) { delete obj[tableIndex]; localStorage.setItem(getColumnWidthStorageKey(), JSON.stringify(obj)); }
         } catch (e) {}
     }
 
@@ -896,7 +959,6 @@ document.addEventListener('DOMContentLoaded', function() {
     var MIN_COL_WIDTH = 40;
     /** Минимальная ширина (px), при которой применяем сохранённую ширину; иначе колонка подстраивается под содержимое (даты, заголовки не обрезаются). */
     var MIN_CONTENT_SAFE_WIDTH = 180;
-    var suppressHeaderSortUntil = 0;
 
     function getColumnWidthStorageKey() {
         return COLUMN_WIDTH_KEY_PREFIX + getPageSlug();
@@ -910,8 +972,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             localStorage.setItem(getColumnWidthStorageKey(), JSON.stringify(obj));
         } catch (e) {}
-        // Persist for all browsers/sessions (admin scope).
-        saveConfig({ force: true });
     }
 
     function loadColumnWidths(tableIndex) {
@@ -928,11 +988,29 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             var key = STORAGE_KEY_PREFIX + getPageSlug();
             var tables = tableStates.map(function(st, i) {
-                var keys = (st.allColumns && st.allColumns.length) ? st.allColumns.map(function(c) { return c.key; }) : [];
-                if (!keys.length) keys = getColumnKeysFromSection(i);
+                if (st.type === 'card' && window.EntityCard && typeof window.EntityCard.serializeCardState === 'function') {
+                    return window.EntityCard.serializeCardState(st);
+                }
+                if (st.type === 'card') {
+                    return {
+                        type: 'card',
+                        card_title: st.cardTitle,
+                        icon: st.icon || 'iconoir-activity',
+                        entities: st.selectedEntities,
+                        fields: st.selectedFields,
+                        filter_fields: (st.filterFields && st.filterFields.length) ? st.filterFields : [],
+                        main_formula: st.mainFormula || { aggregate: 'count', fieldKey: null },
+                        secondary_formula: st.secondaryFormula || null,
+                        start_new_row: (st.startNewRow === true)
+                    };
+                }
+                var keys = getColumnKeysFromSection(i);
+                if (!keys.length && st.allColumns && st.allColumns.length) keys = st.allColumns.map(function(c) { return c.key; });
                 return {
+                    type: 'table',
                     table_title: st.tableTitle,
                     table_description: st.tableDescription,
+                    table_style: st.tableStyle || 'hoverable_rows',
                     entities: st.selectedEntities,
                     fields: st.selectedFields,
                     column_order: keys.length ? keys : null,
@@ -941,33 +1019,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     sort_dir: st.sortDir || null,
                     show_time: (st.showTime === true),
                     date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null,
-                    // Guest filter state must remain session-only after reload.
-                    filter_fields: isGuestUser() ? null : serializeFilterFields(st.filterFields)
+                    start_new_row: (st.startNewRow === true)
                 };
             });
             localStorage.setItem(key, JSON.stringify({ tables: tables }));
         } catch (e) {}
-    }
-
-    function serializeFilterFields(list) {
-        if (!Array.isArray(list) || !list.length) return null;
-        return list.map(function(f) {
-            if (!f) return null;
-            var out = {
-                label: (f.label != null) ? String(f.label) : '',
-                key: (f.key != null) ? String(f.key) : '',
-                type: (f.type != null) ? String(f.type) : 'text',
-                sourceFieldType: (f.sourceFieldType != null) ? String(f.sourceFieldType) : '',
-                sourceB24Field: (f.sourceB24Field != null) ? String(f.sourceB24Field) : '',
-                sourceColumnName: (f.sourceColumnName != null) ? String(f.sourceColumnName) : ''
-            };
-            if (Array.isArray(f.selectedValues)) {
-                out.selectedValues = f.selectedValues.map(function(v) { return String(v); });
-            } else {
-                out.value = (f.value != null) ? String(f.value) : '';
-            }
-            return out;
-        }).filter(function(x) { return x && (x.key || x.label); });
     }
 
     function loadConfigFromStorage() {
@@ -984,14 +1040,33 @@ document.addEventListener('DOMContentLoaded', function() {
         if (openModalIfNoFields === undefined) openModalIfNoFields = true;
         if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
             tableStates = data.tables.map(function(t) {
+                if (t.type === 'card' && window.EntityCard && typeof window.EntityCard.parseCardStateFromSaved === 'function') {
+                    return window.EntityCard.parseCardStateFromSaved(t);
+                }
                 var norm = normalizeEntitiesAndFields(t.entities || [], t.fields || []);
+                if (t.type === 'card') {
+                    return {
+                        type: 'card',
+                        cardTitle: (t.card_title != null) ? String(t.card_title) : '',
+                        icon: (t.icon && typeof t.icon === 'string') ? t.icon : 'iconoir-activity',
+                        selectedEntities: norm.entities,
+                        selectedFields: norm.fields,
+                        filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }],
+                        mainFormula: (t.main_formula && typeof t.main_formula === 'object') ? { aggregate: t.main_formula.aggregate || 'count', fieldKey: t.main_formula.fieldKey != null ? t.main_formula.fieldKey : null } : { aggregate: 'count', fieldKey: null },
+                        secondaryFormula: (t.secondary_formula && typeof t.secondary_formula === 'object') ? { aggregate: t.secondary_formula.aggregate || 'count', fieldKey: t.secondary_formula.fieldKey != null ? t.secondary_formula.fieldKey : null, label: (t.secondary_formula.label != null) ? String(t.secondary_formula.label) : '' } : null,
+                        fullData: [],
+                        startNewRow: (t.start_new_row === true)
+                    };
+                }
                 var orderFromServer = (t.column_order && Array.isArray(t.column_order)) ? t.column_order : null;
                 var widthsFromServer = (t.column_widths && typeof t.column_widths === 'object') ? t.column_widths : {};
                 return {
+                    type: 'table',
                     selectedEntities: norm.entities,
                     selectedFields: norm.fields,
                     tableTitle: (t.table_title != null) ? String(t.table_title) : '',
                     tableDescription: (t.table_description != null) ? String(t.table_description) : '',
+                    tableStyle: (t.table_style && TABLE_STYLES[t.table_style]) ? t.table_style : 'hoverable_rows',
                     fullData: [],
                     allColumns: [],
                     currentPage: 1,
@@ -1002,15 +1077,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
                     showTime: (t.show_time === true),
                     dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
-                    guestFilterInitialized: false,
-                    filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
+                    filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }],
+                    startNewRow: (t.start_new_row === true)
                 };
             });
             ensureSections();
             tableStates.forEach(function(st, i) {
-                if (!st.columnWidths || !Object.keys(st.columnWidths).length) st.columnWidths = loadColumnWidths(i);
-                updateUI(i);
-                loadFieldsThenData(i, openModalIfNoFields);
+                if (st.type === 'card') {
+                    updateCardUI(i);
+                    loadCardData(i);
+                } else {
+                    if (!st.columnWidths || !Object.keys(st.columnWidths).length) st.columnWidths = loadColumnWidths(i);
+                    applyTableStyleToSection(i);
+                    updateUI(i);
+                    loadFieldsThenData(i, openModalIfNoFields);
+                }
             });
             return;
         }
@@ -1023,6 +1104,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectedFields: norm.fields,
                 tableTitle: (data.table_title != null) ? String(data.table_title) : '',
                 tableDescription: (data.table_description != null) ? String(data.table_description) : '',
+                tableStyle: (data.table_style && TABLE_STYLES[data.table_style]) ? data.table_style : 'hoverable_rows',
                 fullData: [],
                 allColumns: [],
                 currentPage: 1,
@@ -1033,10 +1115,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
                 showTime: (data.show_time === true),
                 dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {},
-                guestFilterInitialized: false,
                 filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
             }];
             ensureSections();
+            applyTableStyleToSection(0);
             updateUI(0);
             loadFieldsThenData(0, openModalIfNoFields);
         }
@@ -1250,18 +1332,13 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         var existingByKey = {};
-        var existingByLabel = {};
-        function labelNorm(v) {
-            return normalizeFieldLabel(v || '').replace(/\s*\([^)]*\)\s*$/, '');
+        if (!firstGuestSync) {
+            (st.filterFields || []).forEach(function(f) {
+                if (f && f.key) existingByKey[f.key] = f;
+            });
         }
-        (st.filterFields || []).forEach(function(f) {
-            if (!f) return;
-            if (f.key) existingByKey[f.key] = f;
-            var ln = labelNorm(f.label || f.key || '');
-            if (ln && !existingByLabel[ln]) existingByLabel[ln] = f;
-        });
         st.filterFields = cols.map(function(c) {
-            var prev = existingByKey[c.key] || existingByLabel[labelNorm(c.label || c.key || '')] || {};
+            var prev = existingByKey[c.key] || {};
             var probe = {
                 label: c.label || c.key,
                 key: c.key,
@@ -1492,45 +1569,176 @@ document.addEventListener('DOMContentLoaded', function() {
         modalFilter.show();
     }
 
+    function getTableClassesForStyle(styleKey) {
+        var s = TABLE_STYLES[styleKey] || TABLE_STYLES.default;
+        return (s.tableClass || '') + ' datatable datatable-table entityTableInSection entity-table-section-table';
+    }
+    function getTheadClassesForStyle(styleKey) {
+        var s = TABLE_STYLES[styleKey] || TABLE_STYLES.default;
+        return (s.theadClass || '') + ' entity-table-grid-head';
+    }
+    function getTableCaptionForStyle(styleKey) {
+        var s = TABLE_STYLES[styleKey] || TABLE_STYLES.default;
+        return s.caption === true;
+    }
+
     function createSectionHtml(tableIndex) {
+        var st = tableStates[tableIndex];
+        var styleKey = (st && st.tableStyle) ? st.tableStyle : 'hoverable_rows';
+        var tableCls = getTableClassesForStyle(styleKey);
+        var theadCls = getTheadClassesForStyle(styleKey);
+        var hasCaption = getTableCaptionForStyle(styleKey);
+        var captionHtml = hasCaption ? '<caption class="entity-table-caption">' + (st && st.tableDescription ? String(st.tableDescription).replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'Данные таблицы') + '</caption>' : '';
         return '<div class="entity-table-section" data-table-index="' + tableIndex + '">' +
             '<div class="entity-table-toolbar d-flex align-items-center flex-wrap">' +
             '<button type="button" class="btn btn-primary btn-plus-content btnAddEntityInSection" title="Добавить сущность / настройки таблицы"><i class="iconoir-plus"></i></button>' +
-            '<span class="text-muted small selectedEntitiesLabelInSection ms-2"></span>' +
             '<span class="entity-table-section-hidden-label text-muted small d-none">Блок скрыт</span>' +
             '<div class="table-mode-admin ms-2" style="display:none!important"><select class="form-select form-select-sm tableModeSelect" title="Режим таблицы" data-table-index="' + tableIndex + '" style="width:auto;min-width:120px">' +
             '<option value="edit">Редактирование</option><option value="read_only">Только просмотр</option><option value="hide">Скрыть</option></select></div></div>' +
             '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +
-            '<div class="d-flex align-items-start mb-3 gridTopRowInSection d-none"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-1 tableTitleTextInSection" data-placeholder="Название таблицы"></h4><p class="text-muted small mb-0 tableDescriptionTextInSection" data-placeholder="Описание"></p></div><button type="button" class="btn btn-outline-danger btnDeleteTableInSection d-none ms-auto" title="Удалить таблицу" aria-label="Удалить таблицу"><i class="iconoir-trash"></i></button></div>' +
-            '<div class="d-flex align-items-center gap-2 searchFilterRowInSection d-none mb-2"><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button><div class="filterDropdownInSection"><div class="filterDropdownCardInSection filterPanelInSection"><div class="filterDropdownRowsContainerInSection"></div><a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a><div class="d-flex justify-content-end gap-2 mt-3"><button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button><button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button></div></div></div></div>' +
-            '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="table table-sm border-dashed datatable datatable-table mb-0 entityTableInSection entity-table-section-table">' +
-            '<thead class="table-light entity-table-grid-head"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
-            '<div class="entity-table-loading emptyBlockInSection" role="button" tabindex="0" title="Нажмите, чтобы выбрать сущности и поля"><p class="text-muted mb-0">Нажмите, чтобы выбрать сущности и поля</p></div>' +
+            '<div class="d-flex align-items-center gap-2 flex-wrap gridTopRowInSection searchFilterRowInSection table-title-search-row d-none mb-2"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-0 tableTitleTextInSection" data-placeholder="Название таблицы"></h4></div><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button><div class="filterDropdownInSection"><div class="filterDropdownCardInSection filterPanelInSection"><div class="filterDropdownRowsContainerInSection"></div><a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a><div class="d-flex justify-content-end gap-2 mt-3"><button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button><button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button></div></div></div></div>' +
+            '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="' + tableCls + '">' +
+            (hasCaption ? captionHtml : '') + '<thead class="' + theadCls + '"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
             '<div class="datatable-bottom paginationBlockInSection d-none"><div class="pagination-left-in-section d-flex align-items-center flex-wrap gap-2"><span class="datatable-info small text-muted paginationInfoInSection">Показано 0 — 0 из 0 записей</span><span class="small text-muted">На странице:</span><select class="datatable-input pageSizeInSection" style="width:70px;"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></div><nav class="datatable-pagination paginationNavInSection" aria-label="Пагинация таблицы"></nav></div></div>';
+    }
+
+    /** Report card section HTML: title, main value, secondary, icon; settings on double-click, delete in modal */
+    function createCardSectionHtml(cardIndex) {
+        var st = tableStates[cardIndex];
+        var icon = (st && st.icon) ? st.icon : 'iconoir-activity';
+        var iconClass = 'bg-primary-subtle text-primary';
+        return '<div class="entity-report-card-section" data-card-index="' + cardIndex + '" role="button" tabindex="0" title="Двойной клик — настройки">' +
+            '<div class="card report-card">' +
+            '<div class="card-body">' +
+            '<div class="row d-flex justify-content-center align-items-center">' +
+            '<div class="col">' +
+            '<p class="report-card-title text-dark mb-0"></p>' +
+            '<h3 class="report-card-main-value my-1 fs-20">—</h3>' +
+            '<p class="report-card-secondary-value text-muted mb-0"></p>' +
+            '</div>' +
+            '<div class="col-auto align-self-center">' +
+            '<div class="report-card-icon-wrap ' + iconClass + '"><i class="' + icon + ' fs-4"></i></div>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
     }
 
     function ensureSections() {
         if (!entityTablesContainer) return;
-        var existing = entityTablesContainer.querySelectorAll('.entity-table-section').length;
+        var sectionNodes = [].slice.call(entityTablesContainer.children).filter(function(c) {
+            return c.classList && (c.classList.contains('entity-table-section') || c.classList.contains('entity-report-card-section'));
+        });
+        var existing = sectionNodes.length;
         for (var i = existing; i < tableStates.length; i++) {
+            var st = tableStates[i];
             var div = document.createElement('div');
-            div.innerHTML = createSectionHtml(i);
+            div.innerHTML = (st.type === 'card') ? createCardSectionHtml(i) : createSectionHtml(i);
+            var errEl = document.getElementById('entityTablesError');
+            if (errEl && errEl.parentNode === entityTablesContainer) errEl.classList.add('d-none');
             entityTablesContainer.appendChild(div.firstElementChild);
         }
-        while (entityTablesContainer.querySelectorAll('.entity-table-section').length > tableStates.length) {
-            var allSections = entityTablesContainer.querySelectorAll('.entity-table-section');
-            var last = allSections[allSections.length - 1];
-            if (last && last.parentNode) last.parentNode.removeChild(last);
+        for (var s = 0; s < 100; s++) {
+            sectionNodes = [].slice.call(entityTablesContainer.children).filter(function(c) {
+                return c.classList && (c.classList.contains('entity-table-section') || c.classList.contains('entity-report-card-section'));
+            });
+            if (sectionNodes.length <= tableStates.length) break;
+            if (sectionNodes[sectionNodes.length - 1]) sectionNodes[sectionNodes.length - 1].remove();
         }
-        entityTablesContainer.querySelectorAll('.entity-table-section').forEach(function(section, idx) {
-            section.setAttribute('data-table-index', String(idx));
-            var modeSel = section.querySelector('.tableModeSelect');
-            if (modeSel) modeSel.setAttribute('data-table-index', String(idx));
+        sectionNodes = [].slice.call(entityTablesContainer.children).filter(function(c) {
+            return c.classList && (c.classList.contains('entity-table-section') || c.classList.contains('entity-report-card-section'));
         });
-        var n = tableStates.length;
-        entityTablesContainer.style.gridTemplateColumns = n === 1 ? '1fr' : 'repeat(' + n + ', 1fr)';
+        for (var idx = 0; idx < sectionNodes.length; idx++) {
+            var section = sectionNodes[idx];
+            if (section.classList.contains('entity-report-card-section')) {
+                section.setAttribute('data-card-index', String(idx));
+            } else {
+                section.setAttribute('data-table-index', String(idx));
+                var modeSel = section.querySelector('.tableModeSelect');
+                if (modeSel) modeSel.setAttribute('data-table-index', String(idx));
+            }
+        }
+        syncRowBreaks();
         bindSectionListeners();
+        bindSectionDragDrop();
         renderComponentModesAdmin();
+    }
+
+    /** Insert row-break elements before sections that have startNewRow so layout shows custom rows; responsive wrap unchanged. */
+    function syncRowBreaks() {
+        if (!entityTablesContainer) return;
+        entityTablesContainer.querySelectorAll('.entity-table-row-break').forEach(function(el) { el.remove(); });
+        var sectionNodes = [].slice.call(entityTablesContainer.children).filter(function(c) {
+            return c.classList && (c.classList.contains('entity-table-section') || c.classList.contains('entity-report-card-section'));
+        });
+        for (var i = 0; i < sectionNodes.length; i++) {
+            if (tableStates[i] && tableStates[i].startNewRow === true) {
+                var br = document.createElement('div');
+                br.className = 'entity-table-row-break';
+                br.setAttribute('aria-hidden', 'true');
+                entityTablesContainer.insertBefore(br, sectionNodes[i]);
+            }
+        }
+    }
+
+    function bindSectionDragDrop() {
+        if (!entityTablesContainer || isGuestUser()) return;
+        var sectionNodes = [].slice.call(entityTablesContainer.children).filter(function(c) {
+            return c.classList && (c.classList.contains('entity-table-section') || c.classList.contains('entity-report-card-section'));
+        });
+        var draggedIndex = null;
+        sectionNodes.forEach(function(section, idx) {
+            section.setAttribute('data-section-index', String(idx));
+            section.draggable = true;
+            section.classList.add('entity-section-draggable');
+        });
+        entityTablesContainer.querySelectorAll('.entity-table-section, .entity-report-card-section').forEach(function(section) {
+            section.ondragstart = function(e) {
+                var i = section.getAttribute('data-table-index');
+                if (i == null) i = section.getAttribute('data-card-index');
+                draggedIndex = i != null ? parseInt(i, 10) : -1;
+                e.dataTransfer.setData('text/plain', String(draggedIndex));
+                e.dataTransfer.effectAllowed = 'move';
+            };
+            section.ondragend = function() {
+                entityTablesContainer.querySelectorAll('.entity-drop-new-row').forEach(function(el) { el.classList.remove('entity-drop-new-row'); });
+            };
+            section.ondragover = function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                var rect = section.getBoundingClientRect();
+                var inLowerHalf = e.clientY >= rect.top + rect.height / 2;
+                if (inLowerHalf) section.classList.add('entity-drop-new-row'); else section.classList.remove('entity-drop-new-row');
+            };
+            section.ondragleave = function() { section.classList.remove('entity-drop-new-row'); };
+            section.ondrop = function(e) {
+                e.preventDefault();
+                section.classList.remove('entity-drop-new-row');
+                var toIdx = section.getAttribute('data-table-index');
+                if (toIdx == null) toIdx = section.getAttribute('data-card-index');
+                toIdx = toIdx != null ? parseInt(toIdx, 10) : -1;
+                if (draggedIndex < 0 || toIdx < 0 || draggedIndex === toIdx) return;
+                var rect = section.getBoundingClientRect();
+                var dropNewRow = e.clientY >= rect.top + rect.height / 2;
+                var state = tableStates.splice(draggedIndex, 1)[0];
+                tableStates.splice(toIdx, 0, state);
+                state.startNewRow = dropNewRow;
+                var sections = [].slice.call(entityTablesContainer.children).filter(function(c) {
+                    return c.classList && (c.classList.contains('entity-table-section') || c.classList.contains('entity-report-card-section'));
+                });
+                var fromEl = sections[draggedIndex];
+                var toEl = sections[toIdx];
+                if (fromEl && toEl && fromEl !== toEl) {
+                    if (toIdx < draggedIndex) entityTablesContainer.insertBefore(fromEl, toEl);
+                    else entityTablesContainer.insertBefore(fromEl, toEl.nextSibling || null);
+                }
+                ensureSections();
+                saveConfigToStorage();
+                saveConfig();
+            };
+        });
     }
 
     function bindSectionListeners() {
@@ -1547,12 +1755,6 @@ document.addEventListener('DOMContentLoaded', function() {
             var section = btn.closest('.entity-table-section');
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
             btn.onclick = function() { currentTableIndex = idx; openEntityModal(); };
-        });
-        entityTablesContainer.querySelectorAll('.emptyBlockInSection').forEach(function(block) {
-            var section = block.closest('.entity-table-section');
-            if (!section) return;
-            var idx = parseInt(section.getAttribute('data-table-index'), 10);
-            block.onclick = function() { currentTableIndex = idx; openEntityModal(); };
         });
         entityTablesContainer.querySelectorAll('.btnFieldsInSection').forEach(function(btn) {
             var section = btn.closest('.entity-table-section');
@@ -1589,11 +1791,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (tableStates[idx]) {
                     tableStates[idx].currentPage = 1;
                     loadData(idx);
-                    if (!isGuestUser()) {
-                        saveConfigToStorage();
-                        saveConfig();
-                        saveTemplateSnapshot(idx);
-                    }
                 }
                 closeFilterDropdown(idx);
             };
@@ -1606,6 +1803,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeFilterDropdown(idx);
             };
         });
+        if (entityTablesContainer && !entityTablesContainer._cardDblclickBound) {
+            entityTablesContainer._cardDblclickBound = true;
+            entityTablesContainer.addEventListener('dblclick', function(e) {
+                var section = e.target && e.target.closest && e.target.closest('.entity-report-card-section');
+                if (!section || isGuestUser()) return;
+                var idx = parseInt(section.getAttribute('data-card-index'), 10);
+                if (!isNaN(idx)) openAddCardModal(idx);
+            });
+        }
         var addFilterFieldInModalEl = document.getElementById('addFilterFieldInModal');
         if (addFilterFieldInModalEl) addFilterFieldInModalEl.onclick = function(e) {
             e.preventDefault();
@@ -1622,11 +1828,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (filterModalTableIndex != null && tableStates[filterModalTableIndex]) {
                 tableStates[filterModalTableIndex].currentPage = 1;
                 loadData(filterModalTableIndex);
-                if (!isGuestUser()) {
-                    saveConfigToStorage();
-                    saveConfig();
-                    saveTemplateSnapshot(filterModalTableIndex);
-                }
             }
             modalFilter.hide();
         };
@@ -1701,9 +1902,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(data) {
                 if (!data || !data.ok) { if (isDashboardSlug()) showDashboardLoadError(); else tryApplyStored(); return; }
                 if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
-                    currentConfigVersion = (data.config_version != null && !isNaN(parseInt(data.config_version, 10)))
-                        ? parseInt(data.config_version, 10)
-                        : 2;
                     var isDashboard = !!(data.read_only || isDashboardSlug());
                     tableStates = data.tables.map(function(t) {
                         var norm = normalizeEntitiesAndFields(t.entities || [], t.fields || []);
@@ -1714,6 +1912,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             selectedFields: norm.fields,
                             tableTitle: (t.table_title != null) ? String(t.table_title) : '',
                             tableDescription: (t.table_description != null) ? String(t.table_description) : '',
+                            tableStyle: (t.table_style && TABLE_STYLES[t.table_style]) ? t.table_style : 'hoverable_rows',
                             fullData: [],
                             allColumns: [],
                             currentPage: 1,
@@ -1723,12 +1922,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
                             sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
                             showTime: (t.show_time === true),
-                            dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
-                            guestFilterInitialized: false,
-                            filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
+                            dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {}
                         };
                     });
+                    var stored = loadConfigFromStorage();
+                    if (stored && stored.tables && Array.isArray(stored.tables)) {
+                        tableStates.forEach(function(st, i) {
+                            var s = stored.tables[i];
+                            if (s && s.table_style && TABLE_STYLES[s.table_style]) st.tableStyle = s.table_style;
+                        });
+                    }
                     ensureSections();
+                    tableStates.forEach(function(st, i) {
+                        applyTableStyleToSection(i);
+                    });
                     applyTableModes(data.table_modes);
                     tableStates.forEach(function(st, i) {
                         if (!isDashboard && (!st.columnWidths || !Object.keys(st.columnWidths).length)) st.columnWidths = loadColumnWidths(i);
@@ -1746,15 +1953,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 if (data.entities && Array.isArray(data.entities) && data.entities.length > 0) {
-                    currentConfigVersion = (data.config_version != null && !isNaN(parseInt(data.config_version, 10)))
-                        ? parseInt(data.config_version, 10)
-                        : 2;
                     var norm = normalizeEntitiesAndFields(data.entities, data.fields || []);
                     tableStates = [{
                         selectedEntities: norm.entities,
                         selectedFields: norm.fields,
                         tableTitle: (data.table_title != null) ? String(data.table_title) : '',
                         tableDescription: (data.table_description != null) ? String(data.table_description) : '',
+                        tableStyle: (data.table_style && TABLE_STYLES[data.table_style]) ? data.table_style : 'hoverable_rows',
                         fullData: [],
                         allColumns: [],
                         currentPage: 1,
@@ -1763,11 +1968,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
                         sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
                         showTime: (data.show_time === true),
-                        dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {},
-                        guestFilterInitialized: false,
-                        filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
+                        dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {}
                     }];
                     ensureSections();
+                    applyTableStyleToSection(0);
                     applyTableModes(data.table_modes);
                     updateUI(0);
                     loadFieldsThenData(0, false);
@@ -1785,10 +1989,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     showDashboardLoadError();
                     return;
                 }
-                tableStates = [defaultTableState()];
+                tableStates = [];
                 ensureSections();
                 applyTableModes(data.table_modes);
-                updateUI(0);
                 isReadOnly = isGuestUser();
                 currentPageMode = (data.page_mode || 'edit').toLowerCase();
                 currentTableModes = data.table_modes && typeof data.table_modes === 'object' ? Object.assign({}, data.table_modes) : {};
@@ -1802,13 +2005,12 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(function() { if (isDashboardSlug()) showDashboardLoadError(); else tryApplyStored(); });
 
         function showDashboardLoadError() {
-            tableStates = [defaultTableState()];
+            tableStates = [];
             ensureSections();
-            updateUI(0);
             isReadOnly = isGuestUser();
             applyReadOnlyMode();
-            var msg = document.querySelector('.emptyBlockInSection p');
-            if (msg) msg.textContent = 'Не удалось загрузить дэшборд. Проверьте подключение или обновите страницу.';
+            var errEl = document.getElementById('entityTablesError');
+            if (errEl) { errEl.classList.remove('d-none'); errEl.textContent = 'Не удалось загрузить дэшборд. Проверьте подключение или обновите страницу.'; }
         }
 
         function tryApplyStored() {
@@ -1818,9 +2020,8 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (stored) {
                 applyConfig(stored, false);
             } else {
-                tableStates = [defaultTableState()];
+                tableStates = [];
                 ensureSections();
-                updateUI(0);
             }
             isReadOnly = isGuestUser();
             applyReadOnlyMode();
@@ -1829,15 +2030,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function saveConfig(opts) {
         opts = opts || {};
-        // Guest/anonymous users must never persist shared server config.
-        if (isGuestUser()) return Promise.resolve();
         var slug = getPageSlug();
-        var tables = tableStates.map(function(st, i) {
-            var keys = (st.allColumns && st.allColumns.length) ? st.allColumns.map(function(c) { return c.key; }) : [];
-            if (!keys.length) keys = getColumnKeysFromSection(i);
+            var tables = tableStates.map(function(st, i) {
+            if (st.type === 'card' && window.EntityCard && typeof window.EntityCard.serializeCardState === 'function') {
+                return window.EntityCard.serializeCardState(st);
+            }
+            if (st.type === 'card') {
+                return {
+                    type: 'card',
+                    card_title: st.cardTitle,
+                    icon: st.icon || 'iconoir-activity',
+                    entities: st.selectedEntities,
+                    fields: st.selectedFields,
+                    filter_fields: (st.filterFields && st.filterFields.length) ? st.filterFields : [],
+                    main_formula: st.mainFormula || { aggregate: 'count', fieldKey: null },
+                    secondary_formula: st.secondaryFormula || null,
+                    start_new_row: (st.startNewRow === true)
+                };
+            }
+            var keys = getColumnKeysFromSection(i);
+            if (!keys.length && st.allColumns && st.allColumns.length) keys = st.allColumns.map(function(c) { return c.key; });
             return {
+                type: 'table',
                 table_title: st.tableTitle,
                 table_description: st.tableDescription,
+                table_style: st.tableStyle || 'hoverable_rows',
                 entities: st.selectedEntities,
                 fields: st.selectedFields,
                 column_order: keys.length ? keys : null,
@@ -1846,16 +2063,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 sort_dir: st.sortDir || null,
                 show_time: (st.showTime === true),
                 date_time_display: (st.dateTimeDisplayByColumn && Object.keys(st.dateTimeDisplayByColumn).length) ? st.dateTimeDisplayByColumn : null,
-                filter_fields: isGuestUser() ? null : serializeFilterFields(st.filterFields)
+                start_new_row: (st.startNewRow === true)
             };
         });
-        var payload = {
-            page_slug: slug,
-            config_version: currentConfigVersion || 2,
-            page_mode: (currentPageMode || 'edit'),
-            table_modes: (currentTableModes && typeof currentTableModes === 'object') ? currentTableModes : {},
-            tables: tables
-        };
+        var payload = { page_slug: slug, tables: tables };
         var fetchOpts = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1876,10 +2087,40 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function saveConfigBeforeUnload() {
-        if (isGuestUser()) return;
         if (!tableStates.some(function(st) { return st.selectedEntities.length > 0; })) return;
         saveConfigToStorage();
         saveConfig({ keepalive: true });
+    }
+
+    /** Apply table style (classes + caption) to section DOM based on st.tableStyle */
+    function applyTableStyleToSection(tableIndex) {
+        var st = tableStates[tableIndex];
+        if (!st) return;
+        var els = getSectionEls(tableIndex);
+        var section = els.section;
+        if (!section) return;
+        var tableEl = section.querySelector('.entity-table-grid-wrap table');
+        var theadEl = section.querySelector('.entity-table-grid-head');
+        if (!tableEl || !theadEl) return;
+        var styleKey = st.tableStyle || 'hoverable_rows';
+        var s = TABLE_STYLES[styleKey] || TABLE_STYLES.default;
+        var tableCls = (s.tableClass || '') + ' datatable datatable-table entityTableInSection entity-table-section-table';
+        tableEl.className = tableCls;
+        theadEl.className = (s.theadClass || '') + ' entity-table-grid-head';
+        var captionEl = tableEl.querySelector('caption.entity-table-caption');
+        if (s.caption) {
+            var captionText = (st.tableDescription && String(st.tableDescription).trim()) ? st.tableDescription.trim() : 'Данные таблицы';
+            if (captionEl) {
+                captionEl.textContent = captionText;
+            } else {
+                var cap = document.createElement('caption');
+                cap.className = 'entity-table-caption';
+                cap.textContent = captionText;
+                tableEl.insertBefore(cap, tableEl.firstChild);
+            }
+        } else if (captionEl) {
+            captionEl.remove();
+        }
     }
 
     function updateTableTitleBlock(tableIndex) {
@@ -1888,17 +2129,13 @@ document.addEventListener('DOMContentLoaded', function() {
         var els = getSectionEls(tableIndex);
         if (!els.tableTitleBlock) return;
         var titleText = (st.tableTitle && String(st.tableTitle).trim()) || '';
-        var descText = (st.tableDescription && String(st.tableDescription).trim()) || '';
         if (els.tableTitleText) {
             els.tableTitleText.textContent = titleText || els.tableTitleText.getAttribute('data-placeholder') || 'Название таблицы';
             els.tableTitleText.classList.toggle('text-muted', !titleText);
         }
-        if (els.tableDescriptionText) {
-            els.tableDescriptionText.textContent = descText || els.tableDescriptionText.getAttribute('data-placeholder') || 'Описание';
-            els.tableDescriptionText.classList.toggle('text-muted', !descText);
-        }
         var gridHidden = !els.gridBlock || els.gridBlock.classList.contains('d-none');
         els.tableTitleBlock.classList.toggle('d-none', gridHidden);
+        applyTableStyleToSection(tableIndex);
     }
 
     /** API может возвращать type: "entity" или "crm_entity" — оба считаем смарт-процессами. */
@@ -2070,10 +2307,6 @@ document.addEventListener('DOMContentLoaded', function() {
         var columnKey = th.getAttribute('data-column-key');
         var st = tableIndex != null ? tableStates[tableIndex] : null;
         var explicitWidth = st && st.columnWidths && columnKey != null ? st.columnWidths[columnKey] : null;
-        if (!explicitWidth || explicitWidth < MIN_CONTENT_SAFE_WIDTH) {
-            span.textContent = short;
-            return;
-        }
         span.textContent = full;
         if (th.scrollWidth > th.clientWidth) span.textContent = short;
     }
@@ -2081,6 +2314,21 @@ document.addEventListener('DOMContentLoaded', function() {
         var st = tableStates[currentTableIndex];
         if (!st || !st.selectedEntities.length) return;
         var isFilterMode = (fieldsModalForFilterTableIndex != null);
+        var tableStyleSelect = document.getElementById('tableStyleSelect');
+        if (tableStyleSelect && TABLE_STYLES[st.tableStyle]) tableStyleSelect.value = st.tableStyle;
+        var entityLabel = document.getElementById('settingsModalEntityLabel');
+        if (entityLabel) entityLabel.textContent = st.selectedEntities.length ? st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ') : '—';
+        var descField = document.getElementById('settingsModalTableDescription');
+        if (descField) descField.value = (st.tableDescription && String(st.tableDescription).trim()) ? st.tableDescription.trim() : '';
+        var settingsTab = document.querySelector('#modalFields [href="#settingsTabPane"]');
+        var settingsPane = document.getElementById('settingsTabPane');
+        if (settingsTab && settingsPane) {
+            if (isFilterMode) {
+                settingsTab.closest('.nav-item').classList.add('d-none');
+            } else {
+                settingsTab.closest('.nav-item').classList.remove('d-none');
+            }
+        }
         var nestedRow = document.getElementById('nestedCheckboxesRow');
         if (nestedRow) nestedRow.innerHTML = '';
         fieldsList.innerHTML = '';
@@ -2263,7 +2511,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (fieldsModalForFilterTableIndex != null) {
             var st = tableStates[fieldsModalForFilterTableIndex];
             if (!st) { fieldsModalForFilterTableIndex = null; fieldsModalForFilterSource = null; return; }
-            var filterCfgTableIndex = fieldsModalForFilterTableIndex;
             var existingKeys = {};
             (st.filterFields || []).forEach(function(f) {
                 var fk = String((f && f.key) || '').trim().toLowerCase();
@@ -2288,9 +2535,6 @@ document.addEventListener('DOMContentLoaded', function() {
             modalFields.hide();
             filterModalTableIndex = fieldsModalForFilterTableIndex;
             loadData(fieldsModalForFilterTableIndex);
-            saveConfigToStorage();
-            saveConfig({ force: true });
-            saveTemplateSnapshot(filterCfgTableIndex);
             if (fieldsModalForFilterSource === 'modal') {
                 openFilterModal(fieldsModalForFilterTableIndex);
             } else {
@@ -2315,7 +2559,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var k = cb.getAttribute('data-entitykey');
             var ht = cb.getAttribute('data-human-title');
             var nt = (cb.getAttribute('data-nested-type') || '').trim();
-            if (k && ht && byKey[k] && !nt) byKey[k].push(ht);
+            if (k && ht && byKey[k]) byKey[k].push(ht);
             if (k && nt && activeNestedByKey[k] && activeNestedByKey[k].indexOf(nt) < 0) activeNestedByKey[k].push(nt);
             if (k && nt && ht && nestedFieldsByKey[k]) {
                 if (!nestedFieldsByKey[k][nt]) nestedFieldsByKey[k][nt] = [];
@@ -2326,14 +2570,32 @@ document.addEventListener('DOMContentLoaded', function() {
             var k = entityKey(e);
             return { entityKey: k, human_titles: byKey[k] || [], activeNestedTypes: activeNestedByKey[k] || [], nestedFields: nestedFieldsByKey[k] || {} };
         });
+        var tableStyleSelect = document.getElementById('tableStyleSelect');
+        if (tableStyleSelect && TABLE_STYLES[tableStyleSelect.value]) {
+            st.tableStyle = tableStyleSelect.value;
+            applyTableStyleToSection(currentTableIndex);
+        }
+        var descField = document.getElementById('settingsModalTableDescription');
+        if (descField) st.tableDescription = (descField.value && String(descField.value).trim()) ? descField.value.trim() : '';
+        updateTableTitleBlock(currentTableIndex);
         clearColumnOrderForTable(currentTableIndex);
-        saveConfig({ force: true });
+        clearColumnWidthsForTable(currentTableIndex);
+        saveConfig();
         saveConfigToStorage();
         loadData(currentTableIndex);
         modalFields.hide();
         // Автосохранение шаблона на сервере (общий для всех пользователей) после выбора полей
         saveTemplateSnapshot(currentTableIndex);
     });
+
+    var settingsModalDeleteTableBtn = document.getElementById('settingsModalDeleteTableBtn');
+    if (settingsModalDeleteTableBtn) {
+        settingsModalDeleteTableBtn.addEventListener('click', function() {
+            var idx = currentTableIndex;
+            modalFields.hide();
+            deleteTableAtIndex(idx);
+        });
+    }
 
     function loadFieldsThenData(tableIndex, openModalIfNoFields) {
         if (openModalIfNoFields === undefined) openModalIfNoFields = true;
@@ -2486,6 +2748,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadData(tableIndex, skipMetaWarmup, skipEntityExpansion) {
         var st = tableStates[tableIndex];
         if (!st || !st.selectedEntities.length) return;
+        if (st.type === 'card') return;
         if (!skipMetaWarmup) {
             var missingMetaEntities = st.selectedEntities.filter(function(ent) {
                 return !fieldsCache[entityKey(ent)];
@@ -2593,10 +2856,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Keep them only under real smart entity to avoid duplicate columns.
             if (ent.type !== 'smart_process' && sel && sel.nestedFields && typeof sel.nestedFields === 'object') {
                 var mirroredNorm = {};
-                var explicitMainNorm = {};
-                (sel.human_titles || []).forEach(function(t) {
-                    explicitMainNorm[normalizeSearchText(t)] = true;
-                });
                 Object.keys(sel.nestedFields).forEach(function(typ) {
                     var typBase = String(typ || '').split('::')[0].toLowerCase();
                     if (typBase !== 'smart_process' && typBase !== 'contact' && typBase !== 'lead' && typBase !== 'company') return;
@@ -2617,8 +2876,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 if (Object.keys(mirroredNorm).length) {
                     displayTitles = displayTitles.filter(function(t) {
-                        var n = normalizeSearchText(t);
-                        return !mirroredNorm[n] || !!explicitMainNorm[n];
+                        return !mirroredNorm[normalizeSearchText(t)];
                     });
                 }
             }
@@ -2636,39 +2894,19 @@ document.addEventListener('DOMContentLoaded', function() {
             var cache = fieldsCache[key];
             displayTitles.forEach(function(title) {
                 var aliases = [];
-                var titleNorm = normalizeFieldLabel(title);
-                var titleSearch = normalizeSearchText(title);
                 if (cache && cache.fields && Array.isArray(cache.fields)) {
-                    var exactMetaMatches = [];
-                    var fuzzyMetaMatches = [];
                     cache.fields.forEach(function(meta) {
                         if (!meta) return;
                         var ht = String(meta.human_title || '').trim();
                         if (!ht) return;
-                        var htNorm = normalizeFieldLabel(ht);
-                        var htSearch = normalizeSearchText(ht);
-                        var exact = (htNorm === titleNorm);
-                        var fuzzy = (!exact) && (
-                            (htSearch && titleSearch && (htSearch.indexOf(titleSearch) >= 0 || titleSearch.indexOf(htSearch) >= 0)) ||
-                            (htNorm && titleNorm && (htNorm.indexOf(titleNorm) >= 0 || titleNorm.indexOf(htNorm) >= 0))
-                        );
-                        if (exact) exactMetaMatches.push(meta);
-                        else if (fuzzy) fuzzyMetaMatches.push(meta);
-                    });
-                    var candidateMetas = exactMetaMatches.length ? exactMetaMatches : fuzzyMetaMatches;
-                    candidateMetas.forEach(function(meta) {
+                        if (normalizeSearchText(ht) !== normalizeSearchText(title)) return;
                         var cn = String(meta.column_name || '').trim();
                         var b24 = String(meta.b24_field || '').trim();
                         if (cn && aliases.indexOf(cn) < 0) aliases.push(cn);
                         if (b24 && aliases.indexOf(b24) < 0) aliases.push(b24);
                     });
                 }
-                if (aliases.length) {
-                    aliases.forEach(function(a) {
-                        if (a && fetchTitles.indexOf(a) < 0) fetchTitles.push(a);
-                    });
-                    selectedFieldMaps.push({ title: title, aliases: aliases });
-                }
+                if (aliases.length) selectedFieldMaps.push({ title: title, aliases: aliases });
             });
             var extraFilterTitles = filterTitlesByEntityKey[key] || [];
             extraFilterTitles.forEach(function(t) {
@@ -2827,6 +3065,122 @@ document.addEventListener('DOMContentLoaded', function() {
             showLoading(tableIndex, false);
             console.error(err);
         });
+    }
+
+    /** Compute aggregate (count/sum/avg/min/max) over rows for card report. fieldKey is entityKey::title. */
+    function computeAggregate(rows, formula, rowKeys) {
+        if (!rows || !rows.length) return null;
+        var agg = (formula && formula.aggregate) ? formula.aggregate : 'count';
+        if (agg === 'count') return rows.length;
+        var fieldKey = (formula && formula.fieldKey) ? formula.fieldKey : null;
+        if (!fieldKey || !rowKeys || rowKeys.indexOf(fieldKey) < 0) return rows.length;
+        var nums = [];
+        rows.forEach(function(r) {
+            var v = r[fieldKey];
+            if (v == null || v === '') return;
+            if (typeof v === 'number' && !isNaN(v)) { nums.push(v); return; }
+            var s = String(v).trim().replace(/\s/g, '').replace(',', '.');
+            var n = parseFloat(s);
+            if (!isNaN(n)) nums.push(n);
+        });
+        if (nums.length === 0) return null;
+        if (agg === 'sum') return nums.reduce(function(a, b) { return a + b; }, 0);
+        if (agg === 'avg') return nums.reduce(function(a, b) { return a + b; }, 0) / nums.length;
+        if (agg === 'min') return Math.min.apply(null, nums);
+        if (agg === 'max') return Math.max.apply(null, nums);
+        return null;
+    }
+
+    function loadCardData(cardIndex) {
+        var st = tableStates[cardIndex];
+        if (!st || st.type !== 'card') {
+            if (st && st.type === 'card') updateCardUI(cardIndex);
+            return;
+        }
+        if (window.EntityCard && typeof window.EntityCard.loadCardData === 'function') {
+            window.EntityCard.loadCardData(cardIndex);
+            return;
+        }
+        if (!st.selectedEntities.length) {
+            updateCardUI(cardIndex);
+            return;
+        }
+        var ent = st.selectedEntities[0];
+        var key = entityKey(ent);
+        var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
+        var titles = (sel && sel.human_titles && sel.human_titles.length) ? sel.human_titles : [];
+        if (titles.length === 0) {
+            st.fullData = [];
+            updateCardUI(cardIndex);
+            return;
+        }
+        var filterFieldMaps = [];
+        var cache = fieldsCache[key];
+        if (cache && cache.fields && Array.isArray(cache.fields)) {
+            (st.filterFields || []).forEach(function(f) {
+                if (!f || !f.label) return;
+                var ht = String(f.label || '').trim();
+                var aliases = [];
+                cache.fields.forEach(function(meta) {
+                    if (!meta) return;
+                    if (normalizeSearchText(String(meta.human_title || '')) === normalizeSearchText(ht)) {
+                        var cn = String(meta.column_name || '').trim();
+                        var b24 = String(meta.b24_field || '').trim();
+                        if (cn && aliases.indexOf(cn) < 0) aliases.push(cn);
+                        if (b24 && aliases.indexOf(b24) < 0) aliases.push(b24);
+                    }
+                });
+                if (aliases.length) filterFieldMaps.push({ title: ht, aliases: aliases });
+            });
+        }
+        fetchPage(ent, titles, key, 0, 10000, filterFieldMaps).then(function(res) {
+            var rows = res.rows || [];
+            if (st.filterFields && st.filterFields.length) {
+                rows = rows.filter(function(row) {
+                    return st.filterFields.every(function(f) {
+                        if (!f.label) return true;
+                        var targetKey = key + '::' + f.label;
+                        var val = row[targetKey];
+                        if (f.selectedValues && f.selectedValues.length) return f.selectedValues.some(function(sv) { return String(val) === String(sv); });
+                        if (f.value != null && String(f.value).trim() !== '') return String(val || '').toLowerCase().indexOf(String(f.value).trim().toLowerCase()) >= 0;
+                        return true;
+                    });
+                });
+            }
+            st.fullData = rows;
+            var rowKeys = rows.length ? Object.keys(rows[0]) : [];
+            var mainVal = computeAggregate(rows, st.mainFormula, rowKeys);
+            var secVal = (st.secondaryFormula && (st.secondaryFormula.aggregate || st.secondaryFormula.fieldKey)) ? computeAggregate(rows, st.secondaryFormula, rowKeys) : null;
+            var els = getSectionEls(cardIndex);
+            if (els.mainValueEl) els.mainValueEl.textContent = (mainVal != null) ? (typeof mainVal === 'number' && (mainVal % 1 !== 0 || mainVal > 1e9) ? mainVal.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : mainVal) : '—';
+            if (els.secondaryValueEl) {
+                if (secVal != null) els.secondaryValueEl.textContent = (st.secondaryFormula && st.secondaryFormula.label) ? (st.secondaryFormula.label + ': ' + secVal) : String(secVal);
+                else els.secondaryValueEl.textContent = (st.secondaryFormula && st.secondaryFormula.label) ? st.secondaryFormula.label : '';
+            }
+        }).catch(function() {
+            var els = getSectionEls(cardIndex);
+            if (els.mainValueEl) els.mainValueEl.textContent = '—';
+            if (els.secondaryValueEl) els.secondaryValueEl.textContent = '';
+        });
+    }
+
+    function updateCardUI(cardIndex) {
+        var st = tableStates[cardIndex];
+        if (!st || st.type !== 'card') return;
+        if (window.EntityCard && typeof window.EntityCard.updateCardUI === 'function') {
+            window.EntityCard.updateCardUI(cardIndex);
+            return;
+        }
+        var els = getSectionEls(cardIndex);
+        if (!els.section) return;
+        if (els.cardTitleEl) els.cardTitleEl.textContent = (st.cardTitle && st.cardTitle.trim()) ? st.cardTitle.trim() : 'Карточка';
+        if (els.iconEl) {
+            els.iconEl.className = (st.icon || 'iconoir-activity') + ' fs-4';
+        }
+        if (els.iconWrap) {
+            els.iconWrap.className = 'report-card-icon-wrap bg-primary-subtle text-primary';
+        }
+        loadCardData(cardIndex);
     }
 
     /** Восстанавливает allColumns из selectedEntities/selectedFields, если колонки потеряны. */
@@ -3078,6 +3432,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderGrid(tableIndex) {
         var st = tableStates[tableIndex];
         if (!st) return;
+        if (st.type === 'card') return;
         if (st.fullData && st.fullData.length > 0) {
             if (!st.allColumns || st.allColumns.length === 0) {
                 rebuildAllColumnsFromSelectedFields(tableIndex);
@@ -3127,7 +3482,8 @@ document.addEventListener('DOMContentLoaded', function() {
             var sortIcon = '';
             if (st.sortKey === c.key) sortIcon = (st.sortDir === 'asc') ? '&#9650;' : (st.sortDir === 'desc' ? '&#9660;' : '');
             var w = st.columnWidths[c.key];
-            var style = (w && w >= MIN_COL_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
+            /* Apply saved width even if smaller than content so user can narrow columns; content truncates with ellipsis. */
+            var style = (w != null && w >= MIN_COL_WIDTH) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
             var isDateColumn = isLikelyDateColumn(st, c);
             var showTime = isTimeVisibleForColumn(st, c.key);
             var timeToggle = isDateColumn
@@ -3198,7 +3554,6 @@ document.addEventListener('DOMContentLoaded', function() {
         els.gridHead.querySelectorAll('th[data-column-key]').forEach(function(th) {
             th.onclick = null;
             th.onclick = function(e) {
-                if (Date.now() < suppressHeaderSortUntil) return;
                 if (e.target && e.target.closest && e.target.closest('.entity-table-col-resize')) return;
                 if (e.target && e.target.closest && e.target.closest('.entity-table-time-toggle')) return;
                 var key = th.getAttribute('data-column-key');
@@ -3216,7 +3571,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 st.currentPage = 1;
                 saveConfigToStorage();
-                saveConfig({ force: true });
+                saveConfig();
                 renderGrid(tableIndex);
             };
         });
@@ -3231,7 +3586,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!st.dateTimeDisplayByColumn || typeof st.dateTimeDisplayByColumn !== 'object') st.dateTimeDisplayByColumn = {};
                 st.dateTimeDisplayByColumn[key] = !isTimeVisibleForColumn(st, key);
                 saveConfigToStorage();
-                saveConfig({ force: true });
+                saveConfig();
                 renderGrid(tableIndex);
             };
         });
@@ -3258,8 +3613,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.removeEventListener('mouseup', onUp);
                     document.body.style.userSelect = '';
                     document.body.style.cursor = '';
-                    // Prevent accidental sort click right after resize drag end
-                    suppressHeaderSortUntil = Date.now() + 250;
                     saveColumnWidths();
                     updateThLabelByWidth(th);
                 }
@@ -3345,10 +3698,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     (function setupAddTableGrid() {
-        var btn = document.getElementById('btnAddTableBlock');
         var modalEl = document.getElementById('modalInsertTableGrid');
         var gridEl = document.getElementById('insertTableGrid');
-        if (!btn || !modalEl || !gridEl) return;
+        if (!modalEl || !gridEl) return;
         var modal = new bootstrap.Modal(modalEl);
         var GRID_ROWS = 3;
         var GRID_COLS = 3;
@@ -3372,9 +3724,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     cell.setAttribute('tabindex', disabled ? '-1' : '0');
                     if (isOccupied) {
                         var st = tableStates[idx];
-                        var label = (st && st.tableTitle && st.tableTitle.trim()) ? st.tableTitle.trim() : (st && st.selectedEntities && st.selectedEntities[0]) ? (st.selectedEntities[0].title || st.selectedEntities[0].type || '') : '';
+                        var isCard = st && st.type === 'card';
+                        var label = isCard ? (st.cardTitle && st.cardTitle.trim()) ? st.cardTitle.trim() : 'Карточка' : (st && st.tableTitle && st.tableTitle.trim()) ? st.tableTitle.trim() : (st && st.selectedEntities && st.selectedEntities[0]) ? (st.selectedEntities[0].title || st.selectedEntities[0].type || '') : '';
                         if (label.length > 20) label = label.slice(0, 17) + '…';
-                        cell.setAttribute('title', label ? ('Таблица ' + (idx + 1) + ': ' + label) : ('Таблица ' + (idx + 1)));
+                        cell.setAttribute('title', label ? ((isCard ? 'Карточка ' : 'Таблица ') + (idx + 1) + ': ' + label) : ((isCard ? 'Карточка ' : 'Таблица ') + (idx + 1)));
                         cell.innerHTML = '<span class="cell-placeholder cell-occupied">' + (idx + 1) + '</span>';
                     } else {
                         cell.innerHTML = '<span class="cell-placeholder">' + (disabled ? '—' : '+') + '</span>';
@@ -3410,15 +3763,48 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        btn.addEventListener('click', function() {
+        window.openInsertTableGrid = function() {
             if (tableStates.length >= MAX_CELLS) {
-                alert('Достигнут максимум таблиц на странице (' + MAX_CELLS + ').');
+                alert('Достигнут максимум виджетов на странице (' + MAX_CELLS + ').');
                 return;
             }
             renderInsertModalGrid();
             modal.show();
-        });
+        };
     })();
+
+    (function setupAddTableOrCardChoice() {
+        var choiceModalEl = document.getElementById('modalAddTableOrCard');
+        var topbarWrap = document.getElementById('topbarBtnAddEntityWrap');
+        var topbarBtn = document.getElementById('topbarBtnAddEntity');
+        var btnChoiceTable = document.getElementById('btnChoiceTable');
+        var btnChoiceCard = document.getElementById('btnChoiceCard');
+        if (!choiceModalEl) return;
+        var choiceModal = new bootstrap.Modal(choiceModalEl);
+        if (topbarWrap && topbarBtn) {
+            topbarWrap.classList.remove('d-none');
+            topbarWrap.style.display = '';
+            topbarBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (isGuestUser()) return;
+                choiceModal.show();
+            });
+        }
+        if (btnChoiceTable) {
+            btnChoiceTable.addEventListener('click', function() {
+                choiceModal.hide();
+                if (typeof window.openInsertTableGrid === 'function') window.openInsertTableGrid();
+            });
+        }
+        if (btnChoiceCard) {
+            btnChoiceCard.addEventListener('click', function() {
+                choiceModal.hide();
+                if (typeof window.openAddCardModal === 'function') window.openAddCardModal(null);
+            });
+        }
+    })();
+
+    /* Card add/edit modal and logic moved to partial entity_card_modal.html + entity-card-widget.js; window.openAddCardModal is set by that script. */
 
     // --- Шаблоны: с сервера (общие для всех), выпадающий список по кнопке «Шаблоны» ---
     function loadTemplates() {
@@ -3523,9 +3909,29 @@ document.addEventListener('DOMContentLoaded', function() {
     isReadOnly = isGuestUser();
     applyReadOnlyMode();
     loadConfig();
-    ensureSections();
+    /* ensureSections() is called inside loadConfig() / applyConfig() / tryApplyStored() / showDashboardLoadError() */
 
     window.addEventListener('beforeunload', saveConfigBeforeUnload);
+
+    // Dependencies for entity-card-widget.js (BI-style card: separate data config per main/secondary value)
+    window.__cardDeps = {
+        getTableStates: function() { return tableStates; },
+        entityKey: entityKey,
+        fetchPage: fetchPage,
+        getSectionEls: getSectionEls,
+        ensureSections: ensureSections,
+        saveConfigToStorage: saveConfigToStorage,
+        saveConfig: saveConfig,
+        deleteTableAtIndex: deleteTableAtIndex,
+        loadEntitiesList: loadEntitiesList,
+        loadFieldsForEntity: loadFieldsForEntity,
+        normalizeEntitiesAndFields: normalizeEntitiesAndFields,
+        getFieldsCache: function() { return fieldsCache; },
+        getEntitiesList: function() { return entitiesList; },
+        API: API,
+        getPageSlug: getPageSlug
+    };
 });
 </script>
+<script src="{{ config.ASSETS_ROOT }}/js/entity-card-widget.js"></script>
 {% endblock %}
