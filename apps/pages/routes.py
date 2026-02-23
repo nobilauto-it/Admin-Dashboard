@@ -327,14 +327,11 @@ def create_page():
     # Шаблон с виджетом таблицы сущностей (кнопка «+», модалки, грид) или пустая страница
     widget_source = PAGES_DIR / "_entity_table_widget_source.html"
     if widget_source.exists():
-        try:
-            template_content = widget_source.read_text(encoding="utf-8")
-        except Exception as exc:
-            current_app.logger.warning(f"Не удалось прочитать шаблон виджета: {exc}")
-            template_content = None
+        template_content = """{% extends 'pages/_entity_table_widget_source.html' %}
+
+{% block title %}__PAGE_TITLE__{% endblock %}
+"""
     else:
-        template_content = None
-    if not template_content:
         template_content = """{% extends 'layouts/vertical.html' %}
 
 {% block title %}__PAGE_TITLE__{% endblock %}
@@ -348,7 +345,7 @@ def create_page():
 </div>
 {% endblock %}
 """
-    template_content = template_content.replace("__PAGE_TITLE__", page_title).replace("__PAGE_SLUG__", slug)
+    template_content = template_content.replace("__PAGE_TITLE__", page_title)
 
     try:
         with open(target_path, 'w', encoding='utf-8') as fp:
@@ -783,17 +780,44 @@ def entity_table_templates():
     tables = data.get('tables') if isinstance(data.get('tables'), list) else []
 
     templates = _read_templates_file()
-    new_id = max([t.get("id", 0) for t in templates], default=0) + 1
-    templates.append({
-        "id": new_id,
-        "name": name,
-        "entities": [],
-        "fields": [],
-        "tables": tables,
-    })
+    normalized = name.strip().casefold()
+    same_name_indexes = [
+        i for i, t in enumerate(templates)
+        if str((t or {}).get("name", "")).strip().casefold() == normalized
+    ]
+
+    if same_name_indexes:
+        # Upsert by template name: update first match and remove duplicate entries.
+        keep_idx = same_name_indexes[0]
+        keep_item = templates[keep_idx] if isinstance(templates[keep_idx], dict) else {}
+        keep_id = int(keep_item.get("id", 0) or 0)
+        if keep_id <= 0:
+            keep_id = max([t.get("id", 0) for t in templates if isinstance(t, dict)], default=0) + 1
+
+        templates[keep_idx] = {
+            "id": keep_id,
+            "name": name,
+            "entities": [],
+            "fields": [],
+            "tables": tables,
+        }
+        templates = [t for i, t in enumerate(templates) if i == keep_idx or i not in same_name_indexes]
+        status_code = 200
+        response_id = keep_id
+    else:
+        new_id = max([t.get("id", 0) for t in templates if isinstance(t, dict)], default=0) + 1
+        templates.append({
+            "id": new_id,
+            "name": name,
+            "entities": [],
+            "fields": [],
+            "tables": tables,
+        })
+        status_code = 201
+        response_id = new_id
     try:
         _write_templates_file(templates)
-        return jsonify({"ok": True, "id": new_id}), 201
+        return jsonify({"ok": True, "id": response_id}), status_code
     except Exception as e:
         current_app.logger.exception("POST templates file: %s", e)
         return make_response(jsonify({"ok": False, "error": str(e)}), 500)
@@ -849,7 +873,12 @@ def route_template(template):
             )
 
         # Serve the file (if exists) from app/templates/pages/FILE.html
-        return render_template("pages/" + template_name, segment=segment, is_dashboard_page=is_dashboard_page)
+        return render_template(
+            "pages/" + template_name,
+            segment=segment,
+            is_dashboard_page=is_dashboard_page,
+            page_slug=page_slug,
+        )
 
     except TemplateNotFound:
         return render_template('pages/error-404.html'), 404

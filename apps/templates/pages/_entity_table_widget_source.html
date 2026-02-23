@@ -114,7 +114,7 @@
     .entity-table-grid-wrap th.entity-table-th-draggable:active { cursor: grabbing; }
     .entity-table-grid-wrap th.dragging { opacity: 0.5; }
     .entity-table-grid-wrap th.drag-over { border-left: 2px solid var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.08); }
-    .entity-table-grid-wrap .entity-table-sort-indicator { margin-left: 0; font-size: 0.72rem; opacity: 0.85; flex: 0 0 auto; }
+    .entity-table-grid-wrap .entity-table-sort-indicator { margin-left: 0; font-size: 0.72rem; opacity: 0.85; flex: 0 0 auto; display: none !important; }
     .entity-table-grid-wrap .entity-table-time-toggle {
         margin-left: 0;
         width: 22px;
@@ -276,8 +276,8 @@
                     <input type="text" class="form-control" id="tableNameInput" placeholder="Название таблицы" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" for="tableDescriptionInput">Описание <span class="text-danger">*</span></label>
-                    <textarea class="form-control" id="tableDescriptionInput" rows="2" placeholder="Описание" required></textarea>
+                    <label class="form-label" for="tableDescriptionInput">Описание</label>
+                    <textarea class="form-control" id="tableDescriptionInput" rows="2" placeholder="Описание"></textarea>
                 </div>
                 <div class="entity-select-hint col-auto ms-auto bg-primary-subtle p-2 border border-dashed border-primary rounded mb-3 d-flex align-items-center gap-2" role="alert">
                     <span class="entity-select-hint-icon rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center">i</span>
@@ -905,14 +905,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (sel.nestedFields && typeof sel.nestedFields === 'object') {
                 Object.keys(sel.nestedFields).forEach(function(typ) {
                     (sel.nestedFields[typ] || []).forEach(function(t) {
-                        var colKey = key + '::' + t;
-                        if (!isSystemColumn(colKey)) valid[colKey] = true;
-                        if (String(typ || '').indexOf('smart_process::') === 0) {
-                            var smartEnt = resolveSmartEntityByNestedType(typ, knownEntities);
-                            if (smartEnt) {
-                                var smartKey = entityKey(smartEnt) + '::' + t;
-                                if (!isSystemColumn(smartKey)) valid[smartKey] = true;
-                            }
+                        var mappedEnt = resolveNestedMappedEntity(typ, knownEntities);
+                        if (mappedEnt) {
+                            var mappedKey = entityKey(mappedEnt) + '::' + t;
+                            if (!isSystemColumn(mappedKey)) valid[mappedKey] = true;
+                        } else {
+                            var colKey = key + '::' + t;
+                            if (!isSystemColumn(colKey)) valid[colKey] = true;
                         }
                     });
                 });
@@ -1308,7 +1307,30 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!st) return;
         var cols = (st.allColumns || []).filter(function(c) { return c && c.key && !isSystemColumn(c.key); });
         if (!cols.length) return;
-        var firstGuestSync = !st.guestFilterInitialized;
+        var colKeyMap = {};
+        cols.forEach(function(c) { colKeyMap[c.key] = true; });
+        var firstRow = (st.fullData && st.fullData.length) ? (st.fullData[0] || {}) : {};
+        var keyedFilters = (st.filterFields || []).filter(function(f) { return !!(f && String(f.key || '').trim()); });
+        function guestFilterKeyResolvable(f) {
+            var key = String((f && f.key) || '').trim();
+            if (!key) return false;
+            if (colKeyMap[key] || Object.prototype.hasOwnProperty.call(firstRow, key)) return true;
+            var idx = key.indexOf('::');
+            if (idx <= 0) return false;
+            var prefix = key.slice(0, idx);
+            var aliases = [];
+            if (f && f.sourceB24Field) aliases.push(prefix + '::' + String(f.sourceB24Field).trim());
+            if (f && f.sourceColumnName) aliases.push(prefix + '::' + String(f.sourceColumnName).trim());
+            return aliases.some(function(a) {
+                return !!a && (colKeyMap[a] || Object.prototype.hasOwnProperty.call(firstRow, a));
+            });
+        }
+        // Preserve admin-configured guest filters as-is when keys are already valid.
+        // Rebuilding by label causes drift in mixed-entity tables with duplicate labels.
+        if (keyedFilters.length && keyedFilters.every(guestFilterKeyResolvable)) {
+            st.guestFilterInitialized = true;
+            return;
+        }
         var existingByKey = {};
         if (!firstGuestSync) {
             (st.filterFields || []).forEach(function(f) {
@@ -1440,7 +1462,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     drop.classList.toggle('open');
                     if (drop.classList.contains('open')) {
                         searchInput.focus();
-                        setTimeout(function() { document.addEventListener('click', function closeDrop() { drop.classList.remove('open'); document.removeEventListener('click', closeDrop); }); }, 0);
+                        setTimeout(function() {
+                            function closeDrop() {
+                                drop.classList.remove('open');
+                                document.removeEventListener('click', closeDrop);
+                            }
+                            document.addEventListener('click', closeDrop);
+                        }, 0);
                     }
                 });
                 drop.querySelectorAll('.filter-multiselect-option').forEach(function(cb) {
@@ -2189,7 +2217,6 @@ document.addEventListener('DOMContentLoaded', function() {
         var title = nameInput ? nameInput.value.trim() : '';
         var desc = descInput ? descInput.value.trim() : '';
         if (!title) { alert('Введите название таблицы.'); if (nameInput) nameInput.focus(); return; }
-        if (!desc) { alert('Введите описание.'); if (descInput) descInput.focus(); return; }
         st.tableTitle = title;
         st.tableDescription = desc;
         // Не сохраняем конфиг на сервер в первом модальном — только после выбора полей во втором
@@ -2217,7 +2244,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return Promise.resolve(fieldsCache[key]);
         }
         var url = API.metaFields + '?type=' + encodeURIComponent(ent.type);
-        if (ent.entity_key && ent.type === 'smart_process') url += '&entity_key=' + encodeURIComponent(ent.entity_key);
+        // Передаём entity_key для всех сущностей, где он есть.
+        // В смешанных таблицах upstream может опираться на этот параметр.
+        if (ent.entity_key) url += '&entity_key=' + encodeURIComponent(ent.entity_key);
         if (ent.category_id != null && ent.category_id !== '') url += '&category_id=' + encodeURIComponent(ent.category_id);
         return fetch(url).then(function(r) { return r.json(); }).then(function(data) {
             var result = { fields: (data && data.fields) ? data.fields : [], nested: [] };
@@ -2611,15 +2640,41 @@ document.addEventListener('DOMContentLoaded', function() {
         }) || null;
     }
 
+    function resolveNestedMappedEntity(typeToken, knownEntities) {
+        var typBase = String(typeToken || '').split('::')[0].toLowerCase();
+        if (!typBase) return null;
+        if (typBase === 'smart_process') return resolveSmartEntityByNestedType(typeToken, knownEntities || []);
+        if (typBase === 'contact' || typBase === 'lead' || typBase === 'company') {
+            return (knownEntities || []).find(function(e) {
+                return !!e && (
+                    String(e.type || '').toLowerCase() === typBase
+                    || String(e.entity_key || '').toLowerCase() === typBase
+                );
+            }) || { type: typBase, entity_key: typBase, title: typBase };
+        }
+        return null;
+    }
+
     function expandEntitiesFromNestedFields(st) {
         return loadEntitiesList().catch(function() { return entitiesList || []; }).then(function(list) {
-            var smartEntities = (list || []).filter(function(e) { return e && e.type === 'smart_process'; });
+            var knownEntities = (list || []);
             var expanded = (st && st.selectedEntities && Array.isArray(st.selectedEntities)) ? st.selectedEntities.slice() : [];
             var nestedTitlesByEntity = {};
             (st && st.selectedFields && Array.isArray(st.selectedFields) ? st.selectedFields : []).forEach(function(f) {
                 var nested = (f && f.nestedFields && typeof f.nestedFields === 'object') ? f.nestedFields : {};
                 Object.keys(nested).forEach(function(typ) {
-                    var ent = resolveSmartEntityByNestedType(typ, smartEntities);
+                    var typBase = String(typ || '').split('::')[0].toLowerCase();
+                    var ent = null;
+                    if (typBase === 'smart_process') {
+                        ent = resolveSmartEntityByNestedType(typ, knownEntities);
+                    } else if (typBase === 'contact' || typBase === 'lead' || typBase === 'company') {
+                        ent = (knownEntities || []).find(function(e) {
+                            return !!e && (
+                                String(e.type || '').toLowerCase() === typBase
+                                || String(e.entity_key || '').toLowerCase() === typBase
+                            );
+                        }) || { type: typBase, entity_key: typBase, title: typBase };
+                    }
                     if (!ent) return;
                     var ek = entityKey(ent);
                     if (!nestedTitlesByEntity[ek]) nestedTitlesByEntity[ek] = [];
@@ -2627,7 +2682,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (t && nestedTitlesByEntity[ek].indexOf(t) < 0) nestedTitlesByEntity[ek].push(t);
                     });
                     if (!expanded.some(function(x) { return entityKey(x) === ek; })) {
-                        expanded.push({ type: 'smart_process', entity_key: ent.entity_key, title: ent.title || ent.entity_key });
+                        expanded.push({
+                            type: ent.type || typBase,
+                            entity_key: ent.entity_key || typBase,
+                            title: ent.title || ent.entity_key || typBase
+                        });
                     }
                 });
             });
@@ -2637,7 +2696,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function fetchPage(ent, titles, key, offset, limit, filterFieldMaps) {
         var url = API.metaData + '?type=' + encodeURIComponent(ent.type) + '&limit=' + limit + '&offset=' + offset;
-        if (ent.entity_key && ent.type === 'smart_process') url += '&entity_key=' + encodeURIComponent(ent.entity_key);
+        // Передаём entity_key для всех сущностей, где он есть.
+        // В смешанных таблицах upstream может опираться на этот параметр.
+        if (ent.entity_key) url += '&entity_key=' + encodeURIComponent(ent.entity_key);
         if (ent.category_id != null && ent.category_id !== '') url += '&category_id=' + encodeURIComponent(String(ent.category_id));
         if (titles && titles.length) url += '&fields=' + titles.map(function(t) { return encodeURIComponent(t); }).join(',');
         return fetch(url).then(function(r) { return r.json(); }).then(function(data) {
@@ -2749,6 +2810,17 @@ document.addEventListener('DOMContentLoaded', function() {
             var key = entityKey(ent);
             var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
             var displayTitles = (sel && sel.human_titles) ? sel.human_titles.slice() : [];
+            // Keep non-smart nested fields under their base entity (deal/contact/lead/company).
+            // Smart nested fields are resolved to their own smart entity via nestedTitlesByEntity.
+            if (sel && sel.nestedFields && typeof sel.nestedFields === 'object') {
+                Object.keys(sel.nestedFields).forEach(function(typ) {
+                    var typBase = String(typ || '').split('::')[0].toLowerCase();
+                    if (typBase === 'smart_process' || typBase === 'contact' || typBase === 'lead' || typBase === 'company') return;
+                    (sel.nestedFields[typ] || []).forEach(function(t) {
+                        if (t && displayTitles.indexOf(t) < 0) displayTitles.push(t);
+                    });
+                });
+            }
             if (!displayTitles.length && nestedTitlesByEntity[key] && nestedTitlesByEntity[key].length) {
                 displayTitles = nestedTitlesByEntity[key].slice();
             }
@@ -2785,8 +2857,19 @@ document.addEventListener('DOMContentLoaded', function() {
             if (ent.type !== 'smart_process' && sel && sel.nestedFields && typeof sel.nestedFields === 'object') {
                 var mirroredNorm = {};
                 Object.keys(sel.nestedFields).forEach(function(typ) {
-                    var mappedSmart = resolveSmartEntityByNestedType(typ, entitiesForLoad);
+                    var typBase = String(typ || '').split('::')[0].toLowerCase();
+                    if (typBase !== 'smart_process' && typBase !== 'contact' && typBase !== 'lead' && typBase !== 'company') return;
+                    var mappedSmart = null;
+                    if (typBase === 'smart_process') {
+                        mappedSmart = resolveSmartEntityByNestedType(typ, entitiesForLoad);
+                    } else {
+                        mappedSmart = (entitiesForLoad || []).find(function(e) {
+                            return String((e && e.type) || '').toLowerCase() === typBase
+                                || String((e && e.entity_key) || '').toLowerCase() === typBase;
+                        }) || null;
+                    }
                     if (!mappedSmart) return;
+                    if (entityKey(mappedSmart) === key) return;
                     (sel.nestedFields[typ] || []).forEach(function(t) {
                         mirroredNorm[normalizeSearchText(t)] = true;
                     });
@@ -2975,37 +3058,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     fetchMore();
                 });
             } else if (!isDashboard && firstResults.length > 1 && mergedEntityState) {
-                function fetchMoreMergedByIndex() {
-                    var needsAny = false;
-                    var nextPromises = mergedEntityState.map(function(state) {
-                        if (state.offset >= state.total) return Promise.resolve(null);
-                        needsAny = true;
-                        return fetchPage(state.obj.ent, state.obj.titles, state.obj.key, state.offset, 10000, state.obj.filterFieldMaps)
-                            .then(function(nextRes) {
-                                state.offset += nextRes.rows.length;
-                                return applyDealFunnelFilter(nextRes.rows, state.obj);
-                            })
-                            .catch(function() { return []; });
-                    });
-                    if (!needsAny) return;
-                    Promise.all(nextPromises).then(function(chunks) {
-                        var maxLen = 0;
-                        chunks.forEach(function(rows) {
-                            if (rows && rows.length > maxLen) maxLen = rows.length;
-                        });
-                        for (var i = 0; i < maxLen; i++) {
-                            var merged = {};
-                            chunks.forEach(function(rows) {
-                                if (rows && rows[i]) Object.assign(merged, rows[i]);
-                            });
-                            if (Object.keys(merged).length) st.fullData.push(merged);
-                        }
-                        renderGrid(tableIndex);
-                        refreshFilterModalIfOpen(tableIndex);
-                        if (mergedEntityState.some(function(state) { return state.offset < state.total; })) fetchMoreMergedByIndex();
-                    });
-                }
-                fetchMoreMergedByIndex();
+                // Mixed entity mode can explode into many heavy requests (for each entity and page).
+                // Keep first batch only to avoid request storms and UI lockups.
             }
         }).catch(function(err) {
             showLoading(tableIndex, false);
@@ -3144,7 +3198,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (sel && sel.nestedFields && typeof sel.nestedFields === 'object') {
                 Object.keys(sel.nestedFields).forEach(function(typ) {
                     (sel.nestedFields[typ] || []).forEach(function(t) {
-                        cols.push({ key: key + '::' + t, label: t, entityKey: key, entityTitle: ent.title || entityTitleForNested(ent) });
+                        var mappedEnt = resolveNestedMappedEntity(typ, (st.selectedEntities || []).concat(st._expandedLoadEntities || []).concat(entitiesList || []));
+                        if (mappedEnt) {
+                            var mappedKey = entityKey(mappedEnt);
+                            cols.push({ key: mappedKey + '::' + t, label: t, entityKey: mappedKey, entityTitle: mappedEnt.title || entityTitleForNested(mappedEnt) });
+                        } else {
+                            cols.push({ key: key + '::' + t, label: t, entityKey: key, entityTitle: ent.title || entityTitleForNested(ent) });
+                        }
                     });
                 });
             }
@@ -3344,6 +3404,31 @@ document.addEventListener('DOMContentLoaded', function() {
         }).map(function(x) { return x.row; });
     }
 
+    function getDefaultSortColumn(st) {
+        var cols = (st && st.allColumns && Array.isArray(st.allColumns)) ? st.allColumns : [];
+        if (!cols.length) return '';
+        function score(col) {
+            var sample = normalizeSearchText(String((col && col.label) || '') + ' ' + String((col && col.key) || ''));
+            if (!sample) return 0;
+            if (sample.indexOf('когда создан') >= 0) return 100;
+            if (sample.indexOf('дата создан') >= 0 || sample.indexOf('created at') >= 0) return 95;
+            if (sample.indexOf('created') >= 0 || sample.indexOf('дата') >= 0 || sample.indexOf('date') >= 0) return 80;
+            var key = String((col && col.key) || '').toLowerCase();
+            if (key === 'id' || /::id$/.test(key)) return 70;
+            return 0;
+        }
+        var bestKey = '';
+        var bestScore = 0;
+        cols.forEach(function(c) {
+            var s = score(c);
+            if (s > bestScore && c && c.key) {
+                bestScore = s;
+                bestKey = c.key;
+            }
+        });
+        return bestKey;
+    }
+
     function renderGrid(tableIndex) {
         var st = tableStates[tableIndex];
         if (!st) return;
@@ -3371,7 +3456,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         }
-        var sortedRows = sortRowsByColumn(filteredRows, st.sortKey, st.sortDir);
+        var effectiveSortKey = st.sortKey;
+        var effectiveSortDir = st.sortDir;
+        if (!effectiveSortKey || (effectiveSortDir !== 'asc' && effectiveSortDir !== 'desc')) {
+            var fallbackSortKey = getDefaultSortColumn(st);
+            if (fallbackSortKey) {
+                effectiveSortKey = fallbackSortKey;
+                effectiveSortDir = 'desc';
+            }
+        }
+        var sortedRows = sortRowsByColumn(filteredRows, effectiveSortKey, effectiveSortDir);
         var totalRows = sortedRows.length;
         var totalPages = totalRows ? Math.ceil(totalRows / st.pageSize) : 0;
         if (totalPages > 0 && st.currentPage > totalPages) st.currentPage = totalPages;
