@@ -326,8 +326,8 @@
                     <input type="text" class="form-control" id="tableNameInput" placeholder="Название таблицы" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" for="tableDescriptionInput">Описание <span class="text-danger">*</span></label>
-                    <textarea class="form-control" id="tableDescriptionInput" rows="2" placeholder="Описание" required></textarea>
+                    <label class="form-label" for="tableDescriptionInput">Описание</label>
+                    <textarea class="form-control" id="tableDescriptionInput" rows="2" placeholder="Описание"></textarea>
                 </div>
                 <div class="entity-select-hint col-auto ms-auto bg-primary-subtle p-2 border border-dashed border-primary rounded mb-3 d-flex align-items-center gap-2" role="alert">
                     <span class="entity-select-hint-icon rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center">i</span>
@@ -1980,7 +1980,6 @@ document.addEventListener('DOMContentLoaded', function() {
         var title = nameInput ? nameInput.value.trim() : '';
         var desc = descInput ? descInput.value.trim() : '';
         if (!title) { alert('Введите название таблицы.'); if (nameInput) nameInput.focus(); return; }
-        if (!desc) { alert('Введите описание.'); if (descInput) descInput.focus(); return; }
         st.tableTitle = title;
         st.tableDescription = desc;
         // Не сохраняем конфиг на сервер в первом модальном — только после выбора полей во втором
