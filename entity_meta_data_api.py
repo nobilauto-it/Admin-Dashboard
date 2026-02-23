@@ -189,8 +189,9 @@ def _entity_key_from_parent_id(name: str) -> Optional[str]:
 
 def _load_crm_entity_targets(conn, entity_key: str) -> Dict[str, str]:
     """
-    column_name -> target_entity_key для полей-связей crm_entity.
-    Определяем по parentId<N> в имени поля или по settings.entityTypeId.
+    column_name -> target_entity_key для полей-связей crm_entity/crm.
+    Для crm_entity: parentId<N> / settings.entityTypeId.
+    Для crm: пытаемся извлечь единственный разрешенный тип из settings (DEAL/CONTACT/LEAD/COMPANY/DYNAMIC_<id>).
     """
     out: Dict[str, str] = {}
     try:
@@ -212,7 +213,7 @@ def _load_crm_entity_targets(conn, entity_key: str) -> Dict[str, str]:
                 continue
 
             target = _entity_key_from_parent_id(col) or _entity_key_from_parent_id(b24_field)
-            if not target and b24_type == "crm_entity":
+            if not target and b24_type in ("crm_entity", "crm"):
                 settings = row.get("settings")
                 if isinstance(settings, str):
                     try:
@@ -234,6 +235,28 @@ def _load_crm_entity_targets(conn, entity_key: str) -> Dict[str, str]:
                                 target = f"sp:{num}"
                         except Exception:
                             pass
+                    # Для b24_type=crm Bitrix часто хранит allowed types как {"DEAL":"Y"} / {"DYNAMIC_1114":"Y"}
+                    if not target:
+                        allowed: List[str] = []
+                        for k, v in settings.items():
+                            if str(v).strip().lower() not in ("y", "1", "true"):
+                                continue
+                            kk = str(k).strip().upper()
+                            if kk == "DEAL":
+                                allowed.append("deal")
+                            elif kk == "CONTACT":
+                                allowed.append("contact")
+                            elif kk == "LEAD":
+                                allowed.append("lead")
+                            elif kk == "COMPANY":
+                                allowed.append("company")
+                            else:
+                                m_dyn = re.match(r"DYNAMIC_(\d+)$", kk)
+                                if m_dyn:
+                                    allowed.append(f"sp:{int(m_dyn.group(1))}")
+                        allowed = list(dict.fromkeys(allowed))
+                        if len(allowed) == 1:
+                            target = allowed[0]
 
             if target:
                 out[col] = target
@@ -938,7 +961,7 @@ def _decode_record(
                 record[title] = obj if obj else company_titles.get(key, val)
             else:
                 record[title] = company_titles.get(key, val)
-        elif t == "crm_entity":
+        elif t in ("crm_entity", "crm"):
             if val is None:
                 continue
             target_entity_key = crm_entity_targets.get(col)
@@ -1327,7 +1350,7 @@ def get_entity_meta_data(
                     v = row.get(col)
                     if v is not None and str(v).strip():
                         user_ids.append(str(v).strip())
-            elif t == "crm_entity":
+            elif t in ("crm_entity", "crm"):
                 target_entity_key = crm_entity_targets.get(col)
                 if not target_entity_key:
                     continue
