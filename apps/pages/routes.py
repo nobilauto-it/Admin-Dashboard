@@ -327,14 +327,11 @@ def create_page():
     # Шаблон с виджетом таблицы сущностей (кнопка «+», модалки, грид) или пустая страница
     widget_source = PAGES_DIR / "_entity_table_widget_source.html"
     if widget_source.exists():
-        try:
-            template_content = widget_source.read_text(encoding="utf-8")
-        except Exception as exc:
-            current_app.logger.warning(f"Не удалось прочитать шаблон виджета: {exc}")
-            template_content = None
+        template_content = """{% extends 'pages/_entity_table_widget_source.html' %}
+
+{% block title %}__PAGE_TITLE__{% endblock %}
+"""
     else:
-        template_content = None
-    if not template_content:
         template_content = """{% extends 'layouts/vertical.html' %}
 
 {% block title %}__PAGE_TITLE__{% endblock %}
@@ -348,7 +345,7 @@ def create_page():
 </div>
 {% endblock %}
 """
-    template_content = template_content.replace("__PAGE_TITLE__", page_title).replace("__PAGE_SLUG__", slug)
+    template_content = template_content.replace("__PAGE_TITLE__", page_title)
 
     try:
         with open(target_path, 'w', encoding='utf-8') as fp:
@@ -528,90 +525,35 @@ def entity_table_meta_data():
 
 @blueprint.route('/api/entity-table/config', methods=['GET', 'POST'])
 def entity_table_config():
-    """GET: конфиг по page_slug. POST: сохранить конфиг. Сохранение в БД проекта (SQLite в apps/db.sqlite3)."""
-    from apps.models import EntityTableConfig
-    from apps import db
+    """Прокси конфига entity-table в CRM backend (7070)."""
+    upstream_url = f"{_crm_base_url()}/api/entity-table/config"
+    if requests is None:
+        return make_response(jsonify({"ok": False, "error": "python-requests not available"}), 500)
 
     try:
-        db.create_all()
-        _ensure_entity_table_config_columns()
-    except Exception as e:
-        current_app.logger.warning("entity_table_config create_all: %s", e)
+        if request.method == 'GET':
+            params = dict(request.args or {})
+            resp = requests.get(upstream_url, params=params, timeout=30)
+        else:
+            payload = request.get_json(silent=True) or {}
+            headers = {'Content-Type': 'application/json'}
+            # Forward auth hints used by upstream guest guard.
+            x_user_role = request.headers.get('x-user-role')
+            x_guest = request.headers.get('x-guest')
+            if x_user_role:
+                headers['x-user-role'] = x_user_role
+            if x_guest:
+                headers['x-guest'] = x_guest
+            resp = requests.post(upstream_url, json=payload, headers=headers, timeout=30)
 
-    if request.method == 'GET':
         try:
-            page_slug = (request.args.get('page_slug') or 'entity-table').strip()
-            page_slug = unicodedata.normalize('NFC', page_slug)
-            read_only_slugs = _read_only_pages_list()
-            page_mode = _get_page_mode(page_slug)
-            table_modes = _get_table_modes(page_slug)
-            read_only = page_slug in read_only_slugs or page_mode == "read_only"
-
-            def _resp(ok=True, tables=None, table_title="", table_description="", entities=None, fields=None):
-                out = {
-                    "ok": ok, "tables": tables or [], "table_title": table_title or "", "table_description": table_description or "",
-                    "entities": entities or [], "fields": fields or [], "read_only": read_only,
-                    "page_mode": page_mode, "table_modes": table_modes,
-                }
-                return jsonify(out)
-
-            rec = EntityTableConfig.query.filter(
-                db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
-            ).first()
-            if not rec:
-                return _resp()
-            tables = rec.get_tables()
-            if isinstance(tables, list) and len(tables) > 0:
-                return jsonify({"ok": True, "tables": tables, "read_only": read_only, "page_mode": page_mode, "table_modes": table_modes})
-            entities = rec.get_entities()
-            fields = rec.get_fields()
-            if not isinstance(entities, list):
-                entities = []
-            if not isinstance(fields, list):
-                fields = []
-            return _resp(
-                table_title=rec.table_title or "",
-                table_description=rec.table_description or "",
-                entities=entities,
-                fields=fields,
-            )
-        except Exception as e:
-            current_app.logger.exception("Entity table config GET: %s", e)
-            return jsonify({"ok": True, "tables": [], "table_title": "", "table_description": "", "entities": [], "fields": [], "read_only": False, "page_mode": "edit", "table_modes": {}})
-
-    data = request.get_json(silent=True) or {}
-    page_slug = (data.get('page_slug') or 'entity-table').strip()
-    tables = data.get('tables')
-    if isinstance(tables, list):
-        rec = EntityTableConfig.query.filter(
-            db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
-        ).first()
-        if not rec:
-            rec = EntityTableConfig(page_slug=page_slug)
-            db.session.add(rec)
-        rec.set_tables(tables)
-    else:
-        table_title = (data.get('table_title') or '').strip()
-        table_description = (data.get('table_description') or '').strip()
-        entities = data.get('entities', [])
-        fields = data.get('fields', [])
-        rec = EntityTableConfig.query.filter(
-            db.func.lower(EntityTableConfig.page_slug) == page_slug.lower()
-        ).first()
-        if not rec:
-            rec = EntityTableConfig(page_slug=page_slug)
-            db.session.add(rec)
-        rec.table_title = table_title
-        rec.table_description = table_description
-        rec.set_entities(entities)
-        rec.set_fields(fields)
-    try:
-        db.session.commit()
-        return jsonify({"ok": True})
+            body = resp.json()
+            return make_response(jsonify(body), resp.status_code)
+        except Exception:
+            return make_response(resp.text, resp.status_code)
     except Exception as e:
-        db.session.rollback()
-        current_app.logger.exception("Entity table config save: %s", e)
-        return make_response(jsonify({"ok": False, "error": str(e)}), 500)
+        current_app.logger.exception("Entity table config proxy: %s", e)
+        return make_response(jsonify({"ok": False, "error": str(e)}), 502)
 
 
 @blueprint.route('/api/entity-table/component-modes', methods=['GET', 'POST'])
@@ -792,17 +734,44 @@ def entity_table_templates():
     tables = data.get('tables') if isinstance(data.get('tables'), list) else []
 
     templates = _read_templates_file()
-    new_id = max([t.get("id", 0) for t in templates], default=0) + 1
-    templates.append({
-        "id": new_id,
-        "name": name,
-        "entities": [],
-        "fields": [],
-        "tables": tables,
-    })
+    normalized = name.strip().casefold()
+    same_name_indexes = [
+        i for i, t in enumerate(templates)
+        if str((t or {}).get("name", "")).strip().casefold() == normalized
+    ]
+
+    if same_name_indexes:
+        # Upsert by template name: update first match and remove duplicate entries.
+        keep_idx = same_name_indexes[0]
+        keep_item = templates[keep_idx] if isinstance(templates[keep_idx], dict) else {}
+        keep_id = int(keep_item.get("id", 0) or 0)
+        if keep_id <= 0:
+            keep_id = max([t.get("id", 0) for t in templates if isinstance(t, dict)], default=0) + 1
+
+        templates[keep_idx] = {
+            "id": keep_id,
+            "name": name,
+            "entities": [],
+            "fields": [],
+            "tables": tables,
+        }
+        templates = [t for i, t in enumerate(templates) if i == keep_idx or i not in same_name_indexes]
+        status_code = 200
+        response_id = keep_id
+    else:
+        new_id = max([t.get("id", 0) for t in templates if isinstance(t, dict)], default=0) + 1
+        templates.append({
+            "id": new_id,
+            "name": name,
+            "entities": [],
+            "fields": [],
+            "tables": tables,
+        })
+        status_code = 201
+        response_id = new_id
     try:
         _write_templates_file(templates)
-        return jsonify({"ok": True, "id": new_id}), 201
+        return jsonify({"ok": True, "id": response_id}), status_code
     except Exception as e:
         current_app.logger.exception("POST templates file: %s", e)
         return make_response(jsonify({"ok": False, "error": str(e)}), 500)
@@ -858,7 +827,12 @@ def route_template(template):
             )
 
         # Serve the file (if exists) from app/templates/pages/FILE.html
-        return render_template("pages/" + template_name, segment=segment, is_dashboard_page=is_dashboard_page)
+        return render_template(
+            "pages/" + template_name,
+            segment=segment,
+            is_dashboard_page=is_dashboard_page,
+            page_slug=page_slug,
+        )
 
     except TemplateNotFound:
         return render_template('pages/error-404.html'), 404
