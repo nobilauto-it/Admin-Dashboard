@@ -2726,6 +2726,8 @@ document.addEventListener('DOMContentLoaded', function() {
         customFieldPickerInsertBtn.addEventListener('click', function() {
             if (!customFieldPickerList || !customFieldPayloadTextarea) return;
             var selected = Array.from(customFieldPickerList.querySelectorAll('.custom-field-picker-cb:checked'));
+            var stForPreview = tableStates[currentTableIndex];
+            var firstPreviewRow = (stForPreview && stForPreview.fullData && stForPreview.fullData.length) ? (stForPreview.fullData[0] || {}) : null;
             if (!selected.length) {
                 if (modalCustomFieldPicker) modalCustomFieldPicker.hide();
                 return;
@@ -2734,8 +2736,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 .map(function(cb) {
                     var title = (cb.getAttribute('data-title') || '').trim();
                     var prefixKey = (cb.getAttribute('data-token-prefix') || '').trim();
+                    var row = cb.closest('.field-row');
+                    var ek = row ? (row.getAttribute('data-entitykey') || '').trim() : '';
+                    var nestedType = row ? (row.getAttribute('data-nested-type') || '').trim() : '';
+                    if (!prefixKey) {
+                        if (nestedType && ek) {
+                            var safeId = (ek + '_' + nestedType).replace(/[^a-zA-Z0-9_]/g, '_');
+                            var nestedBtn = document.getElementById('cfp_nested_cb_' + safeId);
+                            prefixKey = nestedBtn ? String(nestedBtn.textContent || '').trim() : '';
+                        }
+                        if (!prefixKey && ek) {
+                            var header = customFieldPickerList.querySelector('.fields-modal-entity-header[data-entitykey="' + ek + '"]');
+                            prefixKey = header ? String(header.textContent || '').trim() : '';
+                        }
+                    }
                     if (!title) return '';
-                    return '{' + (prefixKey ? (prefixKey + '.') : '') + title + '}';
+                    var tokenText = '{' + (prefixKey ? (prefixKey + '.') : '') + title + '}';
+                    var previewValue = '';
+                    if (firstPreviewRow) {
+                        previewValue = resolveCustomFieldPreviewValue(firstPreviewRow, ek, title, nestedType);
+                    }
+                    if (previewValue !== '') tokenText += '=' + previewValue;
+                    return tokenText;
                 })
                 .filter(Boolean);
             if (!tokens.length) {
@@ -2751,6 +2773,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             insertTextAtTextareaCursor(customFieldPayloadTextarea, prefix + tokens.join(' '));
             if (modalCustomFieldPicker) modalCustomFieldPicker.hide();
+
+            function resolveCustomFieldPreviewValue(firstRow, entityKeyValue, fieldTitle, nestedTypeValue) {
+                if (!firstRow || !fieldTitle) return '';
+                var exactKey = entityKeyValue ? (entityKeyValue + '::' + fieldTitle) : '';
+                var val = '';
+                if (exactKey && Object.prototype.hasOwnProperty.call(firstRow, exactKey)) {
+                    val = firstRow[exactKey];
+                }
+                if ((val == null || val === '') && nestedTypeValue) {
+                    var suffix = '::' + fieldTitle;
+                    var candidates = Object.keys(firstRow).filter(function(k) { return String(k).slice(-suffix.length) === suffix; });
+                    if (candidates.length === 1) val = firstRow[candidates[0]];
+                }
+                if (val == null || val === '') return '';
+                if (typeof val === 'object') {
+                    try { return JSON.stringify(val); } catch (e) { return String(val); }
+                }
+                return String(val);
+            }
         });
     }
 
