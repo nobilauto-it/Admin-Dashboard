@@ -1351,33 +1351,13 @@ document.addEventListener('DOMContentLoaded', function() {
         var colKeyMap = {};
         cols.forEach(function(c) { colKeyMap[c.key] = true; });
         var firstRow = (st.fullData && st.fullData.length) ? (st.fullData[0] || {}) : {};
-        var keyedFilters = (st.filterFields || []).filter(function(f) { return !!(f && String(f.key || '').trim()); });
-        function guestFilterKeyResolvable(f) {
-            var key = String((f && f.key) || '').trim();
-            if (!key) return false;
-            if (colKeyMap[key] || Object.prototype.hasOwnProperty.call(firstRow, key)) return true;
-            var idx = key.indexOf('::');
-            if (idx <= 0) return false;
-            var prefix = key.slice(0, idx);
-            var aliases = [];
-            if (f && f.sourceB24Field) aliases.push(prefix + '::' + String(f.sourceB24Field).trim());
-            if (f && f.sourceColumnName) aliases.push(prefix + '::' + String(f.sourceColumnName).trim());
-            return aliases.some(function(a) {
-                return !!a && (colKeyMap[a] || Object.prototype.hasOwnProperty.call(firstRow, a));
-            });
-        }
-        // Preserve admin-configured guest filters as-is when keys are already valid.
-        // Rebuilding by label causes drift in mixed-entity tables with duplicate labels.
-        if (keyedFilters.length && keyedFilters.every(guestFilterKeyResolvable)) {
-            st.guestFilterInitialized = true;
-            return;
-        }
         var existingByKey = {};
-        if (st.guestFilterInitialized) {
-            (st.filterFields || []).forEach(function(f) {
-                if (f && f.key) existingByKey[f.key] = f;
-            });
-        }
+        (st.filterFields || []).forEach(function(f) {
+            if (!f) return;
+            var resolvedKey = resolveFilterColumnKey(st, f) || String(f.key || '').trim();
+            if (!resolvedKey) return;
+            existingByKey[resolvedKey] = f;
+        });
         st.filterFields = cols.map(function(c) {
             var prev = existingByKey[c.key] || {};
             var probe = {
