@@ -2624,12 +2624,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (descField) descField.value = (st.tableDescription && String(st.tableDescription).trim()) ? st.tableDescription.trim() : '';
         var settingsTab = document.querySelector('#modalFields [href="#settingsTabPane"]');
         var settingsPane = document.getElementById('settingsTabPane');
+        var customTab = document.querySelector('#modalFields [href="#customFieldTabPane"]');
         if (settingsTab && settingsPane) {
-            if (isFilterMode || isCustomEditorInsertMode) {
-                settingsTab.closest('.nav-item').classList.add('d-none');
-            } else {
-                settingsTab.closest('.nav-item').classList.remove('d-none');
-            }
+            settingsTab.closest('.nav-item').classList.toggle('d-none', (isFilterMode || isCustomEditorInsertMode));
+        }
+        if (customTab) {
+            customTab.closest('.nav-item').classList.toggle('d-none', isCustomEditorInsertMode);
         }
         var fieldsTabBtn = document.querySelector('#modalFields [href="#fieldsTabPane"]');
         if (fieldsTabBtn && window.bootstrap && bootstrap.Tab) {
@@ -2832,7 +2832,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 insertTextAtTextareaCursor(customFieldPayloadTextarea, prefix + selectedTokens.join(' '));
             }
             fieldsModalForCustomEditorInsert = false;
-            modalFields.hide();
+            var settingsTab = document.querySelector('#modalFields [href="#settingsTabPane"]');
+            var customTab = document.querySelector('#modalFields [href="#customFieldTabPane"]');
+            if (settingsTab) settingsTab.closest('.nav-item').classList.remove('d-none');
+            if (customTab) {
+                customTab.closest('.nav-item').classList.remove('d-none');
+                if (window.bootstrap && bootstrap.Tab) {
+                    try { bootstrap.Tab.getOrCreateInstance(customTab).show(); } catch (e) {}
+                }
+            }
             return;
         }
         if (fieldsModalForFilterTableIndex != null) {
