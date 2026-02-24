@@ -308,6 +308,9 @@
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" href="#settingsTabPane" role="tab">Настройки таблицы</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#customFieldTabPane" role="tab">Создать кастомное поле</a>
+                    </li>
                 </ul>
                 <div class="tab-content">
                     <div class="tab-pane active" id="fieldsTabPane" role="tabpanel">
@@ -350,6 +353,36 @@
                             <button type="button" class="btn btn-outline-danger btn-sm" id="settingsModalDeleteTableBtn" title="Удалить таблицу" aria-label="Удалить таблицу">
                                 <i class="iconoir-trash"></i> Удалить таблицу
                             </button>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="customFieldTabPane" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label" for="customFieldNameInput">Название поля</label>
+                                <input type="text" class="form-control" id="customFieldNameInput" placeholder="Введите название поля">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="customFieldCodeInput">Код поле</label>
+                                <input type="text" class="form-control" id="customFieldCodeInput" placeholder="Например: custom_field_code">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="customFieldDescriptionInput">Описание</label>
+                                <input type="text" class="form-control" id="customFieldDescriptionInput" placeholder="Краткое описание">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="customFieldTypeSelect">Тип</label>
+                                <select class="form-select" id="customFieldTypeSelect">
+                                    <option value="single">Single</option>
+                                    <option value="card">Card</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="customFieldPayloadTextarea">Текстовое поле</label>
+                                <textarea class="form-control" id="customFieldPayloadTextarea" rows="6" placeholder="Пока только отображение"></textarea>
+                            </div>
+                            <div class="col-12 d-flex justify-content-end">
+                                <button type="button" class="btn btn-outline-primary" id="customFieldActionBtn">Кнопка</button>
+                            </div>
                         </div>
                     </div>
                 </div>
