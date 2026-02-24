@@ -2535,6 +2535,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function filterCustomFieldPickerList() {
         if (!customFieldPickerList || !customFieldPickerSearchInput) return;
         var q = normalizeSearchText(customFieldPickerSearchInput.value || '');
+        if (customFieldPickerNestedRow) {
+            var nestedRowWrap = customFieldPickerNestedRow.parentElement;
+            if (nestedRowWrap) nestedRowWrap.style.display = q ? 'none' : '';
+        }
         customFieldPickerList.querySelectorAll('.field-row:not([data-entity-header="1"])').forEach(function(row) {
             if (row.classList && row.classList.contains('fields-modal-group-label')) {
                 row.style.display = 'none';
