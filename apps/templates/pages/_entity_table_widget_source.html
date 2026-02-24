@@ -1832,6 +1832,8 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.onclick = function() {
                 if (tableStates[idx]) {
                     tableStates[idx].currentPage = 1;
+                    saveConfigToStorage();
+                    saveConfig();
                     loadData(idx);
                 }
                 closeFilterDropdown(idx);
@@ -1869,6 +1871,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (modalFilterSaveEl) modalFilterSaveEl.onclick = function() {
             if (filterModalTableIndex != null && tableStates[filterModalTableIndex]) {
                 tableStates[filterModalTableIndex].currentPage = 1;
+                saveConfigToStorage();
+                saveConfig();
                 loadData(filterModalTableIndex);
             }
             modalFilter.hide();
@@ -3761,7 +3765,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             try { handle.releasePointerCapture(e2.pointerId); } catch (err) {}
                         }
                         saveColumnWidths();
-                        if (didResize) updateThLabelByWidth(th);
+                        if (didResize) {
+                            saveConfigToStorage();
+                            saveConfig();
+                            updateThLabelByWidth(th);
+                        }
                     }
                     document.body.style.userSelect = 'none';
                     document.body.style.cursor = 'col-resize';
@@ -3816,7 +3824,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     th._suppressSortClickUntil = Date.now() + RESIZE_SORT_CLICK_SUPPRESS_MS;
                     th.draggable = prevDraggable;
                     saveColumnWidths();
-                    if (didResize) updateThLabelByWidth(th);
+                    if (didResize) {
+                        saveConfigToStorage();
+                        saveConfig();
+                        updateThLabelByWidth(th);
+                    }
                 }
                 document.body.style.userSelect = 'none';
                 document.body.style.cursor = 'col-resize';
