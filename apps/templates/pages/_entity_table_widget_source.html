@@ -418,6 +418,27 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalCustomFieldPicker" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Выбор полей для Editor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control form-control-sm" id="customFieldPickerSearchInput" placeholder="Поиск полей">
+                </div>
+                <div id="customFieldPickerList" class="fields-modal-grid"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="customFieldPickerInsertBtn">Вставить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalAddTableOrCard" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content">
@@ -665,6 +686,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalFieldsEl = document.getElementById('modalFields');
     const modalFilter = new bootstrap.Modal(document.getElementById('modalFilter'));
     const filterModalRowsContainerEl = document.getElementById('filterModalRowsContainer');
+    const modalCustomFieldPickerEl = document.getElementById('modalCustomFieldPicker');
+    const modalCustomFieldPicker = modalCustomFieldPickerEl ? new bootstrap.Modal(modalCustomFieldPickerEl) : null;
+    const customFieldPickerList = document.getElementById('customFieldPickerList');
+    const customFieldPickerSearchInput = document.getElementById('customFieldPickerSearchInput');
+    const customFieldPickerInsertBtn = document.getElementById('customFieldPickerInsertBtn');
+    const customFieldPayloadTextarea = document.getElementById('customFieldPayloadTextarea');
+    const customFieldActionBtn = document.getElementById('customFieldActionBtn');
     const fieldsList = document.getElementById('fieldsList');
     const modalFieldsSave = document.getElementById('modalFieldsSave');
     const nestedCheckboxesRow = document.getElementById('nestedCheckboxesRow');
@@ -2416,6 +2444,116 @@ document.addEventListener('DOMContentLoaded', function() {
             fieldsCache[key] = result;
             if (callback) callback(result);
             return result;
+        });
+    }
+
+    function filterCustomFieldPickerList() {
+        if (!customFieldPickerList || !customFieldPickerSearchInput) return;
+        var q = normalizeSearchText(customFieldPickerSearchInput.value || '');
+        customFieldPickerList.querySelectorAll('.field-row').forEach(function(row) {
+            var text = normalizeSearchText(row.getAttribute('data-search-text') || row.textContent || '');
+            row.style.display = (!q || text.indexOf(q) >= 0) ? '' : 'none';
+        });
+        customFieldPickerList.querySelectorAll('.fields-modal-entity-header').forEach(function(header) {
+            var key = header.getAttribute('data-entitykey') || '';
+            if (!key) return;
+            var anyVisible = false;
+            customFieldPickerList.querySelectorAll('.field-row[data-entitykey="' + key + '"]').forEach(function(r) {
+                if (r.classList.contains('fields-modal-entity-header')) return;
+                if (r.style.display !== 'none') anyVisible = true;
+            });
+            header.style.display = anyVisible ? '' : 'none';
+        });
+    }
+
+    function openCustomFieldPickerModal() {
+        var st = tableStates[currentTableIndex];
+        if (!st || !st.selectedEntities || !st.selectedEntities.length) return;
+        if (!modalCustomFieldPicker || !customFieldPickerList) return;
+        customFieldPickerList.innerHTML = '<div class="text-muted small">Загрузка полей...</div>';
+        if (customFieldPickerSearchInput) customFieldPickerSearchInput.value = '';
+        Promise.all(st.selectedEntities.map(function(ent) {
+            return loadFieldsForEntity(ent).then(function(res) { return { ent: ent, res: res || { fields: [] } }; })
+                .catch(function() { return { ent: ent, res: { fields: [] } }; });
+        })).then(function(items) {
+            customFieldPickerList.innerHTML = '';
+            items.forEach(function(item) {
+                var ent = item.ent;
+                var key = entityKey(ent);
+                var entityTitle = (ent && ent.title) ? String(ent.title) : (ent.type || key);
+                var header = document.createElement('div');
+                header.className = 'fields-modal-entity-header field-row';
+                header.setAttribute('data-entitykey', key);
+                header.textContent = entityTitle;
+                customFieldPickerList.appendChild(header);
+                var seen = {};
+                (item.res.fields || []).forEach(function(f, idx) {
+                    var title = String((f && (f.human_title || f.column_name)) || '').trim();
+                    if (!title) return;
+                    if (seen[title]) return;
+                    seen[title] = true;
+                    var row = document.createElement('div');
+                    row.className = 'form-check field-row';
+                    row.setAttribute('data-entitykey', key);
+                    row.setAttribute('data-search-text', (entityTitle + ' ' + title).toLowerCase());
+                    var id = 'cfp_' + key.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + idx;
+                    row.innerHTML = '<input class="form-check-input custom-field-picker-cb" type="checkbox" id="' + id + '" data-title="' + title.replace(/"/g, '&quot;') + '"><label class="form-check-label" for="' + id + '">' + title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</label>';
+                    customFieldPickerList.appendChild(row);
+                });
+            });
+            filterCustomFieldPickerList();
+        });
+        modalCustomFieldPicker.show();
+    }
+
+    function insertTextAtTextareaCursor(textarea, text) {
+        if (!textarea) return;
+        textarea.focus();
+        var start = textarea.selectionStart != null ? textarea.selectionStart : textarea.value.length;
+        var end = textarea.selectionEnd != null ? textarea.selectionEnd : textarea.value.length;
+        var before = textarea.value.slice(0, start);
+        var after = textarea.value.slice(end);
+        textarea.value = before + text + after;
+        var pos = start + text.length;
+        if (textarea.setSelectionRange) textarea.setSelectionRange(pos, pos);
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    if (customFieldActionBtn) {
+        customFieldActionBtn.addEventListener('click', function() {
+            openCustomFieldPickerModal();
+        });
+    }
+
+    if (customFieldPickerSearchInput) {
+        customFieldPickerSearchInput.addEventListener('input', filterCustomFieldPickerList);
+    }
+
+    if (customFieldPickerInsertBtn) {
+        customFieldPickerInsertBtn.addEventListener('click', function() {
+            if (!customFieldPickerList || !customFieldPayloadTextarea) return;
+            var selected = Array.from(customFieldPickerList.querySelectorAll('.custom-field-picker-cb:checked'));
+            if (!selected.length) {
+                if (modalCustomFieldPicker) modalCustomFieldPicker.hide();
+                return;
+            }
+            var tokens = selected
+                .map(function(cb) { return (cb.getAttribute('data-title') || '').trim(); })
+                .filter(Boolean)
+                .map(function(title) { return '{' + title + '}'; });
+            if (!tokens.length) {
+                if (modalCustomFieldPicker) modalCustomFieldPicker.hide();
+                return;
+            }
+            var prefix = '';
+            var taVal = customFieldPayloadTextarea.value || '';
+            var pos = customFieldPayloadTextarea.selectionStart != null ? customFieldPayloadTextarea.selectionStart : taVal.length;
+            if (taVal && pos > 0) {
+                var prevChar = taVal.charAt(pos - 1);
+                if (!/\s/.test(prevChar)) prefix = ' ';
+            }
+            insertTextAtTextareaCursor(customFieldPayloadTextarea, prefix + tokens.join(' '));
+            if (modalCustomFieldPicker) modalCustomFieldPicker.hide();
         });
     }
 
