@@ -321,7 +321,12 @@
                                 <div class="input-group input-group-sm">
                                     <input type="text" class="form-control" id="fieldsSearchInput" placeholder="Поиск полей" autocomplete="off">
                                 </div>
-                            </div>                        
+                                <div class="d-flex align-items-center gap-2 mt-2">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="customFieldPreviewBtn">Проверить</button>
+                                    <span class="small text-muted">Превью по первой строке таблицы</span>
+                                </div>
+                                <div class="mt-2 p-2 border rounded small bg-light-subtle text-break" id="customFieldPreviewResult">—</div>
+                            </div>
                         </div>
                         <div class="fields-modal-grid" id="fieldsList"></div>
                     </div>
@@ -382,7 +387,20 @@
                                 </select>
                             </div>
                             <div class="col-12">
-                                <label class="form-label" for="customFieldPayloadTextarea">Editor</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="form-label mb-0" for="customFieldPayloadTextarea">Editor</label>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center"
+                                        id="customFieldEditorHelpBtn"
+                                        style="width: 24px; height: 24px; padding: 0;"
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top"
+                                        data-bs-html="true"
+                                        title="<div class='text-start'><div><b>Токены:</b> {Сущность.Поле}</div><div><b>Функции:</b> CONCAT, UPPER, LOWER, IFNULL, COALESCE, LEN, NUMBER, ROUND</div><div><b>Пример:</b> CONCAT({Vânzări realizare.Название}, ' / ', {STOCK AUTO.Название})</div><div><b>Проверить:</b> считает по первой строке таблицы</div></div>"
+                                        aria-label="Шпаргалка по Editor"
+                                    >i</button>
+                                </div>
                                 <div class="d-flex align-items-end gap-2">
                                     <textarea class="form-control flex-grow-1" id="customFieldPayloadTextarea" rows="6" placeholder="Форма и логика SQL"></textarea>
                                     <button type="button" class="btn btn-outline-primary flex-shrink-0" id="customFieldActionBtn" aria-label="Дополнительно">...</button>
@@ -699,6 +717,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const customFieldPickerNestedRow = document.getElementById('customFieldPickerNestedRow');
     const customFieldPayloadTextarea = document.getElementById('customFieldPayloadTextarea');
     const customFieldActionBtn = document.getElementById('customFieldActionBtn');
+    const customFieldEditorHelpBtn = document.getElementById('customFieldEditorHelpBtn');
+    const customFieldPreviewBtn = document.getElementById('customFieldPreviewBtn');
+    const customFieldPreviewResult = document.getElementById('customFieldPreviewResult');
     const fieldsList = document.getElementById('fieldsList');
     const modalFieldsSave = document.getElementById('modalFieldsSave');
     const nestedCheckboxesRow = document.getElementById('nestedCheckboxesRow');
@@ -2765,6 +2786,105 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             insertTextAtTextareaCursor(customFieldPayloadTextarea, prefix + tokens.join(' '));
             if (modalCustomFieldPicker) modalCustomFieldPicker.hide();
+        });
+    }
+
+    if (customFieldEditorHelpBtn && window.bootstrap && bootstrap.Tooltip) {
+        bootstrap.Tooltip.getOrCreateInstance(customFieldEditorHelpBtn);
+    }
+
+    function resolveCustomEditorTokenValue(tokenBody, st, row) {
+        var raw = String(tokenBody || '').trim();
+        if (!raw || !st || !row) return '';
+        var lastDot = raw.lastIndexOf('.');
+        var prefix = lastDot > 0 ? raw.slice(0, lastDot).trim() : '';
+        var fieldLabel = lastDot > 0 ? raw.slice(lastDot + 1).trim() : raw;
+        if (!fieldLabel) return '';
+        var cols = Array.isArray(st.allColumns) ? st.allColumns : [];
+        var normField = normalizeSearchText(fieldLabel);
+        var normPrefix = normalizeSearchText(prefix);
+        var matches = cols.filter(function(col) {
+            if (!col || normalizeSearchText(col.label || '') !== normField) return false;
+            if (!normPrefix) return true;
+            return normalizeSearchText(col.entityTitle || '') === normPrefix;
+        });
+        if (!matches.length && normPrefix) {
+            matches = cols.filter(function(col) {
+                if (!col || normalizeSearchText(col.label || '') !== normField) return false;
+                return normalizeSearchText(col.key || '').indexOf(normPrefix) >= 0;
+            });
+        }
+        var chosen = matches.length ? matches[0] : null;
+        if (!chosen || !chosen.key) return '';
+        var v = Object.prototype.hasOwnProperty.call(row, chosen.key) ? row[chosen.key] : '';
+        if (v == null) return '';
+        if (typeof v === 'object') {
+            try { return JSON.stringify(v); } catch (e) { return String(v); }
+        }
+        return String(v);
+    }
+
+    function evalCustomEditorExpression(exprText) {
+        var st = tableStates[currentTableIndex];
+        var row = (st && st.fullData && st.fullData.length) ? st.fullData[0] : null;
+        if (!st || !row) throw new Error('Нет данных в таблице для превью');
+        var expr = String(exprText || '').trim();
+        if (!expr) throw new Error('Editor пустой');
+        var values = [];
+        var jsExpr = expr.replace(/\{([^}]+)\}/g, function(_, tokenBody) {
+            var idx = values.length;
+            values.push(resolveCustomEditorTokenValue(tokenBody, st, row));
+            return '__t' + idx;
+        });
+        var argNames = values.map(function(_, i) { return '__t' + i; });
+        var FNS = {
+            CONCAT: function() { return Array.prototype.slice.call(arguments).map(function(v) { return v == null ? '' : String(v); }).join(''); },
+            UPPER: function(v) { return String(v == null ? '' : v).toUpperCase(); },
+            LOWER: function(v) { return String(v == null ? '' : v).toLowerCase(); },
+            IFNULL: function(v, alt) { return (v == null || v === '') ? alt : v; },
+            COALESCE: function() {
+                for (var i = 0; i < arguments.length; i++) if (arguments[i] != null && arguments[i] !== '') return arguments[i];
+                return '';
+            },
+            LEN: function(v) { return String(v == null ? '' : v).length; },
+            NUMBER: function(v) {
+                if (typeof v === 'number') return v;
+                var n = parseFloat(String(v == null ? '' : v).replace(',', '.'));
+                return isNaN(n) ? 0 : n;
+            },
+            ROUND: function(v, p) {
+                var n = typeof v === 'number' ? v : parseFloat(String(v == null ? '' : v).replace(',', '.'));
+                if (isNaN(n)) return 0;
+                var prec = parseInt(p, 10); if (isNaN(prec)) prec = 0;
+                var m = Math.pow(10, prec);
+                return Math.round(n * m) / m;
+            }
+        };
+        var fnNames = Object.keys(FNS);
+        var body = '"use strict"; return (' + jsExpr + ');';
+        try {
+            var fn = Function.apply(null, argNames.concat(fnNames).concat([body]));
+            return fn.apply(null, values.concat(fnNames.map(function(n) { return FNS[n]; })));
+        } catch (e) {
+            throw new Error('Ошибка выражения: ' + (e && e.message ? e.message : e));
+        }
+    }
+
+    function renderCustomEditorPreview() {
+        if (!customFieldPreviewResult) return;
+        try {
+            var result = evalCustomEditorExpression(customFieldPayloadTextarea ? customFieldPayloadTextarea.value : '');
+            customFieldPreviewResult.classList.remove('text-danger');
+            customFieldPreviewResult.textContent = (result == null || result === '') ? 'Пусто' : String(result);
+        } catch (e) {
+            customFieldPreviewResult.classList.add('text-danger');
+            customFieldPreviewResult.textContent = e && e.message ? e.message : String(e);
+        }
+    }
+
+    if (customFieldPreviewBtn) {
+        customFieldPreviewBtn.addEventListener('click', function() {
+            renderCustomEditorPreview();
         });
     }
 
