@@ -2574,7 +2574,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!entityKeyVal || !nestedType || (entityKeyVal && !allowedEntityKeys[entityKeyVal])) {
                 labelRow.style.display = 'none';
                 return;
-            }
+            } 
             var hasVisibleRows = false;
             fieldsList.querySelectorAll('.field-row[data-entitykey="' + entityKeyVal + '"][data-nested-type="' + nestedType + '"]').forEach(function(r) {
                 if (hasVisibleRows) return;
