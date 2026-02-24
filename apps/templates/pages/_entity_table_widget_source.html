@@ -109,6 +109,7 @@
     @media (max-width: 576px) { .entity-list-two-cols { grid-template-columns: 1fr; } }
     .entity-select-hint .entity-select-hint-icon { width: 24px; height: 24px; min-width: 24px; font-size: 14px; font-weight: 600; font-style: normal; }
     #nestedCheckboxesRow .btn.nested-toggle.active { background-color: var(--bs-primary); color: #fff; border-color: var(--bs-primary); }
+    #modalFields.modal-parent-hidden .modal-dialog { visibility: hidden; }
     #gridTopRow #btnFields { margin-left: auto !important; }
     .entity-table-grid-wrap th.entity-table-th-draggable { cursor: grab; user-select: none; }
     .entity-table-grid-wrap th.entity-table-th-draggable:active { cursor: grabbing; }
@@ -707,7 +708,19 @@ document.addEventListener('DOMContentLoaded', function() {
             fieldsModalForFilterTableIndex = null;
             fieldsModalForFilterSource = null;
             fieldsModalForCustomEditorInsert = false;
+            modalFieldsEl.classList.remove('modal-parent-hidden');
             modalFieldsEl.removeAttribute('data-custom-editor-mode');
+        });
+    }
+
+    if (modalCustomFieldPickerEl && modalFieldsEl) {
+        modalCustomFieldPickerEl.addEventListener('show.bs.modal', function() {
+            if (modalFieldsEl.classList.contains('show')) {
+                modalFieldsEl.classList.add('modal-parent-hidden');
+            }
+        });
+        modalCustomFieldPickerEl.addEventListener('hidden.bs.modal', function() {
+            modalFieldsEl.classList.remove('modal-parent-hidden');
         });
     }
 
