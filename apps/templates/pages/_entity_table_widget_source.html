@@ -615,6 +615,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentTableIndex = 0;
     let entitiesList = [];
     let fieldsCache = {};
+    let guestConfigRefreshTimer = null;
+    let lastRemoteConfigSignature = '';
 
     const entityTablesContainer = document.getElementById('entityTablesContainer');
     isReadOnly = isGuestUser();
@@ -1049,7 +1051,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     table_description: st.tableDescription,
                     table_style: st.tableStyle || 'hoverable_rows',
                     entities: st.selectedEntities,
-                    fields: st.selectedFields,
+                    fields: buildFieldsFromAllColumns(st),
                     filter_fields: getPersistedTableFilterFields(st),
                     column_order: keys.length ? keys : null,
                     column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
@@ -1940,6 +1942,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(function(data) {
                 if (!data || !data.ok) { if (isDashboardSlug()) showDashboardLoadError(); else tryApplyStored(); return; }
+                lastRemoteConfigSignature = getRemoteConfigSignature(data);
                 if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
                     var isDashboard = !!(data.read_only || isDashboardSlug());
                     tableStates = data.tables.map(function(t) {
@@ -2070,6 +2073,41 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function getRemoteConfigSignature(data) {
+        try {
+            return JSON.stringify({
+                page_mode: data && data.page_mode ? data.page_mode : '',
+                table_modes: data && data.table_modes ? data.table_modes : {},
+                tables: data && Array.isArray(data.tables) ? data.tables : [],
+                entities: data && Array.isArray(data.entities) ? data.entities : [],
+                fields: data && Array.isArray(data.fields) ? data.fields : [],
+                table_title: data && data.table_title ? data.table_title : '',
+                table_description: data && data.table_description ? data.table_description : ''
+            });
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function startGuestConfigAutoRefresh() {
+        if (!isGuestUser()) return;
+        if (guestConfigRefreshTimer) return;
+        guestConfigRefreshTimer = setInterval(function() {
+            if (document.hidden) return;
+            var slug = getPageSlug();
+            fetch(API.config + '?page_slug=' + encodeURIComponent(slug))
+                .then(function(r) { if (!r.ok) throw new Error(String(r.status || '')); return r.json(); })
+                .then(function(data) {
+                    if (!data || !data.ok) return;
+                    var nextSig = getRemoteConfigSignature(data);
+                    if (!nextSig) return;
+                    if (lastRemoteConfigSignature && nextSig === lastRemoteConfigSignature) return;
+                    loadConfig();
+                })
+                .catch(function() {});
+        }, 4000);
+    }
+
     function saveConfig(opts) {
         opts = opts || {};
         var slug = getPageSlug();
@@ -2100,7 +2138,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 table_description: st.tableDescription,
                 table_style: st.tableStyle || 'hoverable_rows',
                 entities: st.selectedEntities,
-                fields: st.selectedFields,
+                fields: buildFieldsFromAllColumns(st),
                 filter_fields: getPersistedTableFilterFields(st),
                 column_order: keys.length ? keys : null,
                 column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
@@ -4072,6 +4110,7 @@ document.addEventListener('DOMContentLoaded', function() {
     isReadOnly = isGuestUser();
     applyReadOnlyMode();
     loadConfig();
+    startGuestConfigAutoRefresh();
     /* ensureSections() is called inside loadConfig() / applyConfig() / tryApplyStored() / showDashboardLoadError() */
 
     window.addEventListener('beforeunload', saveConfigBeforeUnload);
