@@ -835,6 +835,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return (PAGE_SLUG && String(PAGE_SLUG).trim()) ? String(PAGE_SLUG).trim() : 'entity-table';
     }
 
+    function canUseLocalTableStorage() {
+        return !isGuestUser();
+    }
+
     var STORAGE_KEY_PREFIX = 'entity_table_config_';
     var COLUMN_ORDER_KEY_PREFIX = 'entity_table_column_order_';
 
@@ -843,6 +847,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function saveColumnOrder() {
+        if (!canUseLocalTableStorage()) return;
         try {
             var obj = {};
             tableStates.forEach(function(st, i) {
@@ -853,6 +858,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function loadColumnOrder(tableIndex) {
+        if (!canUseLocalTableStorage()) return null;
         try {
             var raw = localStorage.getItem(getColumnOrderStorageKey());
             if (!raw) return null;
@@ -872,6 +878,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /** Сбросить сохранённый порядок колонок для одной таблицы (после смены полей удалённые колонки не должны влиять на порядок). */
     function clearColumnOrderForTable(tableIndex) {
+        if (!canUseLocalTableStorage()) return;
         try {
             var raw = localStorage.getItem(getColumnOrderStorageKey());
             if (!raw) return;
@@ -884,6 +891,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function clearColumnWidthsForTable(tableIndex) {
         var st = tableStates[tableIndex];
         if (st) st.columnWidths = {};
+        if (!canUseLocalTableStorage()) return;
         try {
             var raw = localStorage.getItem(getColumnWidthStorageKey());
             if (!raw) return;
@@ -972,6 +980,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function saveColumnWidths() {
+        if (!canUseLocalTableStorage()) return;
         try {
             var obj = {};
             tableStates.forEach(function(st, i) {
@@ -982,6 +991,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function loadColumnWidths(tableIndex) {
+        if (!canUseLocalTableStorage()) return {};
         try {
             var raw = localStorage.getItem(getColumnWidthStorageKey());
             if (!raw) return {};
@@ -1021,6 +1031,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function saveConfigToStorage() {
+        if (!canUseLocalTableStorage()) return;
         try {
             var key = STORAGE_KEY_PREFIX + getPageSlug();
             var tables = [];
@@ -1067,6 +1078,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function loadConfigFromStorage() {
+        if (!canUseLocalTableStorage()) return null;
         try {
             var key = STORAGE_KEY_PREFIX + getPageSlug();
             var raw = localStorage.getItem(key);
@@ -1919,7 +1931,7 @@ document.addEventListener('DOMContentLoaded', function() {
     /** Загрузка конфига: сначала с сервера; если пусто или ошибка — восстанавливаем из localStorage. */
     function loadConfig() {
         var slug = getPageSlug();
-        if (!isDashboardSlug()) { try { localStorage.removeItem(STORAGE_KEY_PREFIX + slug); } catch (e) {} }
+        if (!isDashboardSlug() && canUseLocalTableStorage()) { try { localStorage.removeItem(STORAGE_KEY_PREFIX + slug); } catch (e) {} }
         fetch(API.config + '?page_slug=' + encodeURIComponent(slug))
             .then(function(r) {
                 if (!r.ok) return Promise.reject(new Error(r.status));
@@ -1954,7 +1966,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         };
                     });
                     tableStates = tableStates.filter(isConfiguredSectionState);
-                    var stored = loadConfigFromStorage();
+                    var stored = isGuestUser() ? null : loadConfigFromStorage();
                     if (stored && stored.tables && Array.isArray(stored.tables)) {
                         tableStates.forEach(function(st, i) {
                             var s = stored.tables[i];
@@ -2029,7 +2041,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 applyReadOnlyMode();
                 renderComponentModesAdmin();
                 bindComponentModesListeners();
-                try { localStorage.removeItem(STORAGE_KEY_PREFIX + getPageSlug()); } catch (e) {}
+                if (canUseLocalTableStorage()) { try { localStorage.removeItem(STORAGE_KEY_PREFIX + getPageSlug()); } catch (e) {} }
                 return;
             })
             .catch(function() { if (isDashboardSlug()) showDashboardLoadError(); else tryApplyStored(); });
