@@ -2689,7 +2689,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         row.style.display = 'none';
                         row.setAttribute('data-search-text', ((entityTitle || '') + ' ' + title).toLowerCase());
                         var id = 'cfp_' + key.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + typ.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + idx;
-                        row.innerHTML = '<input class="form-check-input custom-field-picker-cb" type="checkbox" id="' + id + '" data-title="' + title.replace(/"/g, '&quot;') + '" data-token-prefix="' + (String(entityTitle || key) + '.' + String(group.label || typ)).replace(/"/g, '&quot;') + '"><label class="form-check-label" for="' + id + '">' + title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</label>';
+                        row.innerHTML = '<input class="form-check-input custom-field-picker-cb" type="checkbox" id="' + id + '" data-title="' + title.replace(/"/g, '&quot;') + '" data-token-prefix="' + String(group.label || typ).replace(/"/g, '&quot;') + '"><label class="form-check-label" for="' + id + '">' + title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</label>';
                         customFieldPickerList.appendChild(row);
                     });
                 });
