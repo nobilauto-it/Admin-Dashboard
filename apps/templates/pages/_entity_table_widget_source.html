@@ -2786,6 +2786,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     var candidates = Object.keys(firstRow).filter(function(k) { return String(k).slice(-suffix.length) === suffix; });
                     if (candidates.length === 1) val = firstRow[candidates[0]];
                 }
+                if (val == null || val === '') {
+                    var rowEl = cb.closest('.field-row');
+                    var prefixLabel = (cb.getAttribute('data-token-prefix') || '').trim();
+                    var cols = (stForPreview && Array.isArray(stForPreview.allColumns)) ? stForPreview.allColumns : [];
+                    var wantedFieldNorm = normalizeSearchText(fieldTitle);
+                    var wantedPrefixNorm = normalizeSearchText(prefixLabel);
+                    var matchedCol = cols.find(function(col) {
+                        if (!col) return false;
+                        var colLabelNorm = normalizeSearchText(col.label || '');
+                        if (colLabelNorm !== wantedFieldNorm) return false;
+                        if (!wantedPrefixNorm) return true;
+                        var entityTitleNorm = normalizeSearchText(col.entityTitle || '');
+                        return entityTitleNorm === wantedPrefixNorm;
+                    });
+                    if (!matchedCol && rowEl) {
+                        var ekRow = (rowEl.getAttribute('data-entitykey') || '').trim();
+                        matchedCol = cols.find(function(col) {
+                            return !!col && String(col.entityKey || '').trim() === ekRow && normalizeSearchText(col.label || '') === wantedFieldNorm;
+                        });
+                    }
+                    if (matchedCol && matchedCol.key && Object.prototype.hasOwnProperty.call(firstRow, matchedCol.key)) {
+                        val = firstRow[matchedCol.key];
+                    }
+                }
                 if (val == null || val === '') return '';
                 if (typeof val === 'object') {
                     try { return JSON.stringify(val); } catch (e) { return String(val); }
