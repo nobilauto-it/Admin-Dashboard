@@ -675,6 +675,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let fieldsCache = {};
     let guestConfigRefreshTimer = null;
     let lastRemoteConfigSignature = '';
+    let fieldsModalForCustomEditorInsert = false;
 
     const entityTablesContainer = document.getElementById('entityTablesContainer');
     isReadOnly = isGuestUser();
@@ -701,6 +702,7 @@ document.addEventListener('DOMContentLoaded', function() {
         modalFieldsEl.addEventListener('hidden.bs.modal', function() {
             fieldsModalForFilterTableIndex = null;
             fieldsModalForFilterSource = null;
+            fieldsModalForCustomEditorInsert = false;
         });
     }
 
@@ -2521,7 +2523,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (customFieldActionBtn) {
         customFieldActionBtn.addEventListener('click', function() {
-            openCustomFieldPickerModal();
+            fieldsModalForCustomEditorInsert = true;
+            openFieldsModal();
         });
     }
 
@@ -2610,6 +2613,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var st = tableStates[currentTableIndex];
         if (!st || !st.selectedEntities.length) return;
         var isFilterMode = (fieldsModalForFilterTableIndex != null);
+        var isCustomEditorInsertMode = !!fieldsModalForCustomEditorInsert;
         var tableStyleSelect = document.getElementById('tableStyleSelect');
         if (tableStyleSelect && TABLE_STYLES[st.tableStyle]) tableStyleSelect.value = st.tableStyle;
         var entityLabel = document.getElementById('settingsModalEntityLabel');
@@ -2621,11 +2625,15 @@ document.addEventListener('DOMContentLoaded', function() {
         var settingsTab = document.querySelector('#modalFields [href="#settingsTabPane"]');
         var settingsPane = document.getElementById('settingsTabPane');
         if (settingsTab && settingsPane) {
-            if (isFilterMode) {
+            if (isFilterMode || isCustomEditorInsertMode) {
                 settingsTab.closest('.nav-item').classList.add('d-none');
             } else {
                 settingsTab.closest('.nav-item').classList.remove('d-none');
             }
+        }
+        var fieldsTabBtn = document.querySelector('#modalFields [href="#fieldsTabPane"]');
+        if (fieldsTabBtn && window.bootstrap && bootstrap.Tab) {
+            try { bootstrap.Tab.getOrCreateInstance(fieldsTabBtn).show(); } catch (e) {}
         }
         var nestedRow = document.getElementById('nestedCheckboxesRow');
         if (nestedRow) nestedRow.innerHTML = '';
@@ -2663,7 +2671,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (Object.keys(nestedByGroup).length && nestedRow) {
                     var wrap = document.createElement('div');
                     wrap.className = 'd-flex flex-wrap gap-2 align-items-center';
-                    var activeNestedRaw = (!isFilterMode && sel && sel.activeNestedTypes && Array.isArray(sel.activeNestedTypes)) ? sel.activeNestedTypes : [];
+                    var activeNestedRaw = (sel && sel.activeNestedTypes && Array.isArray(sel.activeNestedTypes)) ? sel.activeNestedTypes : [];
                     var activeNested = activeNestedRaw.filter(function(typ) { return Object.prototype.hasOwnProperty.call(nestedByGroup, typ); });
                     Object.keys(nestedByGroup).forEach(function(typ) {
                         var group = nestedByGroup[typ];
@@ -2690,7 +2698,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     div.setAttribute('data-nested-type', '');
                     div.setAttribute('data-search-text', ((entityTitle || '') + ' ' + (f.human_title || f.column_name || '')).toLowerCase());
                     var id = 'f_' + key + '_main_' + (f.human_title || f.column_name || f.id).replace(/\s/g, '_');
-                    var checked = (!isFilterMode && titles.indexOf(f.human_title) >= 0) ? ' checked' : '';
+                    var checked = (!isFilterMode && !isCustomEditorInsertMode && titles.indexOf(f.human_title) >= 0) ? ' checked' : '';
                     var nestAttr = ' data-nested-type=""';
                     var lab = fieldLabelShort(f.human_title || f.column_name || '');
                     var labDisp = (lab.display || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -2703,7 +2711,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 Object.keys(nestedByGroup).forEach(function(typ) {
                     var group = nestedByGroup[typ];
                     var hasSelectedLabel = activeNestedForLabels.indexOf(typ) >= 0;
-                    var titlesNested = (!isFilterMode && sel && sel.nestedFields && sel.nestedFields[typ] && Array.isArray(sel.nestedFields[typ])) ? sel.nestedFields[typ] : [];
+                    var titlesNested = (!isFilterMode && !isCustomEditorInsertMode && sel && sel.nestedFields && sel.nestedFields[typ] && Array.isArray(sel.nestedFields[typ])) ? sel.nestedFields[typ] : [];
                     var groupLabel = document.createElement('div');
                     groupLabel.className = 'form-check fields-modal-group-label field-row';
                     groupLabel.setAttribute('data-entitykey', key);
@@ -2721,7 +2729,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         div.style.display = hasSelectedLabel ? '' : 'none';
                         div.setAttribute('data-search-text', ((entityTitle || '') + ' ' + (n.human_title || n.column_name || '')).toLowerCase());
                         var id = 'f_' + key + '_' + typ.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + (n.human_title || n.column_name || n.id).replace(/\s/g, '_');
-                        var checked = (!isFilterMode && titlesNested.indexOf(n.human_title) >= 0) ? ' checked' : '';
+                        var checked = (!isFilterMode && !isCustomEditorInsertMode && titlesNested.indexOf(n.human_title) >= 0) ? ' checked' : '';
                         var nestAttr = ' data-nested-type="' + String(typ).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"';
                         var lab = fieldLabelShort(n.human_title || n.column_name || '');
                         var labDisp = (lab.display || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -2806,6 +2814,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     modalFieldsSave.addEventListener('click', function() {
+        if (fieldsModalForCustomEditorInsert) {
+            var selectedTokens = [];
+            var seenTokenMap = {};
+            fieldsList.querySelectorAll('.field-cb:checked').forEach(function(cb) {
+                var ht = (cb.getAttribute('data-human-title') || '').trim();
+                if (!ht) return;
+                var token = '{' + ht + '}';
+                if (seenTokenMap[token]) return;
+                seenTokenMap[token] = true;
+                selectedTokens.push(token);
+            });
+            if (selectedTokens.length && customFieldPayloadTextarea) {
+                var taVal = customFieldPayloadTextarea.value || '';
+                var pos = customFieldPayloadTextarea.selectionStart != null ? customFieldPayloadTextarea.selectionStart : taVal.length;
+                var prefix = (taVal && pos > 0 && !/\s/.test(taVal.charAt(pos - 1))) ? ' ' : '';
+                insertTextAtTextareaCursor(customFieldPayloadTextarea, prefix + selectedTokens.join(' '));
+            }
+            fieldsModalForCustomEditorInsert = false;
+            modalFields.hide();
+            return;
+        }
         if (fieldsModalForFilterTableIndex != null) {
             var st = tableStates[fieldsModalForFilterTableIndex];
             if (!st) { fieldsModalForFilterTableIndex = null; fieldsModalForFilterSource = null; return; }
