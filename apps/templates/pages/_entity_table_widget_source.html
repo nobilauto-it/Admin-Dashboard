@@ -28,7 +28,7 @@
         border-spacing: 0;
         border-collapse: separate;
         white-space: nowrap;
-        table-layout: fixed;
+        table-layout: fixed !important;
     }
     .entity-table-section .entity-table-grid-wrap .datatable-table > thead {
         background-color: var(--bs-light, #f8f9fa) !important;
@@ -142,7 +142,7 @@
     .entity-table-grid-wrap .entity-table-time-toggle i { font-size: 13px; line-height: 1; }
     .entity-table-grid-wrap th.entity-table-th-wrap { position: relative; padding-right: 16px; }
     /* auto — ширина колонок по содержимому; при ручном ресайзе сохраняем width в columnWidths */
-    .entity-table-grid-wrap .datatable-table { table-layout: fixed; }
+    .entity-table-grid-wrap .datatable-table { table-layout: fixed !important; }
     .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; }
     .entity-table-section .entity-table-grid-wrap table caption.entity-table-caption { padding: 0.5rem 0; font-size: 0.875rem; color: var(--bs-secondary-color, #6c757d); caption-side: top; }
     /* Contextual Classes: alternating row colors like Dastone tables-basic */
@@ -2044,7 +2044,6 @@ document.addEventListener('DOMContentLoaded', function() {
         var slug = getPageSlug();
             var tables = [];
             tableStates.forEach(function(st, i) {
-            if (!isConfiguredSectionState(st)) return;
             if (st.type === 'card' && window.EntityCard && typeof window.EntityCard.serializeCardState === 'function') {
                 tables.push(window.EntityCard.serializeCardState(st));
                 return;
@@ -3514,7 +3513,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (st.sortKey === c.key) sortIcon = (st.sortDir === 'asc') ? '&#9650;' : (st.sortDir === 'desc' ? '&#9660;' : '');
             var w = st.columnWidths[c.key];
             /* Apply saved width even if smaller than content so user can narrow columns; content truncates with ellipsis. */
-            var style = (w != null && w >= 1) ? ' style="width:' + w + 'px;min-width:' + w + 'px;"' : '';
+            var style = (w != null && w >= 1) ? ' style="width:' + w + 'px;min-width:' + w + 'px;max-width:' + w + 'px;"' : '';
             var isDateColumn = isLikelyDateColumn(st, c);
             var showTime = isTimeVisibleForColumn(st, c.key);
             var timeToggle = isDateColumn
@@ -3643,15 +3642,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!columnKey) return;
                 var startX = e.clientX;
                 var startWidth = th.offsetWidth;
+                var columnIndex = parseInt(th.getAttribute('data-column-index'), 10);
                 var didResize = false;
                 var dynamicMinWidth = Math.max(24, Math.floor(startWidth * 0.1));
                 th._suppressSortClickUntil = Date.now() + RESIZE_SORT_CLICK_SUPPRESS_MS;
+                var prevDraggable = th.draggable;
+                th.draggable = false;
+                function applyWidthToColumnCells(px) {
+                    if (!els.gridBody || isNaN(columnIndex) || columnIndex < 0) return;
+                    var cellIndex = columnIndex + 1; // nth-child is 1-based
+                    els.gridBody.querySelectorAll('tr').forEach(function(tr) {
+                        var td = tr.querySelector('td:nth-child(' + cellIndex + ')');
+                        if (!td) return;
+                        td.style.width = px + 'px';
+                        td.style.minWidth = px + 'px';
+                        td.style.maxWidth = px + 'px';
+                    });
+                }
                 function onMove(e2) {
                     var dx = e2.clientX - startX;
                     if (Math.abs(dx) > 1) didResize = true;
                     var newWidth = Math.max(dynamicMinWidth, startWidth + dx);
                     th.style.width = newWidth + 'px';
                     th.style.minWidth = newWidth + 'px';
+                    th.style.maxWidth = newWidth + 'px';
+                    applyWidthToColumnCells(newWidth);
                     st.columnWidths[columnKey] = newWidth;
                 }
                 function onUp() {
@@ -3660,6 +3675,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.body.style.userSelect = '';
                     document.body.style.cursor = '';
                     th._suppressSortClickUntil = Date.now() + RESIZE_SORT_CLICK_SUPPRESS_MS;
+                    th.draggable = prevDraggable;
                     saveColumnWidths();
                     if (didResize) updateThLabelByWidth(th);
                 }
