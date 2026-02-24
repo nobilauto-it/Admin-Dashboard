@@ -577,6 +577,74 @@ def entity_table_config():
     if requests is None:
         return make_response(jsonify({"ok": False, "error": "python-requests not available"}), 500)
 
+    def _save_local_cache_non_dash(page_slug_value, payload_obj):
+        try:
+            if not page_slug_value:
+                return
+            tables_val = payload_obj.get('tables')
+            if not isinstance(tables_val, list):
+                return
+            rec_local = EntityTableConfig.query.filter(
+                db.func.lower(EntityTableConfig.page_slug) == page_slug_value.lower()
+            ).first()
+            if not rec_local:
+                rec_local = EntityTableConfig(page_slug=page_slug_value)
+                db.session.add(rec_local)
+            rec_local.set_tables(tables_val)
+            if tables_val:
+                first_local = tables_val[0] if isinstance(tables_val[0], dict) else {}
+                rec_local.table_title = (first_local.get('table_title') or '').strip() or rec_local.table_title or ''
+                rec_local.table_description = (first_local.get('table_description') or '').strip() or (rec_local.table_description or '')
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Entity table config local cache (non-dash) save failed")
+
+    def _merge_local_cache_non_dash(page_slug_value, body_obj):
+        try:
+            if not page_slug_value or not isinstance(body_obj, dict):
+                return body_obj
+            rec_local = EntityTableConfig.query.filter(
+                db.func.lower(EntityTableConfig.page_slug) == page_slug_value.lower()
+            ).first()
+            if not rec_local:
+                return body_obj
+            local_tables = rec_local.get_tables() or []
+            if not local_tables:
+                return body_obj
+            ui_keys = {
+                'table_title', 'table_description', 'table_style',
+                'column_order', 'column_widths', 'sort_key', 'sort_dir',
+                'show_time', 'date_time_display', 'filter_fields', 'start_new_row'
+            }
+            if isinstance(body_obj.get('tables'), list):
+                merged_tables = []
+                remote_tables = body_obj.get('tables') or []
+                max_len = max(len(remote_tables), len(local_tables))
+                for i in range(max_len):
+                    remote_t = remote_tables[i] if i < len(remote_tables) and isinstance(remote_tables[i], dict) else {}
+                    local_t = local_tables[i] if i < len(local_tables) and isinstance(local_tables[i], dict) else {}
+                    if not remote_t and local_t:
+                        merged_tables.append(local_t)
+                        continue
+                    merged = dict(remote_t)
+                    for k in ui_keys:
+                        if k in local_t:
+                            merged[k] = local_t.get(k)
+                    merged_tables.append(merged)
+                body_obj['tables'] = merged_tables
+                return body_obj
+            # Backward-compatible single-table shape
+            if isinstance(local_tables, list) and local_tables and isinstance(local_tables[0], dict):
+                first_local = local_tables[0]
+                for k in ui_keys:
+                    if k in first_local:
+                        body_obj[k] = first_local.get(k)
+            return body_obj
+        except Exception:
+            current_app.logger.exception("Entity table config local cache (non-dash) merge failed")
+            return body_obj
+
     try:
         if request.method == 'GET':
             params = dict(request.args or {})
@@ -594,6 +662,10 @@ def entity_table_config():
 
         try:
             body = resp.json()
+            if request.method == 'POST' and resp.status_code < 400 and isinstance(payload, dict):
+                _save_local_cache_non_dash(page_slug, payload)
+            if request.method == 'GET':
+                body = _merge_local_cache_non_dash(page_slug, body)
             return make_response(jsonify(body), resp.status_code)
         except Exception:
             return make_response(resp.text, resp.status_code)
