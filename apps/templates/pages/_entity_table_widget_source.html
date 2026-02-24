@@ -465,7 +465,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var topbarWrap = document.getElementById('topbarBtnAddEntityWrap');
         if (topbarWrap) { if (hide) { topbarWrap.style.setProperty('display', 'none', 'important'); topbarWrap.classList.add(DASHBOARD_HIDE_CLASS); } else { topbarWrap.classList.remove(DASHBOARD_HIDE_CLASS); topbarWrap.style.display = ''; } }
         if (entityTablesContainer) {
-            entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection, .btnDeleteTableInSection').forEach(function(el) {
+            entityTablesContainer.querySelectorAll('.btnAddEntityInSection, .btnFieldsInSection, .btnDeleteTableInSection, .btn-search-filter-gear').forEach(function(el) {
                 if (hide) { el.style.setProperty('display', 'none', 'important'); el.classList.add(DASHBOARD_HIDE_CLASS); } else { el.classList.remove(DASHBOARD_HIDE_CLASS); el.style.display = ''; }
             });
         }
@@ -1807,6 +1807,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!section) return;
             var idx = parseInt(section.getAttribute('data-table-index'), 10);
             btn.onclick = function() {
+                if (isGuestUser()) return;
                 openFilterModal(idx);
             };
         });
