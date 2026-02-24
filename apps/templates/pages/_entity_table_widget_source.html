@@ -698,23 +698,29 @@ document.addEventListener('DOMContentLoaded', function() {
             (parseFloat(cs.borderRightWidth) || 0)
         ) : 0;
         var contentWidth = 0;
-        [els.loadingBlock, els.gridTopRow, els.searchFilterRow, els.gridBlock, els.paginationBlock].forEach(function(el) {
-            if (!el || (el.classList && el.classList.contains('d-none'))) return;
-            var w = 0;
-            if (el === els.gridBlock) {
-                var tbl = el.querySelector('table');
-                w = Math.max(el.scrollWidth || 0, tbl ? (tbl.scrollWidth || tbl.offsetWidth || 0) : 0);
-            } else {
-                w = Math.max(el.scrollWidth || 0, el.offsetWidth || 0);
-            }
-            if (w > contentWidth) contentWidth = w;
-        });
+        var gridVisible = !!(els.gridBlock && !(els.gridBlock.classList && els.gridBlock.classList.contains('d-none')));
+        if (gridVisible) {
+            var tbl = els.gridBlock.querySelector('table');
+            contentWidth = Math.max(
+                els.gridBlock.scrollWidth || 0,
+                tbl ? (tbl.scrollWidth || tbl.offsetWidth || 0) : 0
+            );
+            // Prefer table width as the source of truth; top search row can wrap inside the section.
+        } else {
+            [els.loadingBlock, els.gridTopRow, els.searchFilterRow, els.paginationBlock].forEach(function(el) {
+                if (!el || (el.classList && el.classList.contains('d-none'))) return;
+                var w = Math.max(el.scrollWidth || 0, el.offsetWidth || 0);
+                if (w > contentWidth) contentWidth = w;
+            });
+        }
         if (!contentWidth) {
             section.style.width = '';
             return;
         }
         var parentWidth = section.parentElement ? (section.parentElement.clientWidth || 0) : 0;
         var target = Math.ceil(contentWidth + hPad);
+        // Respect CSS min-width floor used by the layout.
+        target = Math.max(320, target);
         if (parentWidth > 0) target = Math.min(target, parentWidth);
         section.style.width = target + 'px';
     }
