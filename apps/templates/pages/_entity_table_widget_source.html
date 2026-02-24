@@ -143,7 +143,7 @@
     .entity-table-grid-wrap th.entity-table-th-wrap { position: relative; padding-right: 16px; }
     /* auto — ширина колонок по содержимому; при ручном ресайзе сохраняем width в columnWidths */
     .entity-table-grid-wrap .datatable-table { table-layout: fixed !important; }
-    .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; }
+    .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; touch-action: none; }
     .entity-table-section .entity-table-grid-wrap table caption.entity-table-caption { padding: 0.5rem 0; font-size: 0.875rem; color: var(--bs-secondary-color, #6c757d); caption-side: top; }
     /* Contextual Classes: alternating row colors like Dastone tables-basic */
     .entity-table-section .entity-table-grid-wrap table.table-contextual-rows tbody tr:nth-child(6n+1) { background-color: rgba(var(--bs-primary-rgb), 0.1); }
@@ -989,6 +989,35 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) { return {}; }
     }
 
+    function getPersistedTableFilterFields(st) {
+        if (!st || !Array.isArray(st.filterFields) || !st.filterFields.length) return [];
+        var allowedKeys = {};
+        if (Array.isArray(st.allColumns) && st.allColumns.length) {
+            st.allColumns.forEach(function(c) {
+                if (c && c.key) allowedKeys[String(c.key)] = true;
+            });
+        }
+        return st.filterFields.filter(function(f) {
+            if (!f) return false;
+            var key = String((f.key || '')).trim();
+            if (!key) return false;
+            if (!Object.keys(allowedKeys).length) return true;
+            return !!allowedKeys[key];
+        }).map(function(f) {
+            var out = {
+                label: (f.label != null) ? String(f.label) : '',
+                key: (f.key != null) ? String(f.key) : '',
+                type: (f.type != null) ? String(f.type) : 'text'
+            };
+            if (f.value != null) out.value = String(f.value);
+            if (Array.isArray(f.selectedValues)) out.selectedValues = f.selectedValues.slice();
+            if (f.sourceFieldType != null) out.sourceFieldType = String(f.sourceFieldType);
+            if (f.sourceB24Field != null) out.sourceB24Field = String(f.sourceB24Field);
+            if (f.sourceColumnName != null) out.sourceColumnName = String(f.sourceColumnName);
+            return out;
+        });
+    }
+
     function saveConfigToStorage() {
         try {
             var key = STORAGE_KEY_PREFIX + getPageSlug();
@@ -1021,6 +1050,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     table_style: st.tableStyle || 'hoverable_rows',
                     entities: st.selectedEntities,
                     fields: st.selectedFields,
+                    filter_fields: getPersistedTableFilterFields(st),
                     column_order: keys.length ? keys : null,
                     column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
                     sort_key: st.sortKey || null,
@@ -1931,7 +1961,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
                             sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
                             showTime: (t.show_time === true),
-                            dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {}
+                            dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
+                            filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                         };
                     });
                     tableStates = tableStates.filter(isConfiguredSectionState);
@@ -1978,7 +2009,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
                         sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
                         showTime: (data.show_time === true),
-                        dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {}
+                        dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {},
+                        filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                     }];
                     ensureSections();
                     applyTableStyleToSection(0);
@@ -2069,6 +2101,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 table_style: st.tableStyle || 'hoverable_rows',
                 entities: st.selectedEntities,
                 fields: st.selectedFields,
+                filter_fields: getPersistedTableFilterFields(st),
                 column_order: keys.length ? keys : null,
                 column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
                 sort_key: st.sortKey || null,
@@ -2593,9 +2626,13 @@ document.addEventListener('DOMContentLoaded', function() {
         clearColumnOrderForTable(currentTableIndex);
         clearColumnWidthsForTable(currentTableIndex);
         rebuildAllColumnsFromSelectedFields(currentTableIndex);
+        loadData(currentTableIndex);
         saveConfig();
         saveConfigToStorage();
-        loadData(currentTableIndex);
+        setTimeout(function() {
+            saveConfig();
+            saveConfigToStorage();
+        }, 0);
         modalFields.hide();
         // Автосохранение шаблона на сервере (общий для всех пользователей) после выбора полей
         saveTemplateSnapshot(currentTableIndex);
