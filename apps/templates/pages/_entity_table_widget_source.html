@@ -1373,7 +1373,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         var existingByKey = {};
-        if (!firstGuestSync) {
+        if (st.guestFilterInitialized) {
             (st.filterFields || []).forEach(function(f) {
                 if (f && f.key) existingByKey[f.key] = f;
             });
