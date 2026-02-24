@@ -1,4 +1,4 @@
-﻿{% extends 'layouts/vertical.html' %}
+{% extends 'layouts/vertical.html' %}
 
 {% block title %}{% if page_title is defined %}{{ page_title }}{% else %}__PAGE_TITLE__{% endif %}{% endblock %}
 
@@ -384,7 +384,7 @@
                             <div class="col-12">
                                 <div class="d-flex align-items-center gap-2">
                                     <label class="form-label mb-0" for="customFieldPayloadTextarea">Editor</label>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center" id="customFieldEditorHelpBtn" style="width: 24px; height: 24px; padding: 0;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true" title="<div class='text-start'><div><b>Токены:</b> {Сущность.Поле}</div><div><b>Функции:</b> CONCAT, UPPER, LOWER, IFNULL, COALESCE, LEN, NUMBER, ROUND</div><div><b>Пример:</b> CONCAT({Vânzări realizare.Название}, ' / ', {STOCK AUTO.Название})</div><div><b>Проверить:</b> считает по первой строке таблицы</div></div>" aria-label="Шпаргалка по Editor">i</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center" id="customFieldEditorHelpBtn" style="width: 24px; height: 24px; padding: 0;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true" title="<div class='text-start'><div><b>Токены:</b> {Сущность.Поле}</div><div><b>Функции:</b> CONCAT, UPPER, LOWER, IFNULL, COALESCE, LEN, NUMBER, ROUND</div><div><b>Пример:</b> CONCAT({Vanzari realizare.Название}, ' / ', {STOCK AUTO.Название})</div><div><b>Проверить:</b> считает по первой строке таблицы</div></div>" aria-label="Шпаргалка по Editor">i</button>
                                 </div>
                                 <div class="d-flex align-items-end gap-2">
                                     <textarea class="form-control flex-grow-1" id="customFieldPayloadTextarea" rows="6" placeholder="Форма и логика SQL"></textarea>
