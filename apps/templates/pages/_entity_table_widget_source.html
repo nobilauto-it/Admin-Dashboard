@@ -2491,24 +2491,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    if (customFieldPickerNestedRow && customFieldPickerList) {
-        customFieldPickerNestedRow.addEventListener('click', function(e) {
-            var target = e.target.closest && e.target.closest('.nested-toggle') ? e.target.closest('.nested-toggle') : (e.target.classList && e.target.classList.contains('nested-toggle') ? e.target : null);
-            if (!target) return;
-            e.preventDefault();
-            var ek = target.getAttribute('data-entitykey');
-            var typ = target.getAttribute('data-type');
-            if (!ek || !typ) return;
-            var show = !target.classList.contains('active');
-            target.classList.toggle('active', show);
-            target.setAttribute('data-active', show ? 'true' : 'false');
-            customFieldPickerList.querySelectorAll('[data-entitykey="' + ek + '"][data-nested-type="' + typ + '"]').forEach(function(el) {
-                el.style.display = show ? '' : 'none';
-            });
-            filterCustomFieldPickerList();
-        });
-    }
-
     function openCustomFieldPickerModal() {
         var st = tableStates[currentTableIndex];
         if (!st || !st.selectedEntities || !st.selectedEntities.length) return;
