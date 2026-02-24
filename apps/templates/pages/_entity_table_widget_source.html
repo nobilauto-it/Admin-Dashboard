@@ -429,6 +429,9 @@
                 <div class="mb-3">
                     <input type="text" class="form-control form-control-sm" id="customFieldPickerSearchInput" placeholder="Поиск полей">
                 </div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <div id="customFieldPickerNestedRow" class="d-flex flex-wrap gap-2 align-items-center"></div>
+                </div>
                 <div id="customFieldPickerList" class="fields-modal-grid"></div>
             </div>
             <div class="modal-footer">
@@ -692,6 +695,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const customFieldPickerList = document.getElementById('customFieldPickerList');
     const customFieldPickerSearchInput = document.getElementById('customFieldPickerSearchInput');
     const customFieldPickerInsertBtn = document.getElementById('customFieldPickerInsertBtn');
+    const customFieldPickerNestedRow = document.getElementById('customFieldPickerNestedRow');
     const customFieldPayloadTextarea = document.getElementById('customFieldPayloadTextarea');
     const customFieldActionBtn = document.getElementById('customFieldActionBtn');
     const fieldsList = document.getElementById('fieldsList');
@@ -703,6 +707,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fieldsModalForFilterTableIndex = null;
             fieldsModalForFilterSource = null;
             fieldsModalForCustomEditorInsert = false;
+            modalFieldsEl.removeAttribute('data-custom-editor-mode');
         });
     }
 
@@ -2468,6 +2473,42 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    if (customFieldPickerNestedRow && customFieldPickerList) {
+        customFieldPickerNestedRow.addEventListener('click', function(e) {
+            var target = e.target.closest && e.target.closest('.nested-toggle') ? e.target.closest('.nested-toggle') : (e.target.classList && e.target.classList.contains('nested-toggle') ? e.target : null);
+            if (!target) return;
+            e.preventDefault();
+            var ek = target.getAttribute('data-entitykey');
+            var typ = target.getAttribute('data-type');
+            if (!ek || !typ) return;
+            var show = !target.classList.contains('active');
+            target.classList.toggle('active', show);
+            target.setAttribute('data-active', show ? 'true' : 'false');
+            customFieldPickerList.querySelectorAll('[data-entitykey="' + ek + '"][data-nested-type="' + typ + '"]').forEach(function(el) {
+                el.style.display = show ? '' : 'none';
+            });
+            filterCustomFieldPickerList();
+        });
+    }
+
+    if (customFieldPickerNestedRow && customFieldPickerList) {
+        customFieldPickerNestedRow.addEventListener('click', function(e) {
+            var target = e.target.closest && e.target.closest('.nested-toggle') ? e.target.closest('.nested-toggle') : (e.target.classList && e.target.classList.contains('nested-toggle') ? e.target : null);
+            if (!target) return;
+            e.preventDefault();
+            var ek = target.getAttribute('data-entitykey');
+            var typ = target.getAttribute('data-type');
+            if (!ek || !typ) return;
+            var show = !target.classList.contains('active');
+            target.classList.toggle('active', show);
+            target.setAttribute('data-active', show ? 'true' : 'false');
+            customFieldPickerList.querySelectorAll('[data-entitykey="' + ek + '"][data-nested-type="' + typ + '"]').forEach(function(el) {
+                el.style.display = show ? '' : 'none';
+            });
+            filterCustomFieldPickerList();
+        });
+    }
+
     function openCustomFieldPickerModal() {
         var st = tableStates[currentTableIndex];
         if (!st || !st.selectedEntities || !st.selectedEntities.length) return;
@@ -2508,6 +2549,157 @@ document.addEventListener('DOMContentLoaded', function() {
         modalCustomFieldPicker.show();
     }
 
+    // Custom field picker (separate modal) reuses the same field/nested rendering model as fields modal.
+    function filterCustomFieldPickerList() {
+        if (!customFieldPickerList || !customFieldPickerSearchInput) return;
+        var q = normalizeSearchText(customFieldPickerSearchInput.value || '');
+        customFieldPickerList.querySelectorAll('.field-row:not([data-entity-header="1"])').forEach(function(row) {
+            if (row.classList && row.classList.contains('fields-modal-group-label')) {
+                row.style.display = 'none';
+                return;
+            }
+            var text = normalizeSearchText(row.getAttribute('data-search-text') || row.textContent || '');
+            var ek = row.getAttribute('data-entitykey') || '';
+            var nestedType = row.getAttribute('data-nested-type') || '';
+            var nestedVisible = true;
+            if (nestedType && ek) {
+                var safeId = (ek + '_' + nestedType).replace(/[^a-zA-Z0-9_]/g, '_');
+                var toggleEl = document.getElementById('cfp_nested_cb_' + safeId);
+                nestedVisible = !toggleEl || targetTruthy(toggleEl);
+            }
+            row.style.display = ((!q || text.indexOf(q) >= 0) && nestedVisible) ? '' : 'none';
+        });
+        customFieldPickerList.querySelectorAll('.fields-modal-group-label.field-row').forEach(function(labelRow) {
+            var ek = labelRow.getAttribute('data-entitykey') || '';
+            var nestedType = labelRow.getAttribute('data-nested-type') || '';
+            var hasVisibleRows = false;
+            customFieldPickerList.querySelectorAll('.field-row[data-entitykey="' + ek + '"][data-nested-type="' + nestedType + '"]').forEach(function(r) {
+                if (hasVisibleRows) return;
+                if (r === labelRow) return;
+                if (r.classList && r.classList.contains('fields-modal-group-label')) return;
+                if (r.style.display !== 'none') hasVisibleRows = true;
+            });
+            labelRow.style.display = hasVisibleRows ? '' : 'none';
+        });
+        customFieldPickerList.querySelectorAll('.fields-modal-entity-header').forEach(function(header) {
+            var key = header.getAttribute('data-entitykey') || '';
+            if (!key) return;
+            var anyVisible = false;
+            customFieldPickerList.querySelectorAll('.field-row[data-entitykey="' + key + '"]').forEach(function(r) {
+                if (r.classList.contains('fields-modal-entity-header')) return;
+                if (r.style.display !== 'none') anyVisible = true;
+            });
+            header.style.display = anyVisible ? '' : 'none';
+        });
+
+        function targetTruthy(btn) {
+            return btn.classList.contains('active') || btn.getAttribute('data-active') === 'true';
+        }
+    }
+
+    function openCustomFieldPickerModal() {
+        var st = tableStates[currentTableIndex];
+        if (!st || !st.selectedEntities || !st.selectedEntities.length) return;
+        if (!modalCustomFieldPicker || !customFieldPickerList) return;
+        if (customFieldPickerNestedRow) customFieldPickerNestedRow.innerHTML = '';
+        customFieldPickerList.innerHTML = '<div class="text-muted small">Загрузка полей...</div>';
+        if (customFieldPickerSearchInput) customFieldPickerSearchInput.value = '';
+        Promise.all(st.selectedEntities.map(function(ent) {
+            return loadFieldsForEntity(ent).then(function(res) { return { ent: ent, res: res || { fields: [] } }; })
+                .catch(function() { return { ent: ent, res: { fields: [] } }; });
+        })).then(function(items) {
+            customFieldPickerList.innerHTML = '';
+            items.forEach(function(item) {
+                var ent = item.ent;
+                var key = entityKey(ent);
+                var entityTitle = (ent && ent.title) ? String(ent.title) : entityTitleForNested(ent);
+                var header = document.createElement('div');
+                header.className = 'field-row fields-modal-entity-header';
+                header.setAttribute('data-entitykey', key);
+                header.setAttribute('data-entity-header', '1');
+                header.setAttribute('data-search-text', (entityTitle || '').toLowerCase());
+                header.innerHTML = '<span>' + String(entityTitle || key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;') + '</span>';
+                customFieldPickerList.appendChild(header);
+
+                var mainFields = [];
+                var nestedByGroup = {};
+                (item.res.fields || []).forEach(function(f) {
+                    if (f.nested_fields && f.nested_fields.length) {
+                        var t = nestedTypeKey(f.field_type);
+                        var slug = (f.human_title || f.column_name || String(f.id || '')).replace(/\s/g, '_').replace(/[^a-zA-Z0-9_-]/g, '_') || t;
+                        var groupKey = t + '::' + slug;
+                        if (!nestedByGroup[groupKey]) nestedByGroup[groupKey] = { label: f.human_title || f.column_name || nestedTypeLabel(t), fields: [] };
+                        f.nested_fields.forEach(function(n) {
+                            nestedByGroup[groupKey].fields.push({ human_title: n.human_title, column_name: n.column_name, id: n.id });
+                        });
+                    } else {
+                        mainFields.push(f);
+                    }
+                });
+
+                if (Object.keys(nestedByGroup).length && customFieldPickerNestedRow) {
+                    var wrap = document.createElement('div');
+                    wrap.className = 'd-flex flex-wrap gap-2 align-items-center';
+                    Object.keys(nestedByGroup).forEach(function(typ) {
+                        var group = nestedByGroup[typ];
+                        var safeId = (key + '_' + typ).replace(/[^a-zA-Z0-9_]/g, '_');
+                        var btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'btn btn-sm btn-outline-primary nested-toggle';
+                        btn.setAttribute('data-entitykey', key);
+                        btn.setAttribute('data-type', typ);
+                        btn.setAttribute('data-active', 'false');
+                        btn.id = 'cfp_nested_cb_' + safeId;
+                        btn.textContent = group.label || typ;
+                        wrap.appendChild(btn);
+                    });
+                    customFieldPickerNestedRow.appendChild(wrap);
+                }
+
+                mainFields.forEach(function(f, idx) {
+                    var title = String((f && (f.human_title || f.column_name)) || '').trim();
+                    if (!title) return;
+                    var row = document.createElement('div');
+                    row.className = 'form-check field-row';
+                    row.setAttribute('data-entitykey', key);
+                    row.setAttribute('data-nested-type', '');
+                    row.setAttribute('data-search-text', ((entityTitle || '') + ' ' + title).toLowerCase());
+                    var id = 'cfp_' + key.replace(/[^a-zA-Z0-9_]/g, '_') + '_main_' + idx;
+                    row.innerHTML = '<input class="form-check-input custom-field-picker-cb" type="checkbox" id="' + id + '" data-title="' + title.replace(/"/g, '&quot;') + '"><label class="form-check-label" for="' + id + '">' + title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</label>';
+                    customFieldPickerList.appendChild(row);
+                });
+
+                Object.keys(nestedByGroup).forEach(function(typ) {
+                    var group = nestedByGroup[typ];
+                    var groupLabel = document.createElement('div');
+                    groupLabel.className = 'form-check fields-modal-group-label field-row';
+                    groupLabel.setAttribute('data-entitykey', key);
+                    groupLabel.setAttribute('data-nested-type', typ);
+                    groupLabel.setAttribute('data-search-text', ((entityTitle || '') + ' ' + (group.label || typ)).toLowerCase());
+                    groupLabel.style.display = 'none';
+                    groupLabel.style.gridColumn = '1 / -1';
+                    groupLabel.innerHTML = '<span class="fw-bold text-dark">Поля: ' + String(group.label || typ).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>';
+                    customFieldPickerList.appendChild(groupLabel);
+                    group.fields.forEach(function(n, idx) {
+                        var title = String((n && (n.human_title || n.column_name)) || '').trim();
+                        if (!title) return;
+                        var row = document.createElement('div');
+                        row.className = 'form-check field-row';
+                        row.setAttribute('data-entitykey', key);
+                        row.setAttribute('data-nested-type', typ);
+                        row.style.display = 'none';
+                        row.setAttribute('data-search-text', ((entityTitle || '') + ' ' + title).toLowerCase());
+                        var id = 'cfp_' + key.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + typ.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + idx;
+                        row.innerHTML = '<input class="form-check-input custom-field-picker-cb" type="checkbox" id="' + id + '" data-title="' + title.replace(/"/g, '&quot;') + '"><label class="form-check-label" for="' + id + '">' + title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</label>';
+                        customFieldPickerList.appendChild(row);
+                    });
+                });
+            });
+            filterCustomFieldPickerList();
+        });
+        modalCustomFieldPicker.show();
+    }
+
     function insertTextAtTextareaCursor(textarea, text) {
         if (!textarea) return;
         textarea.focus();
@@ -2523,8 +2715,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (customFieldActionBtn) {
         customFieldActionBtn.addEventListener('click', function() {
-            fieldsModalForCustomEditorInsert = true;
-            openFieldsModal();
+            openCustomFieldPickerModal();
         });
     }
 
@@ -2613,7 +2804,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var st = tableStates[currentTableIndex];
         if (!st || !st.selectedEntities.length) return;
         var isFilterMode = (fieldsModalForFilterTableIndex != null);
-        var isCustomEditorInsertMode = !!fieldsModalForCustomEditorInsert;
+        var isCustomEditorInsertMode = !!fieldsModalForCustomEditorInsert || !!(modalFieldsEl && modalFieldsEl.getAttribute('data-custom-editor-mode') === '1');
         var tableStyleSelect = document.getElementById('tableStyleSelect');
         if (tableStyleSelect && TABLE_STYLES[st.tableStyle]) tableStyleSelect.value = st.tableStyle;
         var entityLabel = document.getElementById('settingsModalEntityLabel');
@@ -2814,7 +3005,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     modalFieldsSave.addEventListener('click', function() {
-        if (fieldsModalForCustomEditorInsert) {
+        if (fieldsModalForCustomEditorInsert || !!(modalFieldsEl && modalFieldsEl.getAttribute('data-custom-editor-mode') === '1')) {
             var selectedTokens = [];
             var seenTokenMap = {};
             fieldsList.querySelectorAll('.field-cb:checked').forEach(function(cb) {
@@ -2832,6 +3023,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 insertTextAtTextareaCursor(customFieldPayloadTextarea, prefix + selectedTokens.join(' '));
             }
             fieldsModalForCustomEditorInsert = false;
+            if (modalFieldsEl) modalFieldsEl.removeAttribute('data-custom-editor-mode');
             var settingsTab = document.querySelector('#modalFields [href="#settingsTabPane"]');
             var customTab = document.querySelector('#modalFields [href="#customFieldTabPane"]');
             if (settingsTab) settingsTab.closest('.nav-item').classList.remove('d-none');
