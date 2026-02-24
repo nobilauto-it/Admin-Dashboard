@@ -2726,8 +2726,6 @@ document.addEventListener('DOMContentLoaded', function() {
         customFieldPickerInsertBtn.addEventListener('click', function() {
             if (!customFieldPickerList || !customFieldPayloadTextarea) return;
             var selected = Array.from(customFieldPickerList.querySelectorAll('.custom-field-picker-cb:checked'));
-            var stForPreview = tableStates[currentTableIndex];
-            var firstPreviewRow = (stForPreview && stForPreview.fullData && stForPreview.fullData.length) ? (stForPreview.fullData[0] || {}) : null;
             if (!selected.length) {
                 if (modalCustomFieldPicker) modalCustomFieldPicker.hide();
                 return;
@@ -2751,13 +2749,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
                     if (!title) return '';
-                    var tokenText = '{' + (prefixKey ? (prefixKey + '.') : '') + title + '}';
-                    var previewValue = '';
-                    if (firstPreviewRow) {
-                        previewValue = resolveCustomFieldPreviewValue(firstPreviewRow, ek, title, nestedType);
-                    }
-                    if (previewValue !== '') tokenText += '=' + previewValue;
-                    return tokenText;
+                    return '{' + (prefixKey ? (prefixKey + '.') : '') + title + '}';
                 })
                 .filter(Boolean);
             if (!tokens.length) {
@@ -2773,49 +2765,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             insertTextAtTextareaCursor(customFieldPayloadTextarea, prefix + tokens.join(' '));
             if (modalCustomFieldPicker) modalCustomFieldPicker.hide();
-
-            function resolveCustomFieldPreviewValue(firstRow, entityKeyValue, fieldTitle, nestedTypeValue) {
-                if (!firstRow || !fieldTitle) return '';
-                var exactKey = entityKeyValue ? (entityKeyValue + '::' + fieldTitle) : '';
-                var val = '';
-                if (exactKey && Object.prototype.hasOwnProperty.call(firstRow, exactKey)) {
-                    val = firstRow[exactKey];
-                }
-                if ((val == null || val === '') && nestedTypeValue) {
-                    var suffix = '::' + fieldTitle;
-                    var candidates = Object.keys(firstRow).filter(function(k) { return String(k).slice(-suffix.length) === suffix; });
-                    if (candidates.length === 1) val = firstRow[candidates[0]];
-                }
-                if (val == null || val === '') {
-                    var rowEl = cb.closest('.field-row');
-                    var prefixLabel = (cb.getAttribute('data-token-prefix') || '').trim();
-                    var cols = (stForPreview && Array.isArray(stForPreview.allColumns)) ? stForPreview.allColumns : [];
-                    var wantedFieldNorm = normalizeSearchText(fieldTitle);
-                    var wantedPrefixNorm = normalizeSearchText(prefixLabel);
-                    var matchedCol = cols.find(function(col) {
-                        if (!col) return false;
-                        var colLabelNorm = normalizeSearchText(col.label || '');
-                        if (colLabelNorm !== wantedFieldNorm) return false;
-                        if (!wantedPrefixNorm) return true;
-                        var entityTitleNorm = normalizeSearchText(col.entityTitle || '');
-                        return entityTitleNorm === wantedPrefixNorm;
-                    });
-                    if (!matchedCol && rowEl) {
-                        var ekRow = (rowEl.getAttribute('data-entitykey') || '').trim();
-                        matchedCol = cols.find(function(col) {
-                            return !!col && String(col.entityKey || '').trim() === ekRow && normalizeSearchText(col.label || '') === wantedFieldNorm;
-                        });
-                    }
-                    if (matchedCol && matchedCol.key && Object.prototype.hasOwnProperty.call(firstRow, matchedCol.key)) {
-                        val = firstRow[matchedCol.key];
-                    }
-                }
-                if (val == null || val === '') return '';
-                if (typeof val === 'object') {
-                    try { return JSON.stringify(val); } catch (e) { return String(val); }
-                }
-                return String(val);
-            }
         });
     }
 
