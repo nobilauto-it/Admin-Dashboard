@@ -358,6 +358,10 @@
                     <div class="tab-pane" id="customFieldTabPane" role="tabpanel">
                         <div class="row g-3">
                             <div class="col-12">
+                                <label class="form-label text-muted small">Сущность таблицы</label>
+                                <p class="mb-0 small" id="customFieldEntityLabel">—</p>
+                            </div>
+                            <div class="col-12">
                                 <label class="form-label" for="customFieldNameInput">Название поля</label>
                                 <input type="text" class="form-control" id="customFieldNameInput" placeholder="Введите название поля">
                             </div>
@@ -372,16 +376,16 @@
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="customFieldTypeSelect">Тип</label>
                                 <select class="form-select" id="customFieldTypeSelect">
-                                    <option value="single">Single</option>
+                                    <option value="single">Общее значение</option>
                                     <option value="card">Card</option>
                                 </select>
                             </div>
                             <div class="col-12">
-                                <label class="form-label" for="customFieldPayloadTextarea">Текстовое поле</label>
-                                <textarea class="form-control" id="customFieldPayloadTextarea" rows="6" placeholder="Пока только отображение"></textarea>
-                            </div>
-                            <div class="col-12 d-flex justify-content-end">
-                                <button type="button" class="btn btn-outline-primary" id="customFieldActionBtn">Кнопка</button>
+                                <label class="form-label" for="customFieldPayloadTextarea">Editor</label>
+                                <div class="d-flex align-items-end gap-2">
+                                    <textarea class="form-control flex-grow-1" id="customFieldPayloadTextarea" rows="6" placeholder="Пока только отображение"></textarea>
+                                    <button type="button" class="btn btn-outline-primary flex-shrink-0" id="customFieldActionBtn" aria-label="Дополнительно">...</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2471,7 +2475,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var tableStyleSelect = document.getElementById('tableStyleSelect');
         if (tableStyleSelect && TABLE_STYLES[st.tableStyle]) tableStyleSelect.value = st.tableStyle;
         var entityLabel = document.getElementById('settingsModalEntityLabel');
+        var customEntityLabel = document.getElementById('customFieldEntityLabel');
         if (entityLabel) entityLabel.textContent = st.selectedEntities.length ? st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ') : '—';
+        if (customEntityLabel) customEntityLabel.textContent = st.selectedEntities.length ? st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ') : 'вЂ”';
         var descField = document.getElementById('settingsModalTableDescription');
         if (descField) descField.value = (st.tableDescription && String(st.tableDescription).trim()) ? st.tableDescription.trim() : '';
         var settingsTab = document.querySelector('#modalFields [href="#settingsTabPane"]');
