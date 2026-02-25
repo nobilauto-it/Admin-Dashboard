@@ -4902,6 +4902,62 @@ def _entity_table_editor_prepare_ref(conn, cf_row: Dict[str, Any], entity_name: 
     }
 
 
+def _entity_table_editor_prepare_ref_from_resolved_entity(
+    conn,
+    resolved_ent: Dict[str, Any],
+    entity_name: str,
+    field_name: str,
+) -> Dict[str, Any]:
+    col_meta = _entity_table_editor_resolve_column(
+        conn,
+        str(resolved_ent.get("storage_entity_key") or ""),
+        str(resolved_ent.get("storage_table") or ""),
+        field_name,
+    )
+    col = str(col_meta.get("column") or "").strip()
+    b24_type = col_meta.get("b24_type")
+    b24_field = str(col_meta.get("b24_field") or col or "").strip()
+    settings = col_meta.get("settings")
+    col_low = col.lower()
+    b24_field_low = b24_field.lower()
+    b24_type_low = str(b24_type or "").strip().lower()
+
+    display_kind: Optional[str] = None
+    display_target_entity_key: Optional[str] = None
+    if col_low in ("assigned_by_id", "created_by_id", "modified_by_id", "moved_by_id", "last_activity_by", "last_activity_by_id") or b24_field_low in (
+        "assigned_by_id", "created_by_id", "modified_by_id", "moved_by_id", "last_activity_by", "last_activity_by_id"
+    ):
+        display_kind = "user"
+    elif col_low == "stage_id" or b24_field_low == "stage_id":
+        display_kind = "stage"
+    elif b24_type_low in ("enumeration", "enum", "list", "status"):
+        display_kind = "enum"
+    elif b24_type_low in ("user", "crm_user", "employee"):
+        display_kind = "user"
+    elif b24_type_low in ("crm_contact", "contact"):
+        display_kind = "crm_link"; display_target_entity_key = "contact"
+    elif b24_type_low in ("crm_lead", "lead"):
+        display_kind = "crm_link"; display_target_entity_key = "lead"
+    elif b24_type_low in ("crm_company", "company"):
+        display_kind = "crm_link"; display_target_entity_key = "company"
+    elif b24_type_low in ("crm_entity", "crm"):
+        display_kind = "crm_link"
+        display_target_entity_key = _entity_table_editor_infer_crm_target_from_settings(settings)
+
+    return {
+        "entity_key": str(resolved_ent.get("storage_entity_key") or ""),
+        "table": str(resolved_ent.get("storage_table") or ""),
+        "column": col,
+        "b24_type": b24_type,
+        "b24_field": b24_field,
+        "settings": settings,
+        "display_kind": display_kind,
+        "display_target_entity_key": display_target_entity_key,
+        "entity_name": entity_name,
+        "field_name": field_name,
+    }
+
+
 def _entity_table_editor_prepare_ref_rowwise(
     conn,
     cf_row: Dict[str, Any],
@@ -4940,7 +4996,9 @@ def _entity_table_editor_prepare_ref_rowwise(
         )
         leaf_entity = path_entities[-1]
         try:
-            ref = _entity_table_editor_prepare_ref(conn, cf_row, parts[-1], field_name)
+            ref = _entity_table_editor_prepare_ref_from_resolved_entity(
+                conn, leaf_entity, parts[-1], field_name
+            )
         except HTTPException as e:
             msg = _entity_table_http_error_text(e)
             raise HTTPException(
