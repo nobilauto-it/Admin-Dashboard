@@ -323,7 +323,14 @@
                                 </div>
                             </div>
                         </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary d-none mb-2" id="toggleCustomFieldsInFieldsTabBtn">Кастомные поля</button>
                         <div class="fields-modal-grid" id="fieldsList"></div>
+                        <div class="mt-3 d-none" id="customFieldsSectionInFieldsTab">
+                            <div class="border rounded p-2">
+                                <div class="small fw-semibold mb-2">Кастомные поля</div>
+                                <div id="customFieldsListInFieldsTab" class="d-flex flex-column gap-2"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="tab-pane" id="settingsTabPane" role="tabpanel">
                         <div class="mb-3">
@@ -388,7 +395,7 @@
                                         type="button"
                                         class="btn btn-sm btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center"
                                         id="customFieldEditorHelpBtn"
-                                        style="width: 24px; height: 24px; padding: 0;"
+                                        style="width: 20px; height: 20px; padding: 0; font-size: 11px; line-height: 1;"
                                         data-bs-toggle="tooltip"
                                         data-bs-placement="top"
                                         data-bs-html="true"
@@ -399,6 +406,14 @@
                                 <div class="d-flex align-items-end gap-2">
                                     <textarea class="form-control flex-grow-1" id="customFieldPayloadTextarea" rows="6" placeholder="Форма и логика SQL"></textarea>
                                     <button type="button" class="btn btn-outline-primary flex-shrink-0" id="customFieldActionBtn" aria-label="Дополнительно">...</button>
+                                </div>
+                                <div class="d-flex justify-content-end gap-2 mt-2">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="customFieldResetBtn">Очистить</button>
+                                    <button type="button" class="btn btn-primary btn-sm" id="customFieldSaveBtn">Сохранить кастомное поле</button>
+                                </div>
+                                <div class="border rounded p-2 mt-2">
+                                    <div class="small fw-semibold mb-2">Список кастомных полей</div>
+                                    <div id="customFieldsManagerList" class="d-flex flex-column gap-2"></div>
                                 </div>
                             </div>
                         </div>
@@ -654,6 +669,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dateTimeDisplayByColumn: {},
             guestFilterInitialized: false,
             filterFields: [{ label: 'Название', key: '', type: 'text' }],
+            customFields: [],
             startNewRow: false
         };
     }
@@ -712,12 +728,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const customFieldPickerNestedRow = document.getElementById('customFieldPickerNestedRow');
     const customFieldPayloadTextarea = document.getElementById('customFieldPayloadTextarea');
     const customFieldActionBtn = document.getElementById('customFieldActionBtn');
+    const customFieldNameInput = document.getElementById('customFieldNameInput');
+    const customFieldCodeInput = document.getElementById('customFieldCodeInput');
+    const customFieldDescriptionInput = document.getElementById('customFieldDescriptionInput');
+    const customFieldTypeSelect = document.getElementById('customFieldTypeSelect');
+    const customFieldResetBtn = document.getElementById('customFieldResetBtn');
+    const customFieldSaveBtn = document.getElementById('customFieldSaveBtn');
+    const customFieldsManagerList = document.getElementById('customFieldsManagerList');
+    const toggleCustomFieldsInFieldsTabBtn = document.getElementById('toggleCustomFieldsInFieldsTabBtn');
+    const customFieldsSectionInFieldsTab = document.getElementById('customFieldsSectionInFieldsTab');
+    const customFieldsListInFieldsTab = document.getElementById('customFieldsListInFieldsTab');
     const customFieldEditorHelpBtn = document.getElementById('customFieldEditorHelpBtn');
-    const customFieldPreviewBtn = document.getElementById('customFieldPreviewBtn');
-    const customFieldPreviewResult = document.getElementById('customFieldPreviewResult');
     const fieldsList = document.getElementById('fieldsList');
     const modalFieldsSave = document.getElementById('modalFieldsSave');
     const nestedCheckboxesRow = document.getElementById('nestedCheckboxesRow');
+    let currentEditingCustomFieldId = null;
 
     if (modalFieldsEl) {
         modalFieldsEl.addEventListener('hidden.bs.modal', function() {
@@ -1205,6 +1230,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     table_style: st.tableStyle || 'hoverable_rows',
                     entities: st.selectedEntities,
                     fields: buildFieldsFromAllColumns(st),
+                    custom_fields: (st.customFields && Array.isArray(st.customFields)) ? st.customFields : [],
                     filter_fields: getPersistedTableFilterFields(st),
                     column_order: keys.length ? keys : null,
                     column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
@@ -1271,6 +1297,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
                     showTime: (t.show_time === true),
                     dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
+                    customFields: (t.custom_fields && Array.isArray(t.custom_fields)) ? t.custom_fields : [],
                     filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }],
                     startNewRow: (t.start_new_row === true)
                 };
@@ -1310,6 +1337,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
                 showTime: (data.show_time === true),
                 dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {},
+                customFields: (data.custom_fields && Array.isArray(data.custom_fields)) ? data.custom_fields : [],
                 filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
             }];
             ensureSections();
@@ -2278,6 +2306,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 table_style: st.tableStyle || 'hoverable_rows',
                 entities: st.selectedEntities,
                 fields: buildFieldsFromAllColumns(st),
+                custom_fields: (st.customFields && Array.isArray(st.customFields)) ? st.customFields : [],
                 filter_fields: getPersistedTableFilterFields(st),
                 column_order: keys.length ? keys : null,
                 column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
@@ -2784,7 +2813,191 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function ensureTableCustomFields(st) {
+        if (!st) return [];
+        if (!Array.isArray(st.customFields)) st.customFields = [];
+        st.customFields = st.customFields.map(function(cf) {
+            if (!cf || typeof cf !== 'object') return null;
+            return {
+                id: cf.id ? String(cf.id) : ('cf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+                name: cf.name != null ? String(cf.name) : '',
+                code: cf.code != null ? String(cf.code) : '',
+                description: cf.description != null ? String(cf.description) : '',
+                type: (cf.type === 'card') ? 'card' : 'single',
+                editor: cf.editor != null ? String(cf.editor) : '',
+                enabled: (cf.enabled !== false)
+            };
+        }).filter(Boolean);
+        return st.customFields;
+    }
+
+    function resetCustomFieldForm() {
+        currentEditingCustomFieldId = null;
+        if (customFieldNameInput) customFieldNameInput.value = '';
+        if (customFieldCodeInput) customFieldCodeInput.value = '';
+        if (customFieldDescriptionInput) customFieldDescriptionInput.value = '';
+        if (customFieldTypeSelect) customFieldTypeSelect.value = 'single';
+        if (customFieldPayloadTextarea) customFieldPayloadTextarea.value = '';
+    }
+
+    function fillCustomFieldForm(cf) {
+        if (!cf) return resetCustomFieldForm();
+        currentEditingCustomFieldId = cf.id || null;
+        if (customFieldNameInput) customFieldNameInput.value = cf.name || '';
+        if (customFieldCodeInput) customFieldCodeInput.value = cf.code || '';
+        if (customFieldDescriptionInput) customFieldDescriptionInput.value = cf.description || '';
+        if (customFieldTypeSelect) customFieldTypeSelect.value = (cf.type === 'card') ? 'card' : 'single';
+        if (customFieldPayloadTextarea) customFieldPayloadTextarea.value = cf.editor || '';
+    }
+
+    function normalizeCustomFieldCode(code, fallbackName) {
+        var out = String(code || '').trim();
+        if (!out) out = String(fallbackName || '').trim().toLowerCase().replace(/\s+/g, '_');
+        out = out.replace(/[^a-zA-Z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+        return out || ('custom_' + Date.now());
+    }
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function renderCustomFieldsManagerList(tableIndex) {
+        if (!customFieldsManagerList) return;
+        var st = tableStates[tableIndex];
+        if (!st) { customFieldsManagerList.innerHTML = ''; return; }
+        var list = ensureTableCustomFields(st);
+        if (!list.length) {
+            customFieldsManagerList.innerHTML = '<div class="small text-muted">Пока нет кастомных полей</div>';
+            return;
+        }
+        customFieldsManagerList.innerHTML = list.map(function(cf) {
+            var editorPreview = (cf.editor || '').trim();
+            if (editorPreview.length > 120) editorPreview = editorPreview.slice(0, 120) + '...';
+            return '' +
+                '<div class="border rounded p-2" data-custom-field-id="' + escapeHtml(cf.id) + '">' +
+                    '<div class="d-flex justify-content-between align-items-start gap-2">' +
+                        '<div class="min-w-0">' +
+                            '<div class="fw-semibold small">' + escapeHtml(cf.name || '(без названия)') + '</div>' +
+                            '<div class="text-muted small">' + escapeHtml(cf.code || '') + ' • ' + escapeHtml(cf.type || 'single') + '</div>' +
+                            (cf.description ? ('<div class="small mt-1">' + escapeHtml(cf.description) + '</div>') : '') +
+                            (editorPreview ? ('<pre class="small mb-0 mt-2 p-2 bg-light-subtle border rounded" style="white-space: pre-wrap;">' + escapeHtml(editorPreview) + '</pre>') : '') +
+                        '</div>' +
+                        '<div class="d-flex gap-1 flex-shrink-0">' +
+                            '<button type="button" class="btn btn-sm btn-outline-secondary" data-cf-action="edit">Изм.</button>' +
+                            '<button type="button" class="btn btn-sm btn-outline-danger" data-cf-action="delete">Удал.</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+        }).join('');
+    }
+
+    function renderCustomFieldsInFieldsTab(tableIndex) {
+        if (!toggleCustomFieldsInFieldsTabBtn || !customFieldsSectionInFieldsTab || !customFieldsListInFieldsTab) return;
+        var st = tableStates[tableIndex];
+        var list = st ? ensureTableCustomFields(st) : [];
+        toggleCustomFieldsInFieldsTabBtn.classList.toggle('d-none', !list.length);
+        if (!list.length) {
+            customFieldsSectionInFieldsTab.classList.add('d-none');
+            customFieldsListInFieldsTab.innerHTML = '';
+            return;
+        }
+        customFieldsListInFieldsTab.innerHTML = list.map(function(cf) {
+            return '<div class="border rounded p-2 small">' +
+                '<div class="fw-semibold">' + escapeHtml(cf.name || '(без названия)') + '</div>' +
+                '<div class="text-muted">' + escapeHtml(cf.code || '') + ' • ' + escapeHtml(cf.type || 'single') + '</div>' +
+                (cf.description ? ('<div class="mt-1">' + escapeHtml(cf.description) + '</div>') : '') +
+                '</div>';
+        }).join('');
+    }
+
+    function renderCustomFieldsPanels(tableIndex) {
+        renderCustomFieldsManagerList(tableIndex);
+        renderCustomFieldsInFieldsTab(tableIndex);
+    }
+
+    if (toggleCustomFieldsInFieldsTabBtn) {
+        toggleCustomFieldsInFieldsTabBtn.addEventListener('click', function() {
+            if (!customFieldsSectionInFieldsTab) return;
+            customFieldsSectionInFieldsTab.classList.toggle('d-none');
+        });
+    }
+
+    if (customFieldResetBtn) {
+        customFieldResetBtn.addEventListener('click', function() {
+            resetCustomFieldForm();
+        });
+    }
+
+    if (customFieldSaveBtn) {
+        customFieldSaveBtn.addEventListener('click', function() {
+            var st = tableStates[currentTableIndex];
+            if (!st) return;
+            var name = customFieldNameInput ? String(customFieldNameInput.value || '').trim() : '';
+            if (!name) {
+                alert('Введите название кастомного поля');
+                return;
+            }
+            ensureTableCustomFields(st);
+            var code = normalizeCustomFieldCode(customFieldCodeInput ? customFieldCodeInput.value : '', name);
+            var payload = {
+                id: currentEditingCustomFieldId || ('cf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+                name: name,
+                code: code,
+                description: customFieldDescriptionInput ? String(customFieldDescriptionInput.value || '').trim() : '',
+                type: (customFieldTypeSelect && customFieldTypeSelect.value === 'card') ? 'card' : 'single',
+                editor: customFieldPayloadTextarea ? String(customFieldPayloadTextarea.value || '') : '',
+                enabled: true
+            };
+            var idx = st.customFields.findIndex(function(x) { return x && x.id === payload.id; });
+            if (idx >= 0) st.customFields[idx] = payload;
+            else st.customFields.push(payload);
+            currentEditingCustomFieldId = payload.id;
+            renderCustomFieldsPanels(currentTableIndex);
+            saveConfigToStorage();
+            saveConfig();
+        });
+    }
+
+    if (customFieldsManagerList) {
+        customFieldsManagerList.addEventListener('click', function(e) {
+            var btn = e.target.closest('[data-cf-action]');
+            if (!btn) return;
+            var host = btn.closest('[data-custom-field-id]');
+            if (!host) return;
+            var id = host.getAttribute('data-custom-field-id');
+            var st = tableStates[currentTableIndex];
+            if (!st) return;
+            ensureTableCustomFields(st);
+            var cf = st.customFields.find(function(x) { return x && x.id === id; });
+            if (!cf) return;
+            var action = btn.getAttribute('data-cf-action');
+            if (action === 'edit') {
+                fillCustomFieldForm(cf);
+                return;
+            }
+            if (action === 'delete') {
+                st.customFields = st.customFields.filter(function(x) { return !x || x.id !== id; });
+                if (currentEditingCustomFieldId === id) resetCustomFieldForm();
+                renderCustomFieldsPanels(currentTableIndex);
+                saveConfigToStorage();
+                saveConfig();
+            }
+        });
+    }
+
     if (customFieldEditorHelpBtn && window.bootstrap && bootstrap.Tooltip) {
+        customFieldEditorHelpBtn.setAttribute('aria-label', 'Подсказка по Editor');
+        customFieldEditorHelpBtn.setAttribute('title',
+            "<div class='text-start'>"
+            + "<div><b>Как пользоваться Editor:</b></div>"
+            + "<div>1. Нажмите <b>...</b> и выберите поля.</div>"
+            + "<div>2. Вставятся токены вида <b>{Сущность.Поле}</b>.</div>"
+            + "<div>3. Соберите выражение (например через <b>CONCAT</b>).</div>"
+            + "<div>4. Нажмите <b>Сохранить кастомное поле</b>.</div>"
+            + "<div class='mt-1'><b>Функции:</b> CONCAT, UPPER, LOWER, IFNULL, COALESCE, LEN, NUMBER, ROUND</div>"
+            + "<div><b>Пример:</b> CONCAT({Vânzări realizare.Название}, ' / ', {STOCK AUTO.Название})</div>"
+            + "</div>"
+        );
         bootstrap.Tooltip.getOrCreateInstance(customFieldEditorHelpBtn);
     }
 
@@ -2945,6 +3158,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (customEntityLabel) customEntityLabel.textContent = st.selectedEntities.length ? st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ') : 'вЂ”';
         var descField = document.getElementById('settingsModalTableDescription');
         if (descField) descField.value = (st.tableDescription && String(st.tableDescription).trim()) ? st.tableDescription.trim() : '';
+        ensureTableCustomFields(st);
+        renderCustomFieldsPanels(currentTableIndex);
+        if (!currentEditingCustomFieldId || !st.customFields.some(function(cf) { return cf && cf.id === currentEditingCustomFieldId; })) resetCustomFieldForm();
         var settingsTab = document.querySelector('#modalFields [href="#settingsTabPane"]');
         var settingsPane = document.getElementById('settingsTabPane');
         var customTab = document.querySelector('#modalFields [href="#customFieldTabPane"]');
