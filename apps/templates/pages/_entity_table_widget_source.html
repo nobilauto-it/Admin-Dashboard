@@ -3260,9 +3260,21 @@
                             var t = nestedTypeKey(f.field_type);
                             var slug = (f.human_title || f.column_name || String(f.id || '')).replace(/\s/g, '_').replace(/[^a-zA-Z0-9_-]/g, '_') || t;
                             var groupKey = t + '::' + slug;
-                            if (!nestedByGroup[groupKey]) nestedByGroup[groupKey] = { label: f.human_title || f.column_name || nestedTypeLabel(t), fields: [] };
+                            if (!nestedByGroup[groupKey]) nestedByGroup[groupKey] = {
+                                label: f.human_title || f.column_name || nestedTypeLabel(t),
+                                fields: [],
+                                nestedEntityKey: customFieldPickerMetaNestedEntityKey(f, null)
+                            };
                             f.nested_fields.forEach(function(n) {
-                                nestedByGroup[groupKey].fields.push({ human_title: n.human_title, column_name: n.column_name, id: n.id });
+                                nestedByGroup[groupKey].fields.push({
+                                    human_title: n.human_title,
+                                    column_name: n.column_name,
+                                    b24_field: n.b24_field,
+                                    field_code: n.field_code,
+                                    entity_key: n.entity_key,
+                                    nested_entity_key: n.nested_entity_key,
+                                    id: n.id
+                                });
                             });
                         } else {
                             mainFields.push(f);
@@ -3297,7 +3309,8 @@
                         row.setAttribute('data-nested-type', '');
                         row.setAttribute('data-search-text', ((entityTitle || '') + ' ' + title).toLowerCase());
                         var id = 'cfp_' + key.replace(/[^a-zA-Z0-9_]/g, '_') + '_main_' + idx;
-                        row.innerHTML = '<input class="form-check-input custom-field-picker-cb" type="checkbox" id="' + id + '" data-title="' + title.replace(/"/g, '&quot;') + '"><label class="form-check-label" for="' + id + '">' + title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</label>';
+                        var mainFieldCode = customFieldPickerMetaFieldCode(f);
+                        row.innerHTML = '<input class="form-check-input custom-field-picker-cb" type="checkbox" id="' + id + '" data-title="' + title.replace(/"/g, '&quot;') + '" data-parent-entity-key="' + String(key || '').replace(/"/g, '&quot;') + '" data-nested-entity-key="" data-field-code="' + String(mainFieldCode || '').replace(/"/g, '&quot;') + '"><label class="form-check-label" for="' + id + '">' + title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</label>';
                         customFieldPickerList.appendChild(row);
                     });
 
@@ -3322,7 +3335,9 @@
                             row.style.display = 'none';
                             row.setAttribute('data-search-text', ((entityTitle || '') + ' ' + title).toLowerCase());
                             var id = 'cfp_' + key.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + typ.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + idx;
-                            row.innerHTML = '<input class="form-check-input custom-field-picker-cb" type="checkbox" id="' + id + '" data-title="' + title.replace(/"/g, '&quot;') + '" data-token-prefix="' + String(group.label || typ).replace(/"/g, '&quot;') + '"><label class="form-check-label" for="' + id + '">' + title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</label>';
+                            var nestedFieldCode = customFieldPickerMetaFieldCode(n);
+                            var nestedEntityKey = customFieldPickerMetaNestedEntityKey(n, group);
+                            row.innerHTML = '<input class="form-check-input custom-field-picker-cb" type="checkbox" id="' + id + '" data-title="' + title.replace(/"/g, '&quot;') + '" data-token-prefix="' + String(group.label || typ).replace(/"/g, '&quot;') + '" data-parent-entity-key="' + String(key || '').replace(/"/g, '&quot;') + '" data-nested-entity-key="' + String(nestedEntityKey || '').replace(/"/g, '&quot;') + '" data-field-code="' + String(nestedFieldCode || '').replace(/"/g, '&quot;') + '"><label class="form-check-label" for="' + id + '">' + title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</label>';
                             customFieldPickerList.appendChild(row);
                         });
                     });
@@ -3345,6 +3360,31 @@
             textarea.dispatchEvent(new Event('input', { bubbles: true }));
         }
 
+        function customFieldPickerMetaFieldCode(meta) {
+            if (!meta || typeof meta !== 'object') return '';
+            var candidates = [meta.field_code, meta.b24_field, meta.column_name, meta.code];
+            for (var i = 0; i < candidates.length; i++) {
+                var v = String(candidates[i] || '').trim();
+                if (v) return v;
+            }
+            return '';
+        }
+
+        function customFieldPickerMetaNestedEntityKey(meta, fallback) {
+            var candidates = [];
+            if (meta && typeof meta === 'object') {
+                candidates.push(meta.nested_entity_key, meta.entity_key, meta.linked_entity_key, meta.target_entity_key);
+            }
+            if (fallback && typeof fallback === 'object') {
+                candidates.push(fallback.nestedEntityKey, fallback.nested_entity_key, fallback.entity_key, fallback.linked_entity_key, fallback.target_entity_key);
+            }
+            for (var i = 0; i < candidates.length; i++) {
+                var v = String(candidates[i] || '').trim();
+                if (v) return v;
+            }
+            return '';
+        }
+
         if (customFieldActionBtn) {
             customFieldActionBtn.addEventListener('click', function() {
                 openCustomFieldPickerModal();
@@ -3365,6 +3405,9 @@
                 }
                 var tokens = selected
                     .map(function(cb) {
+                        var technicalParentEntityKey = (cb.getAttribute('data-parent-entity-key') || '').trim();
+                        var technicalNestedEntityKey = (cb.getAttribute('data-nested-entity-key') || '').trim();
+                        var technicalFieldCode = (cb.getAttribute('data-field-code') || '').trim();
                         var title = (cb.getAttribute('data-title') || '').trim();
                         var prefixKey = (cb.getAttribute('data-token-prefix') || '').trim();
                         var row = cb.closest('.field-row');
@@ -3388,7 +3431,9 @@
                             parentEntityTitle = parentHeader ? String(parentHeader.textContent || '').trim() : '';
                         }
                         var tokenBody = '';
-                        if (nestedType && parentEntityTitle && prefixKey) {
+                        if (technicalParentEntityKey && technicalFieldCode) {
+                            tokenBody = technicalParentEntityKey + '|' + (technicalNestedEntityKey || '') + '|' + technicalFieldCode;
+                        } else if (nestedType && parentEntityTitle && prefixKey) {
                             tokenBody = parentEntityTitle + '.' + prefixKey + '.' + title;
                         } else {
                             tokenBody = (prefixKey ? (prefixKey + '.') : '') + title;
