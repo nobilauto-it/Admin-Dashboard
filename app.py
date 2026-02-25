@@ -4543,9 +4543,12 @@ def _entity_table_editor_find_direct_join_from_target(
     deduped_matches: List[Dict[str, Any]] = []
     seen_match_keys: set = set()
     for m in matches:
+        rel_key_join = _entity_table_editor_relation_field_match_key(m.get("join_column"))
+        rel_key_b24 = _entity_table_editor_relation_field_match_key(m.get("via_b24_field"))
+        # Physical relation identity is join_column first; b24 field is only a fallback label.
+        rel_identity = rel_key_join or rel_key_b24
         mk = (
-            _entity_table_editor_relation_field_match_key(m.get("join_column")),
-            _entity_table_editor_relation_field_match_key(m.get("via_b24_field")),
+            rel_identity,
             _entity_table_editor_lookup_key(m.get("target_entity_key")),
         )
         if mk in seen_match_keys:
@@ -4699,9 +4702,11 @@ def _entity_table_editor_select_join_candidate_by_relation_hint(ambiguous_join: 
         }
         cand_relation_keys = {k for k in cand_relation_keys if k}
         if cand_keys.intersection(hints) or cand_relation_keys.intersection(hint_relation_keys):
+            rel_key_join = _entity_table_editor_relation_field_match_key(cand.get("join_column"))
+            rel_key_b24 = _entity_table_editor_relation_field_match_key(cand.get("via_b24_field"))
+            rel_identity = rel_key_join or rel_key_b24
             mk = (
-                _entity_table_editor_relation_field_match_key(cand.get("join_column")),
-                _entity_table_editor_relation_field_match_key(cand.get("via_b24_field")),
+                rel_identity,
                 _entity_table_editor_lookup_key(cand.get("target_entity_key")),
             )
             if mk in seen_matched_keys:
@@ -4710,6 +4715,18 @@ def _entity_table_editor_select_join_candidate_by_relation_hint(ambiguous_join: 
             matched.append(cand)
     if len(matched) == 1:
         return matched[0]
+    if len(matched) > 1:
+        # Final safety: if multiple rows still matched but all point to the same join column, treat as one relation.
+        by_join_identity: Dict[str, Dict[str, Any]] = {}
+        for cand in matched:
+            rel_identity = (
+                _entity_table_editor_relation_field_match_key(cand.get("join_column"))
+                or _entity_table_editor_relation_field_match_key(cand.get("via_b24_field"))
+            )
+            if rel_identity and rel_identity not in by_join_identity:
+                by_join_identity[rel_identity] = cand
+        if len(by_join_identity) == 1:
+            return next(iter(by_join_identity.values()))
     return None
 
 
