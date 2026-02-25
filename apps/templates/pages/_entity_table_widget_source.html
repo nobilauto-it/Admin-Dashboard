@@ -685,6 +685,7 @@
                 guestFilterInitialized: false,
                 filterFields: [{ label: 'Название', key: '', type: 'text' }],
                 customFields: [],
+                selectedCustomFieldCodes: [],
                 customFieldTokenMap: {},
                 startNewRow: false
             };
@@ -789,6 +790,11 @@
             if (!st) return [];
             if (!Array.isArray(st.customFields)) st.customFields = [];
             return st.customFields;
+        }
+        function ensureSelectedCustomFieldCodes(st) {
+            if (!st) return [];
+            if (!Array.isArray(st.selectedCustomFieldCodes)) st.selectedCustomFieldCodes = [];
+            return st.selectedCustomFieldCodes;
         }
         function ensureCustomFieldTokenMap(st) {
             if (!st) return {};
@@ -915,8 +921,9 @@
                 var type = String((cf && cf.type) || 'single').trim();
                 var label = name + (code ? (' [' + code + ']') : '') + (type ? (' (' + type + ')') : '');
                 var safeId = 'cf_fields_tab_' + idx;
+                var checked = (code && ensureSelectedCustomFieldCodes(st).indexOf(code) >= 0) ? ' checked' : '';
                 return '<div class="form-check field-row" data-entitykey="custom_fields" data-nested-type="">'
-                    + '<input class="form-check-input" type="checkbox" id="' + safeId + '">'
+                    + '<input class="form-check-input custom-fields-tab-cb" type="checkbox" id="' + safeId + '" data-custom-field-code="' + String(code || '').replace(/"/g, '&quot;') + '"' + checked + '>'
                     + '<label class="form-check-label" for="' + safeId + '">' + label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</label>'
                     + '</div>';
             }).join('');
@@ -1396,6 +1403,14 @@
                     });
                 }
             });
+            ensureSelectedCustomFieldCodes(st).forEach(function(code) {
+                if (!code) return;
+                var cf = (st.customFields || []).find(function(x) { return x && String(x.code || '') === String(code); });
+                if (!cf || !cf.target_entity || !cf.target_entity.entity_key) return;
+                var ek = String(cf.target_entity.entity_key);
+                var colKey = ek + '::' + String(code);
+                if (!isSystemColumn(colKey)) valid[colKey] = true;
+            });
             return valid;
         }
 
@@ -1529,6 +1544,7 @@
                         entities: st.selectedEntities,
                         fields: buildFieldsFromAllColumns(st),
                         custom_fields: (st.customFields && Array.isArray(st.customFields)) ? st.customFields : [],
+                        selected_custom_fields: ensureSelectedCustomFieldCodes(st).slice(),
                         filter_fields: getPersistedTableFilterFields(st),
                         column_order: keys.length ? keys : null,
                         column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
@@ -1596,6 +1612,7 @@
                         showTime: (t.show_time === true),
                         dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
                         customFields: (t.custom_fields && Array.isArray(t.custom_fields)) ? t.custom_fields : [],
+                        selectedCustomFieldCodes: (t.selected_custom_fields && Array.isArray(t.selected_custom_fields)) ? t.selected_custom_fields : [],
                         filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }],
                         startNewRow: (t.start_new_row === true)
                     };
@@ -1636,6 +1653,7 @@
                     showTime: (data.show_time === true),
                     dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {},
                     customFields: (data.custom_fields && Array.isArray(data.custom_fields)) ? data.custom_fields : [],
+                    selectedCustomFieldCodes: (data.selected_custom_fields && Array.isArray(data.selected_custom_fields)) ? data.selected_custom_fields : [],
                     filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                 }];
                 ensureSections();
@@ -2430,6 +2448,8 @@
                                 sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
                                 showTime: (t.show_time === true),
                                 dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
+                                customFields: (t.custom_fields && Array.isArray(t.custom_fields)) ? t.custom_fields : [],
+                                selectedCustomFieldCodes: (t.selected_custom_fields && Array.isArray(t.selected_custom_fields)) ? t.selected_custom_fields : [],
                                 filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                             };
                         });
@@ -2605,6 +2625,7 @@
                     entities: st.selectedEntities,
                     fields: buildFieldsFromAllColumns(st),
                     custom_fields: (st.customFields && Array.isArray(st.customFields)) ? st.customFields : [],
+                    selected_custom_fields: ensureSelectedCustomFieldCodes(st).slice(),
                     filter_fields: getPersistedTableFilterFields(st),
                     column_order: keys.length ? keys : null,
                     column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
@@ -3675,6 +3696,9 @@
                 var k = entityKey(e);
                 return { entityKey: k, human_titles: byKey[k] || [], activeNestedTypes: activeNestedByKey[k] || [], nestedFields: nestedFieldsByKey[k] || {} };
             });
+            st.selectedCustomFieldCodes = Array.from(document.querySelectorAll('#customFieldsListInFieldsTab .custom-fields-tab-cb:checked'))
+                .map(function(cb) { return String(cb.getAttribute('data-custom-field-code') || '').trim(); })
+                .filter(function(code, idx, arr) { return !!code && arr.indexOf(code) === idx; });
             var tableStyleSelect = document.getElementById('tableStyleSelect');
             if (tableStyleSelect && TABLE_STYLES[tableStyleSelect.value]) {
                 st.tableStyle = tableStyleSelect.value;
@@ -4053,6 +4077,25 @@
                 displayTitles.forEach(function(t) {
                     st.allColumns.push({ key: key + '::' + t, label: t, entityKey: key, entityTitle: ent.title || entityTitleForNested(ent) });
                 });
+                var selectedCustomCodes = ensureSelectedCustomFieldCodes(st);
+                if (selectedCustomCodes.length) {
+                    (st.customFields || []).forEach(function(cf) {
+                        if (!cf || !cf.target_entity || !cf.target_entity.entity_key) return;
+                        if (String(cf.target_entity.entity_key) !== String(key)) return;
+                        var code = String(cf.code || '').trim();
+                        if (!code || selectedCustomCodes.indexOf(code) < 0) return;
+                        if (fetchTitles.indexOf(code) < 0) fetchTitles.push(code);
+                        var colKey = key + '::' + code;
+                        if (!st.allColumns.some(function(c) { return c && c.key === colKey; })) {
+                            st.allColumns.push({
+                                key: colKey,
+                                label: String((cf.name || code)).trim() || code,
+                                entityKey: key,
+                                entityTitle: ent.title || entityTitleForNested(ent)
+                            });
+                        }
+                    });
+                }
                 columnsByKey.push({
                     ent: ent,
                     titles: fetchTitles,
@@ -4373,7 +4416,15 @@
         /** Строит массив fields для сохранения дэшборда только из allColumns — без опоры на selectedFields. */
         function buildFieldsFromAllColumns(st) {
             if (!st || !st.allColumns || !st.allColumns.length) return (st && st.selectedFields) ? st.selectedFields : [];
-            return buildFieldsFromColumnKeys(st.allColumns.map(function(c) { return c.key; }));
+            var selectedCustomCodes = ensureSelectedCustomFieldCodes(st);
+            var keys = st.allColumns.map(function(c) { return c.key; }).filter(function(k) {
+                if (!k) return false;
+                var idx = String(k).indexOf('::');
+                if (idx <= 0) return true;
+                var tail = String(k).slice(idx + 2);
+                return !(tail && selectedCustomCodes.indexOf(tail) >= 0);
+            });
+            return buildFieldsFromColumnKeys(keys);
         }
 
         /** По списку ключей колонок (entityKey::title) строит массив fields для сохранения. */

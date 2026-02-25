@@ -615,7 +615,7 @@ def entity_table_config():
             ui_keys = {
                 'table_title', 'table_description', 'table_style',
                 'column_order', 'column_widths', 'sort_key', 'sort_dir',
-                'show_time', 'date_time_display', 'filter_fields', 'custom_fields', 'start_new_row'
+                'show_time', 'date_time_display', 'filter_fields', 'custom_fields', 'selected_custom_fields', 'start_new_row'
             }
             if isinstance(body_obj.get('tables'), list):
                 merged_tables = []
