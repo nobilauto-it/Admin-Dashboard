@@ -200,7 +200,7 @@ def _list_pages_with_fallback():
 
 @blueprint.route('/')
 def index():
-    
+
     return render_template('pages/index.html', segment='index')
 
 
@@ -210,7 +210,7 @@ def deals():
     try:
         segment = get_segment(request)
         deals_data = []
-        
+
         if requests is None:
             current_app.logger.error("Error: requests library is not installed. Please run: pip install requests")
         else:
@@ -219,7 +219,7 @@ def deals():
                 api_url = 'http://194.33.40.197:7070/api/data/deals'
                 current_app.logger.info(f"Fetching deals data from {api_url}")
                 response = requests.get(api_url, timeout=10)
-                
+
                 if response.status_code == 200:
                     data = response.json()
                     if data.get('ok') and 'data' in data:
@@ -236,7 +236,7 @@ def deals():
                 current_app.logger.error(f"Error fetching deals data: {e}")
                 current_app.logger.error(traceback.format_exc())
                 deals_data = []
-        
+
         return render_template('pages/deals.html', segment=segment, deals=deals_data)
     except Exception as e:
         current_app.logger.error(f"Error in deals route: {e}")
@@ -753,7 +753,7 @@ def entity_table_save_dashboard():
         "var PAGE_SLUG = " + json.dumps(slug) + ";",
         template_content,
         count=1,
-    )
+        )
     if "__PAGE_SLUG__" in template_content:
         template_content = template_content.replace("__PAGE_SLUG__", slug)
     try:
@@ -950,7 +950,7 @@ def route_template(template):
             segment=segment,
             is_dashboard_page=is_dashboard_page,
             page_slug=page_slug,
-        )
+            )
 
     except TemplateNotFound:
         return render_template('pages/error-404.html'), 404
