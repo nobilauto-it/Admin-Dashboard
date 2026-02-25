@@ -323,7 +323,14 @@
                                 </div>
                             </div>
                         </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary d-none mb-2" id="toggleCustomFieldsInFieldsTabBtn">Кастомные поля</button>
                         <div class="fields-modal-grid" id="fieldsList"></div>
+                        <div class="mt-3 d-none" id="customFieldsSectionInFieldsTab">
+                            <div class="border rounded p-2">
+                                <div class="small fw-semibold mb-2">Кастомные поля</div>
+                                <div id="customFieldsListInFieldsTab" class="d-flex flex-column gap-2"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="tab-pane" id="settingsTabPane" role="tabpanel">
                         <div class="mb-3">
@@ -654,6 +661,7 @@
                 dateTimeDisplayByColumn: {},
                 guestFilterInitialized: false,
                 filterFields: [{ label: 'Название', key: '', type: 'text' }],
+                customFields: [],
                 startNewRow: false
             };
         }
@@ -715,6 +723,9 @@
         const customFieldEditorHelpBtn = document.getElementById('customFieldEditorHelpBtn');
         const customFieldPreviewBtn = document.getElementById('customFieldPreviewBtn');
         const customFieldPreviewResult = document.getElementById('customFieldPreviewResult');
+        const toggleCustomFieldsInFieldsTabBtn = document.getElementById('toggleCustomFieldsInFieldsTabBtn');
+        const customFieldsSectionInFieldsTab = document.getElementById('customFieldsSectionInFieldsTab');
+        const customFieldsListInFieldsTab = document.getElementById('customFieldsListInFieldsTab');
         const fieldsList = document.getElementById('fieldsList');
         const modalFieldsSave = document.getElementById('modalFieldsSave');
         const nestedCheckboxesRow = document.getElementById('nestedCheckboxesRow');
@@ -737,6 +748,40 @@
             });
             modalCustomFieldPickerEl.addEventListener('hidden.bs.modal', function() {
                 modalFieldsEl.classList.remove('modal-parent-hidden');
+            });
+        }
+
+        function ensureCustomFieldsArray(st) {
+            if (!st) return [];
+            if (!Array.isArray(st.customFields)) st.customFields = [];
+            return st.customFields;
+        }
+
+        function renderCustomFieldsInFieldsTab(tableIndex) {
+            if (!toggleCustomFieldsInFieldsTabBtn || !customFieldsSectionInFieldsTab || !customFieldsListInFieldsTab) return;
+            var st = tableStates[tableIndex];
+            var list = ensureCustomFieldsArray(st);
+            toggleCustomFieldsInFieldsTabBtn.classList.toggle('d-none', !list.length);
+            if (!list.length) {
+                customFieldsSectionInFieldsTab.classList.add('d-none');
+                customFieldsListInFieldsTab.innerHTML = '';
+                return;
+            }
+            customFieldsListInFieldsTab.innerHTML = list.map(function(cf) {
+                var name = String((cf && cf.name) || '').trim() || '(без названия)';
+                var code = String((cf && cf.code) || '').trim();
+                var type = String((cf && cf.type) || 'single').trim();
+                return '<div class="border rounded p-2 small">'
+                    + '<div class="fw-semibold">' + name.replace(/</g, '&lt;') + '</div>'
+                    + '<div class="text-muted">' + (code ? code.replace(/</g, '&lt;') + ' • ' : '') + type.replace(/</g, '&lt;') + '</div>'
+                    + '</div>';
+            }).join('');
+        }
+
+        if (toggleCustomFieldsInFieldsTabBtn) {
+            toggleCustomFieldsInFieldsTabBtn.addEventListener('click', function() {
+                if (!customFieldsSectionInFieldsTab) return;
+                customFieldsSectionInFieldsTab.classList.toggle('d-none');
             });
         }
 
@@ -1205,6 +1250,7 @@
                         table_style: st.tableStyle || 'hoverable_rows',
                         entities: st.selectedEntities,
                         fields: buildFieldsFromAllColumns(st),
+                        custom_fields: (st.customFields && Array.isArray(st.customFields)) ? st.customFields : [],
                         filter_fields: getPersistedTableFilterFields(st),
                         column_order: keys.length ? keys : null,
                         column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
@@ -1271,6 +1317,7 @@
                         sortDir: (t.sort_dir === 'asc' || t.sort_dir === 'desc') ? t.sort_dir : '',
                         showTime: (t.show_time === true),
                         dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
+                        customFields: (t.custom_fields && Array.isArray(t.custom_fields)) ? t.custom_fields : [],
                         filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }],
                         startNewRow: (t.start_new_row === true)
                     };
@@ -1310,6 +1357,7 @@
                     sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
                     showTime: (data.show_time === true),
                     dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {},
+                    customFields: (data.custom_fields && Array.isArray(data.custom_fields)) ? data.custom_fields : [],
                     filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                 }];
                 ensureSections();
@@ -2935,6 +2983,7 @@
         function openFieldsModal() {
             var st = tableStates[currentTableIndex];
             if (!st || !st.selectedEntities.length) return;
+            renderCustomFieldsInFieldsTab(currentTableIndex);
             var isFilterMode = (fieldsModalForFilterTableIndex != null);
             var isCustomEditorInsertMode = !!fieldsModalForCustomEditorInsert || !!(modalFieldsEl && modalFieldsEl.getAttribute('data-custom-editor-mode') === '1');
             var tableStyleSelect = document.getElementById('tableStyleSelect');
