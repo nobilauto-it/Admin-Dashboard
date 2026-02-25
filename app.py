@@ -3980,6 +3980,7 @@ def _entity_table_editor_entity_tech_keys(item: Dict[str, Any]) -> List[str]:
             keys.extend([
                 _entity_table_editor_lookup_key(f"smart_process_{etid}"),
                 _entity_table_editor_lookup_key(f"sp:{etid}"),
+                _entity_table_editor_lookup_key(f"entity_{etid}"),
                 _entity_table_editor_lookup_key(etid),
             ])
         m2 = re.match(r"^sp:(\d+)$", entity_key)
@@ -3988,6 +3989,16 @@ def _entity_table_editor_entity_tech_keys(item: Dict[str, Any]) -> List[str]:
             keys.extend([
                 _entity_table_editor_lookup_key(f"smart_process_{etid}"),
                 _entity_table_editor_lookup_key(f"sp:{etid}"),
+                _entity_table_editor_lookup_key(f"entity_{etid}"),
+                _entity_table_editor_lookup_key(etid),
+            ])
+        m3 = re.match(r"^entity_(\d+)$", entity_key, flags=re.IGNORECASE)
+        if m3:
+            etid = m3.group(1)
+            keys.extend([
+                _entity_table_editor_lookup_key(f"smart_process_{etid}"),
+                _entity_table_editor_lookup_key(f"sp:{etid}"),
+                _entity_table_editor_lookup_key(f"entity_{etid}"),
                 _entity_table_editor_lookup_key(etid),
             ])
         if entity_key.startswith("deal"):
@@ -4007,9 +4018,9 @@ def _entity_table_editor_normalize_tech_entity_key_token(entity_key_token: Any) 
     s = str(entity_key_token or "").strip()
     if not s:
         return ""
-    m_sp = re.match(r"^(?:smart_process_(\d+)|sp:(\d+))$", s, flags=re.IGNORECASE)
+    m_sp = re.match(r"^(?:smart_process_(\d+)|sp:(\d+)|entity_(\d+))$", s, flags=re.IGNORECASE)
     if m_sp:
-        etid = m_sp.group(1) or m_sp.group(2)
+        etid = m_sp.group(1) or m_sp.group(2) or m_sp.group(3)
         return f"sp:{int(etid)}"
     m_deal = re.match(r"^deal(?:_\d+)?$", s, flags=re.IGNORECASE)
     if m_deal:
@@ -4274,6 +4285,7 @@ def _entity_table_editor_resolve_entity_by_tech_key_from_list(entities: List[Dic
         lookup_candidates.extend([
             _entity_table_editor_lookup_key(f"smart_process_{etid}"),
             _entity_table_editor_lookup_key(f"sp:{etid}"),
+            _entity_table_editor_lookup_key(f"entity_{etid}"),
             _entity_table_editor_lookup_key(etid),
         ])
     lookup_set = {x for x in lookup_candidates if x}
@@ -4289,6 +4301,48 @@ def _entity_table_editor_resolve_entity_by_tech_key_from_list(entities: List[Dic
                     "storage_table": resolved["storage_table"],
                 }
     return None
+
+
+def _entity_table_editor_resolve_entity_tech_fallback(entity_key_token: str) -> Optional[Dict[str, Any]]:
+    token_raw = str(entity_key_token or "").strip()
+    token_norm = _entity_table_editor_normalize_tech_entity_key_token(token_raw) or token_raw
+    if not token_norm:
+        return None
+
+    synthetic: Optional[Dict[str, Any]] = None
+    m_sp = re.match(r"^sp:(\d+)$", token_norm, flags=re.IGNORECASE)
+    if m_sp:
+        etid = int(m_sp.group(1))
+        synthetic = {
+            "entity_key": f"sp:{etid}",
+            "type": "smart_process",
+            "entity_type_id": etid,
+            "title": f"smart_process_{etid}",
+        }
+    elif token_norm in ("deal", "contact", "lead", "company"):
+        synthetic = {
+            "entity_key": token_norm,
+            "type": token_norm,
+            "title": token_norm,
+        }
+    elif re.match(r"^deal(?:_\d+)?$", token_norm, flags=re.IGNORECASE):
+        synthetic = {
+            "entity_key": token_norm.lower(),
+            "type": "deal",
+            "title": token_norm.lower(),
+        }
+
+    if not synthetic:
+        return None
+    try:
+        resolved = _entity_table_resolve_storage_target(synthetic)
+    except Exception:
+        return None
+    return {
+        "input": synthetic,
+        "storage_entity_key": resolved["storage_entity_key"],
+        "storage_table": resolved["storage_table"],
+    }
 
 
 def _entity_table_editor_resolve_entity(row: Dict[str, Any], entity_name: str) -> Dict[str, Any]:
@@ -4323,7 +4377,10 @@ def _entity_table_editor_resolve_entity_tech(row: Dict[str, Any], entity_key_tok
     )
     if found:
         return found
-    if re.match(r"^(?:sp:\d+|smart_process_\d+)$", token_raw, flags=re.IGNORECASE):
+    found = _entity_table_editor_resolve_entity_tech_fallback(token_norm)
+    if found:
+        return found
+    if re.match(r"^(?:sp:\d+|smart_process_\d+|entity_\d+)$", token_raw, flags=re.IGNORECASE):
         raise HTTPException(
             status_code=400,
             detail=(
