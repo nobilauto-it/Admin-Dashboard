@@ -4137,6 +4137,78 @@ def _entity_table_editor_infer_crm_target_from_settings(settings: Any) -> Option
     return None
 
 
+def _entity_table_editor_entity_key_from_parent_id_name(name: str) -> Optional[str]:
+    s = str(name or "").strip().lower()
+    m = re.match(r"parentid(\d+)$", s)
+    if not m:
+        return None
+    num = int(m.group(1))
+    if num == 2:
+        return "deal"
+    if num == 3:
+        return "contact"
+    if num == 4:
+        return "lead"
+    if num == 5:
+        return "company"
+    return f"sp:{num}"
+
+
+def _entity_table_editor_infer_link_target_entity_key(meta_row: Dict[str, Any]) -> Optional[str]:
+    col = str(meta_row.get("column_name") or "").strip()
+    b24_field = str(meta_row.get("b24_field") or "").strip()
+    b24_type = str(meta_row.get("b24_type") or "").strip().lower()
+    if b24_type in ("crm_contact", "contact"):
+        return "contact"
+    if b24_type in ("crm_lead", "lead"):
+        return "lead"
+    if b24_type in ("crm_company", "company"):
+        return "company"
+    if b24_type in ("crm_entity", "crm"):
+        from_settings = _entity_table_editor_infer_crm_target_from_settings(meta_row.get("settings"))
+        if from_settings:
+            return from_settings
+    return _entity_table_editor_entity_key_from_parent_id_name(col) or _entity_table_editor_entity_key_from_parent_id_name(b24_field)
+
+
+def _entity_table_editor_find_direct_join_from_target(
+    conn,
+    target_entity_key: str,
+    target_table: str,
+    ref_entity_key: str,
+) -> Optional[Dict[str, Any]]:
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute("""
+            SELECT column_name, b24_field, b24_type, settings
+            FROM b24_meta_fields
+            WHERE entity_key=%s
+        """, (target_entity_key,))
+        rows = cur.fetchall() or []
+
+    existing_cols = _table_columns_cached(conn, target_table)
+    matches: List[Dict[str, Any]] = []
+    for mrow in rows:
+        col = str(mrow.get("column_name") or "").strip()
+        if not col or col not in existing_cols:
+            continue
+        target = _entity_table_editor_infer_link_target_entity_key(mrow)
+        if target != ref_entity_key:
+            continue
+        matches.append({
+            "join_column": col,
+            "target_entity_key": target,
+            "via_b24_field": mrow.get("b24_field"),
+            "via_b24_type": mrow.get("b24_type"),
+        })
+
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        # Ambiguous relation; caller should return token-specific error.
+        return {"ambiguous": True, "candidates": matches}
+    return None
+
+
 def _entity_table_editor_resolve_column(conn, entity_key: str, table_name: str, field_name: str) -> Dict[str, Any]:
     field_lookup = _entity_table_editor_lookup_key(field_name)
     if _CUSTOM_FIELD_CODE_RE.fullmatch(str(field_name or "").strip()) and field_name in _table_columns_cached(conn, table_name):
@@ -4546,10 +4618,12 @@ def _entity_table_editor_eval_ast_rowwise(
     conn,
     ast: Any,
     cf_row: Dict[str, Any],
+    target_entity_key: str,
     target_storage_table: str,
     current_row: Dict[str, Any],
     ref_cache: Dict[Tuple[str, str], Dict[str, Any]],
     display_cache: Dict[Tuple[str, str, str], Dict[str, str]],
+    foreign_row_cache: Dict[Tuple[str, int], Dict[str, Any]],
 ) -> Any:
     if not isinstance(ast, tuple) or not ast:
         raise HTTPException(status_code=400, detail="Invalid editor AST")
@@ -4573,18 +4647,52 @@ def _entity_table_editor_eval_ast_rowwise(
         if ref is None:
             ref = _entity_table_editor_prepare_ref(conn, cf_row, entity_name, field_name)
             ref_cache[cache_key] = ref
-        if str(ref["table"]) != str(target_storage_table):
+        if str(ref["table"]) == str(target_storage_table):
+            raw_val = current_row.get(ref["column"])
+            return _entity_table_editor_row_value_from_ref(
+                conn, ref, raw_val, ref_mode, display_cache
+            )
+
+        join = ref.get("join_from_target")
+        if not isinstance(join, dict):
+            join = _entity_table_editor_find_direct_join_from_target(conn, target_entity_key, target_storage_table, str(ref.get("entity_key") or ""))
+            ref["join_from_target"] = join
+        if not join:
             raise HTTPException(
                 status_code=400,
-                detail=f"Row-wise editor currently supports only target entity fields. Unsupported ref: {{{entity_name}.{field_name}}}",
+                detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet",
             )
-        return _entity_table_editor_row_value_from_ref(
-            conn,
-            ref,
-            current_row.get(ref["column"]),
-            ref_mode,
-            display_cache,
-        )
+        if join.get("ambiguous"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"{{{entity_name}.{field_name}}} has ambiguous row_wise join from target entity",
+            )
+
+        join_col = str(join.get("join_column") or "").strip()
+        if not join_col:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet",
+            )
+        join_raw_id = current_row.get(join_col)
+        if join_raw_id is None or str(join_raw_id).strip() == "":
+            return None
+        try:
+            join_id_int = int(str(join_raw_id).strip())
+        except Exception:
+            return None
+        cache_key_row = (str(ref["table"]), int(join_id_int))
+        foreign_db_row = foreign_row_cache.get(cache_key_row)
+        if foreign_db_row is None:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(
+                    f'SELECT "{ref["column"]}" FROM "{ref["table"]}" WHERE id=%s LIMIT 1',
+                    (int(join_id_int),),
+                )
+                foreign_db_row = cur.fetchone() or {}
+            foreign_row_cache[cache_key_row] = foreign_db_row
+        raw_val = foreign_db_row.get(ref["column"])
+        return _entity_table_editor_row_value_from_ref(conn, ref, raw_val, ref_mode, display_cache)
     if kind != "call":
         raise HTTPException(status_code=400, detail=f"Unsupported editor node: {kind}")
 
@@ -4596,7 +4704,9 @@ def _entity_table_editor_eval_ast_rowwise(
         raise HTTPException(status_code=400, detail=f"{fn} cannot be used in row-wise mode")
 
     eval_args = [
-        _entity_table_editor_eval_ast_rowwise(conn, a, cf_row, target_storage_table, current_row, ref_cache, display_cache)
+        _entity_table_editor_eval_ast_rowwise(
+            conn, a, cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+        )
         for a in raw_args
     ]
 
@@ -4669,6 +4779,12 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
         raise HTTPException(status_code=400, detail="editor is empty")
 
     ast = _entity_table_editor_parse(editor)
+    target_entity = row.get("target_entity") if isinstance(row.get("target_entity"), dict) else {}
+    target_resolved = _entity_table_resolve_storage_target(target_entity) if target_entity else {
+        "storage_entity_key": row.get("storage_entity_key") or "",
+        "storage_table": storage_table,
+    }
+    target_storage_entity_key = str(target_resolved.get("storage_entity_key") or "")
     if _entity_table_editor_ast_has_aggregate(ast):
         value = _entity_table_editor_eval_ast(conn, ast, row)
         if isinstance(value, tuple) and value and value[0] == "field_ref":
@@ -4683,6 +4799,7 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
         cols_needed: set = {"id"}
         ref_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
         display_cache: Dict[Tuple[str, str, str], Dict[str, str]] = {}
+        foreign_row_cache: Dict[Tuple[str, int], Dict[str, Any]] = {}
 
         def collect_refs(node: Any) -> None:
             if not isinstance(node, tuple) or not node:
@@ -4694,12 +4811,32 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
                 if key not in ref_cache:
                     ref_cache[key] = _entity_table_editor_prepare_ref(conn, row, entity_name, field_name)
                 ref = ref_cache[key]
-                if str(ref["table"]) != str(storage_table):
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Row-wise editor currently supports only target entity fields. Unsupported ref: {{{entity_name}.{field_name}}}",
-                    )
-                cols_needed.add(str(ref["column"]))
+                if str(ref["table"]) == str(storage_table):
+                    cols_needed.add(str(ref["column"]))
+                else:
+                    join = ref.get("join_from_target")
+                    if not isinstance(join, dict):
+                        join = _entity_table_editor_find_direct_join_from_target(
+                            conn, target_storage_entity_key, storage_table, str(ref.get("entity_key") or "")
+                        )
+                        ref["join_from_target"] = join
+                    if not join:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet",
+                        )
+                    if join.get("ambiguous"):
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"{{{entity_name}.{field_name}}} has ambiguous row_wise join from target entity",
+                        )
+                    join_col = str(join.get("join_column") or "").strip()
+                    if not join_col:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet",
+                        )
+                    cols_needed.add(join_col)
                 return
             if node[0] == "call":
                 for a in (node[2] or []):
@@ -4717,7 +4854,9 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
             if rid is None:
                 continue
             # `display_cache` is shared across rows for efficient ref display resolution.
-            val = _entity_table_editor_eval_ast_rowwise(conn, ast, row, storage_table, db_row, ref_cache, display_cache)
+            val = _entity_table_editor_eval_ast_rowwise(
+                conn, ast, row, target_storage_entity_key, storage_table, db_row, ref_cache, display_cache, foreign_row_cache
+            )
             updates.append((int(rid), _entity_table_editor_format_result_for_text(val)))
         updated_rows = _entity_table_write_custom_field_row_values(conn, storage_table, storage_column, updates)
         mode = "editor_eval"
@@ -4858,6 +4997,133 @@ def _entity_table_validate_custom_field_update_payload(payload: Any) -> Dict[str
         raise HTTPException(status_code=400, detail="No updatable fields provided in custom_field")
 
     return updates
+
+
+def _entity_table_validate_custom_field_preview_payload(payload: Any) -> Dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="JSON body must be an object")
+    page_slug = str(payload.get("page_slug") or "").strip()
+    if not page_slug:
+        raise HTTPException(status_code=400, detail="page_slug is required")
+    if "table_index" not in payload:
+        raise HTTPException(status_code=400, detail="table_index is required")
+    try:
+        table_index = int(payload.get("table_index"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="table_index must be an integer")
+    target_entity = payload.get("target_entity")
+    if not isinstance(target_entity, dict):
+        raise HTTPException(status_code=400, detail="target_entity must be an object")
+    if not str(target_entity.get("entity_key") or "").strip():
+        raise HTTPException(status_code=400, detail="target_entity.entity_key is required")
+    source_entities = payload.get("source_entities")
+    if source_entities is None:
+        source_entities = []
+    if not isinstance(source_entities, list):
+        raise HTTPException(status_code=400, detail="source_entities must be an array")
+    editor = payload.get("editor")
+    if editor is None:
+        editor = ""
+    editor = str(editor)
+    if not editor.strip():
+        raise HTTPException(status_code=400, detail="editor is required")
+    return {
+        "page_slug": page_slug,
+        "table_index": table_index,
+        "target_entity": dict(target_entity),
+        "source_entities": list(source_entities),
+        "editor": editor,
+    }
+
+
+def _entity_table_preview_custom_field_editor(conn, row: Dict[str, Any]) -> Dict[str, Any]:
+    storage_table = str(row.get("storage_table") or "").strip()
+    target_entity = row.get("target_entity") if isinstance(row.get("target_entity"), dict) else {}
+    if not storage_table:
+        storage_table = _entity_table_resolve_storage_target(target_entity)["storage_table"]
+    editor = str(row.get("editor") or "").strip()
+    if not editor:
+        raise HTTPException(status_code=400, detail="editor is empty")
+
+    ast = _entity_table_editor_parse(editor)
+    target_resolved = _entity_table_resolve_storage_target(target_entity)
+    target_storage_entity_key = str(target_resolved.get("storage_entity_key") or "")
+
+    with conn.cursor() as cur:
+        cur.execute(f'SELECT id FROM "{storage_table}" WHERE id IS NOT NULL ORDER BY id DESC LIMIT 1')
+        first_row = cur.fetchone()
+    sample_row_id = int(first_row[0]) if first_row and first_row[0] is not None else None
+
+    if _entity_table_editor_ast_has_aggregate(ast):
+        value = _entity_table_editor_eval_ast(conn, ast, row)
+        if isinstance(value, tuple) and value and value[0] == "field_ref":
+            raise HTTPException(status_code=400, detail="editor cannot resolve to a direct field reference without aggregate/scalar function")
+        return {
+            "mode": "editor_eval",
+            "mode_detail": "aggregate",
+            "sample_value": _entity_table_editor_format_result_for_text(value),
+            "sample_row_id": sample_row_id,
+        }
+
+    cols_needed: set = {"id"}
+    ref_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    display_cache: Dict[Tuple[str, str, str], Dict[str, str]] = {}
+    foreign_row_cache: Dict[Tuple[str, int], Dict[str, Any]] = {}
+
+    def collect_refs(node: Any) -> None:
+        if not isinstance(node, tuple) or not node:
+            return
+        if node[0] == "ref":
+            entity_name = str(node[1] or "").strip()
+            field_name = str(node[2] or "").strip()
+            key = (entity_name, field_name)
+            if key not in ref_cache:
+                ref_cache[key] = _entity_table_editor_prepare_ref(conn, row, entity_name, field_name)
+            ref = ref_cache[key]
+            if str(ref["table"]) == str(storage_table):
+                cols_needed.add(str(ref["column"]))
+            else:
+                join = ref.get("join_from_target")
+                if not isinstance(join, dict):
+                    join = _entity_table_editor_find_direct_join_from_target(
+                        conn, target_storage_entity_key, storage_table, str(ref.get("entity_key") or "")
+                    )
+                    ref["join_from_target"] = join
+                if not join:
+                    raise HTTPException(status_code=400, detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet")
+                if join.get("ambiguous"):
+                    raise HTTPException(status_code=400, detail=f"{{{entity_name}.{field_name}}} has ambiguous row_wise join from target entity")
+                join_col = str(join.get("join_column") or "").strip()
+                if not join_col:
+                    raise HTTPException(status_code=400, detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet")
+                cols_needed.add(join_col)
+            return
+        if node[0] == "call":
+            for a in (node[2] or []):
+                collect_refs(a)
+
+    collect_refs(ast)
+    select_cols = [c for c in cols_needed if c]
+    cols_sql = ", ".join(f'"{c}"' for c in select_cols)
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute(f'SELECT {cols_sql} FROM "{storage_table}" WHERE id IS NOT NULL ORDER BY id DESC LIMIT 1')
+        sample_row = cur.fetchone() or {}
+    if not sample_row:
+        return {
+            "mode": "editor_eval",
+            "mode_detail": "row_wise",
+            "sample_value": None,
+            "sample_row_id": None,
+        }
+    sample_val = _entity_table_editor_eval_ast_rowwise(
+        conn, ast, row, target_storage_entity_key, storage_table, sample_row, ref_cache, display_cache, foreign_row_cache
+    )
+    return {
+        "mode": "editor_eval",
+        "mode_detail": "row_wise",
+        "sample_value": _entity_table_editor_format_result_for_text(sample_val),
+        "sample_row_id": sample_row.get("id"),
+    }
 
 
 def _entity_table_custom_field_row_to_api(row: Dict[str, Any]) -> Dict[str, Any]:
@@ -5200,6 +5466,58 @@ def list_entity_table_custom_fields(
     except HTTPException:
         raise
     except Exception as e:
+        raise HTTPException(status_code=500, detail=repr(e))
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+@app.post("/api/entity-table/custom-fields/preview")
+async def preview_entity_table_custom_field(request: Request):
+    if _entity_table_is_guest(request):
+        raise HTTPException(status_code=403, detail="Guest is not allowed to preview custom fields")
+
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    data = _entity_table_validate_custom_field_preview_payload(payload)
+    storage_target = _entity_table_resolve_storage_target(data["target_entity"])
+    pseudo_row = {
+        "id": None,
+        "page_slug": data["page_slug"],
+        "table_index": data["table_index"],
+        "editor": data["editor"],
+        "target_entity": data["target_entity"],
+        "source_entities": data["source_entities"],
+        "storage_entity_key": storage_target["storage_entity_key"],
+        "storage_table": storage_target["storage_table"],
+        "storage_column": None,
+        "storage_pg_type": "TEXT",
+    }
+
+    conn = pg_conn()
+    try:
+        conn.autocommit = False
+        _ensure_entity_table_custom_fields_schema(conn)
+        preview_result = _entity_table_preview_custom_field_editor(conn, pseudo_row)
+        conn.rollback()  # no writes expected; keep transaction clean
+        return {"ok": True, "preview_result": preview_result}
+    except HTTPException as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        # token-specific messages already embedded in detail where possible
+        raise e
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         raise HTTPException(status_code=500, detail=repr(e))
     finally:
         try:
