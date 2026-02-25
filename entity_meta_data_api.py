@@ -27,6 +27,9 @@ from entity_meta_fields_api import (
 router = APIRouter(prefix="/api/entity-meta-data", tags=["entity-meta-data"])
 
 
+_CUSTOM_COLUMN_RE = re.compile(r"^custom_[a-z0-9_]+$")
+
+
 def _normalize_value(value: Any) -> Any:
     """Нормализует значение для ответа (строки, вложенные dict/list)."""
     if value is None:
@@ -60,6 +63,18 @@ def _table_existing_columns(conn, table_name: str) -> set:
             (table_name,),
         )
         return {str(r[0]) for r in (cur.fetchall() or []) if r and r[0]}
+
+
+def _is_custom_passthrough_column(name: str) -> bool:
+    return bool(_CUSTOM_COLUMN_RE.fullmatch(str(name or "").strip()))
+
+
+def _merge_custom_columns_into_titles(col_to_title: Dict[str, str], existing_cols: set) -> Dict[str, str]:
+    out = dict(col_to_title or {})
+    for col in existing_cols or set():
+        if _is_custom_passthrough_column(col):
+            out.setdefault(col, col)
+    return out
 
 
 def _get_category_column_from_table(conn, table_name: str) -> Optional[str]:
@@ -1150,6 +1165,7 @@ def get_entity_meta_data(
         existing_cols = _table_existing_columns(conn, table_name)
         # Защита от битой meta-схемы (например id_2 в b24_meta_fields, которого нет физически в таблице)
         col_to_title = {c: t for c, t in col_to_title.items() if c in existing_cols}
+        col_to_title = _merge_custom_columns_into_titles(col_to_title, existing_cols)
         all_columns = list(col_to_title.keys())
         category_col = next((c for c in all_columns if _is_category_column(c)), None)
         cid = (str(category_id).strip() if category_id is not None else "") or ""
@@ -1513,6 +1529,7 @@ def get_entity_meta_data_by_ids(
         col_to_title = _col_to_human_title_map(conn, final_entity_key)
         existing_cols = _table_existing_columns(conn, table_name)
         col_to_title = {c: t for c, t in col_to_title.items() if c in existing_cols}
+        col_to_title = _merge_custom_columns_into_titles(col_to_title, existing_cols)
         all_columns = list(col_to_title.keys())
         title_to_col: Dict[str, str] = {}
         for col, title in col_to_title.items():
