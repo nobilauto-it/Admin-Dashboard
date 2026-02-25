@@ -4640,6 +4640,19 @@ def _entity_table_editor_relation_hint_candidates(entity_item: Any) -> List[str]
     return out
 
 
+def _entity_table_editor_relation_field_match_key(v: Any) -> str:
+    s = str(v or "").strip()
+    if not s:
+        return ""
+    try:
+        s = unicodedata.normalize("NFKC", s)
+    except Exception:
+        pass
+    # Match PARENT_ID_1114, parent_id_1114, parentId1114 as the same relation key.
+    s = re.sub(r"[^0-9A-Za-z]+", "", s)
+    return s.casefold()
+
+
 def _entity_table_editor_select_join_candidate_by_relation_hint(ambiguous_join: Dict[str, Any], dst_path_entity: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if not isinstance(ambiguous_join, dict) or not ambiguous_join.get("ambiguous"):
         return None
@@ -4650,6 +4663,10 @@ def _entity_table_editor_select_join_candidate_by_relation_hint(ambiguous_join: 
     hints = _entity_table_editor_relation_hint_candidates(dst_input)
     if not hints:
         return None
+    hint_relation_keys = {
+        _entity_table_editor_relation_field_match_key(v) for v in hints
+    }
+    hint_relation_keys = {k for k in hint_relation_keys if k}
 
     matched: List[Dict[str, Any]] = []
     for cand in candidates:
@@ -4660,7 +4677,12 @@ def _entity_table_editor_select_join_candidate_by_relation_hint(ambiguous_join: 
             _entity_table_editor_lookup_key(cand.get("via_b24_field")),
         }
         cand_keys = {k for k in cand_keys if k}
-        if cand_keys.intersection(hints):
+        cand_relation_keys = {
+            _entity_table_editor_relation_field_match_key(cand.get("join_column")),
+            _entity_table_editor_relation_field_match_key(cand.get("via_b24_field")),
+        }
+        cand_relation_keys = {k for k in cand_relation_keys if k}
+        if cand_keys.intersection(hints) or cand_relation_keys.intersection(hint_relation_keys):
             matched.append(cand)
     if len(matched) == 1:
         return matched[0]
