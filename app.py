@@ -4118,9 +4118,25 @@ def _entity_table_editor_collect_entities(row: Dict[str, Any]) -> List[Dict[str,
     return out
 
 
-def _entity_table_editor_resolve_entity(row: Dict[str, Any], entity_name: str) -> Dict[str, Any]:
+def _entity_table_editor_collect_source_entities(row: Dict[str, Any]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    seen: set = set()
+    for src in list(row.get("source_entities") or []):
+        if not isinstance(src, dict):
+            continue
+        key = json.dumps(src, ensure_ascii=False, sort_keys=True)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(dict(src))
+    return out
+
+
+def _entity_table_editor_resolve_entity_from_list(entities: List[Dict[str, Any]], entity_name: str) -> Optional[Dict[str, Any]]:
     lookup = _entity_table_editor_lookup_key(entity_name)
-    for item in _entity_table_editor_collect_entities(row):
+    for item in entities:
+        if not isinstance(item, dict):
+            continue
         for c in _entity_table_editor_entity_candidate_keys(item):
             if c == lookup:
                 resolved = _entity_table_resolve_storage_target(item)
@@ -4129,6 +4145,24 @@ def _entity_table_editor_resolve_entity(row: Dict[str, Any], entity_name: str) -
                     "storage_entity_key": resolved["storage_entity_key"],
                     "storage_table": resolved["storage_table"],
                 }
+    return None
+
+
+def _entity_table_editor_resolve_entity(row: Dict[str, Any], entity_name: str) -> Dict[str, Any]:
+    found = _entity_table_editor_resolve_entity_from_list(_entity_table_editor_collect_entities(row), entity_name)
+    if found:
+        return found
+    raise HTTPException(status_code=400, detail=f"Unknown entity in editor reference: {entity_name}")
+
+
+def _entity_table_editor_resolve_nested_entity(row: Dict[str, Any], entity_name: str) -> Dict[str, Any]:
+    # Nested segment should resolve from source_entities first.
+    found = _entity_table_editor_resolve_entity_from_list(_entity_table_editor_collect_source_entities(row), entity_name)
+    if found:
+        return found
+    found = _entity_table_editor_resolve_entity_from_list(_entity_table_editor_collect_entities(row), entity_name)
+    if found:
+        return found
     raise HTTPException(status_code=400, detail=f"Unknown entity in editor reference: {entity_name}")
 
 
@@ -4884,7 +4918,12 @@ def _entity_table_editor_prepare_ref_rowwise(
     total_segments = len(parts) + (1 if str(field_name or "").strip() else 0)
     if total_segments >= 3:
         try:
-            path_entities = [_entity_table_editor_resolve_entity(cf_row, p) for p in parts]
+            path_entities: List[Dict[str, Any]] = []
+            for idx, p in enumerate(parts):
+                if idx == 0:
+                    path_entities.append(_entity_table_editor_resolve_entity(cf_row, p))
+                else:
+                    path_entities.append(_entity_table_editor_resolve_nested_entity(cf_row, p))
         except HTTPException as e:
             # Nested path must not silently fall back to legacy 2-part resolver.
             msg = _entity_table_http_error_text(e)
