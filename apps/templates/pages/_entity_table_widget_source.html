@@ -544,6 +544,7 @@
             metaFields: '/api/entity-table/entity-meta-fields/',
             metaData: '/api/entity-table/entity-meta-data/',
             config: '/api/entity-table/config',
+            customFields: '/api/entity-table/custom-fields',
             templates: '/api/entity-table/templates',
             componentModes: '/api/entity-table/component-modes',
         };
@@ -787,6 +788,79 @@
             return st.customFields;
         }
 
+        function customFieldApiEntityPayload(ent) {
+            if (!ent) return null;
+            return {
+                entity_key: entityKey(ent),
+                type: ent.type || '',
+                category_id: (ent.category_id != null && ent.category_id !== '') ? Number(ent.category_id) : null,
+                title: ent.title || ent.name || ent.type || ''
+            };
+        }
+
+        function loadCustomFieldsForTable(tableIndex) {
+            var st = tableStates[tableIndex];
+            if (!st) return Promise.resolve([]);
+            if (!Array.isArray(st.selectedEntities) || !st.selectedEntities.length) {
+                st.customFields = [];
+                renderCustomFieldsInFieldsTab(tableIndex);
+                return Promise.resolve([]);
+            }
+            var url = API.customFields
+                + '?page_slug=' + encodeURIComponent(getPageSlug())
+                + '&table_index=' + encodeURIComponent(String(tableIndex));
+            return fetch(url, { method: 'GET' })
+                .then(function(r) {
+                    return r.json().catch(function() { return { ok: false, error: 'Invalid response' }; })
+                        .then(function(body) { return { ok: r.ok, body: body, status: r.status }; });
+                })
+                .then(function(res) {
+                    if (!res.ok || !res.body || res.body.ok === false) {
+                        throw new Error((res.body && (res.body.error || res.body.detail)) || ('Load failed: ' + res.status));
+                    }
+                    st.customFields = Array.isArray(res.body.items) ? res.body.items : [];
+                    renderCustomFieldsInFieldsTab(tableIndex);
+                    return st.customFields;
+                })
+                .catch(function(err) {
+                    if (typeof console !== 'undefined' && console.error) console.error('Custom fields load:', err);
+                    return [];
+                });
+        }
+
+        function createCustomFieldViaApi(tableIndex, payload) {
+            return fetch(API.customFields, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(function(r) {
+                return r.json().catch(function() { return { ok: false, error: 'Invalid response' }; })
+                    .then(function(body) { return { ok: r.ok, body: body, status: r.status }; });
+            }).then(function(res) {
+                if (!res.ok || !res.body || res.body.ok === false) {
+                    var msg = (res.body && (res.body.detail || res.body.error)) || ('Save failed: ' + res.status);
+                    var err = new Error(msg);
+                    err.status = res.status;
+                    throw err;
+                }
+                return res.body.custom_field || null;
+            });
+        }
+
+        function deleteCustomFieldViaApi(id) {
+            return fetch(API.customFields + '/' + encodeURIComponent(String(id)), {
+                method: 'DELETE'
+            }).then(function(r) {
+                return r.json().catch(function() { return { ok: false, error: 'Invalid response' }; })
+                    .then(function(body) { return { ok: r.ok, body: body, status: r.status }; });
+            }).then(function(res) {
+                if (!res.ok || !res.body || res.body.ok === false) {
+                    throw new Error((res.body && (res.body.detail || res.body.error)) || ('Delete failed: ' + res.status));
+                }
+                return true;
+            });
+        }
+
         function renderCustomFieldsInFieldsTab(tableIndex) {
             if (!toggleCustomFieldsInFieldsTabBtn || !customFieldsSectionInFieldsTab || !customFieldsListInFieldsTab) return;
             var st = tableStates[tableIndex];
@@ -832,6 +906,10 @@
         function saveCustomFieldFromForm() {
             var st = tableStates[currentTableIndex];
             if (!st) return;
+            if (!Array.isArray(st.selectedEntities) || !st.selectedEntities.length) {
+                alert('Сначала выберите сущность таблицы');
+                return;
+            }
             ensureCustomFieldsArray(st);
             var name = customFieldNameInput ? String(customFieldNameInput.value || '').trim() : '';
             if (!name) { alert('Введите название поля'); return; }
@@ -839,18 +917,41 @@
             if (!code) code = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
             if (!code) code = 'custom_' + Date.now();
             if (code.indexOf('custom_') !== 0) code = 'custom_' + code.replace(/^_+/, '');
-            var payload = {
-                id: 'cf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-                name: name,
-                code: code,
-                description: customFieldDescriptionInput ? String(customFieldDescriptionInput.value || '').trim() : '',
-                type: (customFieldTypeSelect && customFieldTypeSelect.value === 'card') ? 'card' : 'single',
-                editor: customFieldPayloadTextarea ? String(customFieldPayloadTextarea.value || '') : ''
+            var targetEntity = customFieldApiEntityPayload(st.selectedEntities[0]);
+            if (!targetEntity || !targetEntity.entity_key) {
+                alert('Не удалось определить сущность для создания поля');
+                return;
+            }
+            var requestPayload = {
+                page_slug: getPageSlug(),
+                table_index: currentTableIndex,
+                target_entity: targetEntity,
+                custom_field: {
+                    name: name,
+                    code: code,
+                    description: customFieldDescriptionInput ? String(customFieldDescriptionInput.value || '').trim() : '',
+                    type: (customFieldTypeSelect && customFieldTypeSelect.value === 'card') ? 'card' : 'single',
+                    editor: customFieldPayloadTextarea ? String(customFieldPayloadTextarea.value || '') : ''
+                },
+                source_entities: (st.selectedEntities || []).map(customFieldApiEntityPayload).filter(Boolean)
             };
-            st.customFields.push(payload);
-            renderCustomFieldsInFieldsTab(currentTableIndex);
-            saveConfigToStorage();
-            saveConfig();
+            if (customFieldSaveBtn) customFieldSaveBtn.disabled = true;
+            createCustomFieldViaApi(currentTableIndex, requestPayload)
+                .then(function(created) {
+                    if (!created) return loadCustomFieldsForTable(currentTableIndex);
+                    ensureCustomFieldsArray(st);
+                    var idxExisting = st.customFields.findIndex(function(x) { return x && x.id === created.id; });
+                    if (idxExisting >= 0) st.customFields[idxExisting] = created;
+                    else st.customFields.push(created);
+                    renderCustomFieldsInFieldsTab(currentTableIndex);
+                    saveConfigToStorage();
+                })
+                .catch(function(err) {
+                    alert((err && err.message) ? err.message : 'Не удалось создать кастомное поле');
+                })
+                .finally(function() {
+                    if (customFieldSaveBtn) customFieldSaveBtn.disabled = false;
+                });
         }
 
         function renderCustomFieldDeleteList() {
@@ -885,12 +986,29 @@
             if (!checked) return;
             var idx = parseInt(checked.value, 10);
             if (!Number.isFinite(idx) || idx < 0 || idx >= list.length) return;
-            list.splice(idx, 1);
-            renderCustomFieldsInFieldsTab(currentTableIndex);
-            renderCustomFieldDeleteList();
-            saveConfigToStorage();
-            saveConfig();
-            if (customFieldDeleteModal && !list.length) customFieldDeleteModal.hide();
+            var item = list[idx] || {};
+            var finishLocalDelete = function() {
+                list.splice(idx, 1);
+                renderCustomFieldsInFieldsTab(currentTableIndex);
+                renderCustomFieldDeleteList();
+                saveConfigToStorage();
+                if (customFieldDeleteModal && !list.length) customFieldDeleteModal.hide();
+            };
+            if (!item.id) {
+                finishLocalDelete();
+                return;
+            }
+            if (customFieldDeleteConfirmBtn) customFieldDeleteConfirmBtn.disabled = true;
+            deleteCustomFieldViaApi(item.id)
+                .then(function() {
+                    finishLocalDelete();
+                })
+                .catch(function(err) {
+                    alert((err && err.message) ? err.message : 'Не удалось удалить кастомное поле');
+                })
+                .finally(function() {
+                    if (customFieldDeleteConfirmBtn) customFieldDeleteConfirmBtn.disabled = false;
+                });
         }
 
         if (customFieldSaveBtn) {
@@ -3110,6 +3228,7 @@
             var st = tableStates[currentTableIndex];
             if (!st || !st.selectedEntities.length) return;
             renderCustomFieldsInFieldsTab(currentTableIndex);
+            loadCustomFieldsForTable(currentTableIndex);
             var isFilterMode = (fieldsModalForFilterTableIndex != null);
             var isCustomEditorInsertMode = !!fieldsModalForCustomEditorInsert || !!(modalFieldsEl && modalFieldsEl.getAttribute('data-custom-editor-mode') === '1');
             var tableStyleSelect = document.getElementById('tableStyleSelect');
