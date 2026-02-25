@@ -396,7 +396,7 @@
                                             data-bs-toggle="tooltip"
                                             data-bs-placement="top"
                                             data-bs-html="true"
-                                            title="<div class='text-start'><div><b>Токены:</b> {Сущность.Поле}</div><div><b>Функции:</b> CONCAT, UPPER, LOWER, IFNULL, COALESCE, LEN, NUMBER, ROUND</div><div><b>Пример:</b> CONCAT({Vânzări realizare.Название}, ' / ', {STOCK AUTO.Название})</div><div><b>Проверить:</b> считает по первой строке таблицы</div></div>"
+                                            title="<div class='text-start'><div><b>Как пользоваться:</b></div><div>1) Нажмите <b>...</b> и вставьте поля</div><div>2) Напишите формулу в Editor</div><div>3) Нажмите <b>Проверить</b></div><hr class='my-1'><div><b>Токены:</b> {Сущность.Поле}</div><div><b>Агрегаты:</b> COUNT(), SUM(...), AVG(...), MIN(...), MAX(...)</div><div><b>Функции:</b> CONCAT, UPPER, LOWER, IFNULL, COALESCE, LEN, NUMBER, ROUND</div><div><b>Пример:</b> ROUND(AVG({Vânzări realizare.Сумма}), 2)</div><div><b>Важно:</b> локальный расчет по загруженным строкам текущей таблицы</div></div>"
                                             aria-label="Шпаргалка по Editor"
                                     >i</button>
                                 </div>
@@ -405,9 +405,11 @@
                                     <button type="button" class="btn btn-outline-primary flex-shrink-0" id="customFieldActionBtn" aria-label="Дополнительно">...</button>
                                 </div>
                                 <div class="d-flex justify-content-end gap-2 mt-2">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="customFieldPreviewBtn">Проверить</button>
                                     <button type="button" class="btn btn-danger btn-sm" id="customFieldDeleteOpenBtn">Удалить поле</button>
                                     <button type="button" class="btn btn-primary btn-sm" id="customFieldSaveBtn">Сохранить кастомное поле</button>
                                 </div>
+                                <div class="small text-muted mt-2" id="customFieldPreviewResult"></div>
                             </div>
                         </div>
                     </div>
@@ -3111,37 +3113,129 @@
             return String(v);
         }
 
+        function resolveCustomEditorTokenColumn(tokenBody, st) {
+            var raw = String(tokenBody || '').trim();
+            if (!raw || !st) return null;
+            var lastDot = raw.lastIndexOf('.');
+            var prefix = lastDot > 0 ? raw.slice(0, lastDot).trim() : '';
+            var fieldLabel = lastDot > 0 ? raw.slice(lastDot + 1).trim() : raw;
+            if (!fieldLabel) return null;
+            var cols = Array.isArray(st.allColumns) ? st.allColumns : [];
+            var normField = normalizeSearchText(fieldLabel);
+            var normPrefix = normalizeSearchText(prefix);
+            var matches = cols.filter(function(col) {
+                if (!col || normalizeSearchText(col.label || '') !== normField) return false;
+                if (!normPrefix) return true;
+                return normalizeSearchText(col.entityTitle || '') === normPrefix;
+            });
+            if (!matches.length && normPrefix) {
+                matches = cols.filter(function(col) {
+                    if (!col || normalizeSearchText(col.label || '') !== normField) return false;
+                    return normalizeSearchText(col.key || '').indexOf(normPrefix) >= 0;
+                });
+            }
+            return (matches && matches.length) ? matches[0] : null;
+        }
+
+        function toPreviewNumber(v) {
+            if (v && typeof v === 'object' && v.__customEditorTokenValue) v = v.current;
+            if (typeof v === 'number') return isFinite(v) ? v : 0;
+            var n = parseFloat(String(v == null ? '' : v).replace(',', '.'));
+            return isNaN(n) ? 0 : n;
+        }
+
+        function customEditorTokenRuntimeValue(tokenBody, st, row) {
+            var col = resolveCustomEditorTokenColumn(tokenBody, st);
+            var current = resolveCustomEditorTokenValue(tokenBody, st, row);
+            var rows = (st && Array.isArray(st.fullData)) ? st.fullData : [];
+            var values = [];
+            if (col && col.key) {
+                values = rows.map(function(r) {
+                    if (!r || !Object.prototype.hasOwnProperty.call(r, col.key)) return '';
+                    var v = r[col.key];
+                    if (v == null) return '';
+                    if (typeof v === 'object') {
+                        try { return JSON.stringify(v); } catch (e) { return String(v); }
+                    }
+                    return v;
+                });
+            }
+            return {
+                __customEditorTokenValue: true,
+                token: String(tokenBody || ''),
+                key: col && col.key ? col.key : '',
+                current: current,
+                values: values,
+                valueOf: function() { return this.current == null ? '' : this.current; },
+                toString: function() { return this.current == null ? '' : String(this.current); }
+            };
+        }
+
         function evalCustomEditorExpression(exprText) {
             var st = tableStates[currentTableIndex];
-            var row = (st && st.fullData && st.fullData.length) ? st.fullData[0] : null;
-            if (!st || !row) throw new Error('Нет данных в таблице для превью');
+            var rows = (st && Array.isArray(st.fullData)) ? st.fullData : [];
+            var row = rows.length ? rows[0] : null;
+            if (!st) throw new Error('Нет активной таблицы');
             var expr = String(exprText || '').trim();
             if (!expr) throw new Error('Editor пустой');
             var values = [];
             var jsExpr = expr.replace(/\{([^}]+)\}/g, function(_, tokenBody) {
                 var idx = values.length;
-                values.push(resolveCustomEditorTokenValue(tokenBody, st, row));
+                values.push(customEditorTokenRuntimeValue(tokenBody, st, row));
                 return '__t' + idx;
             });
+            function tokenSeries(v) {
+                if (v && typeof v === 'object' && v.__customEditorTokenValue) return Array.isArray(v.values) ? v.values : [];
+                return null;
+            }
+            function scalar(v) {
+                return (v && typeof v === 'object' && v.__customEditorTokenValue) ? v.current : v;
+            }
             var argNames = values.map(function(_, i) { return '__t' + i; });
             var FNS = {
+                COUNT: function(v) {
+                    if (arguments.length === 0) return rows.length;
+                    var s = tokenSeries(v);
+                    if (s) return s.filter(function(x) { return x != null && x !== ''; }).length;
+                    return (scalar(v) != null && scalar(v) !== '') ? 1 : 0;
+                },
+                SUM: function(v) {
+                    var s = tokenSeries(v) || [scalar(v)];
+                    return s.reduce(function(acc, x) { return acc + toPreviewNumber(x); }, 0);
+                },
+                AVG: function(v) {
+                    var s = tokenSeries(v) || [scalar(v)];
+                    var nums = s.map(toPreviewNumber);
+                    if (!nums.length) return 0;
+                    return nums.reduce(function(acc, x) { return acc + x; }, 0) / nums.length;
+                },
+                MIN: function(v) {
+                    var s = tokenSeries(v) || [scalar(v)];
+                    if (!s.length) return '';
+                    var nums = s.map(toPreviewNumber);
+                    return nums.length ? Math.min.apply(null, nums) : '';
+                },
+                MAX: function(v) {
+                    var s = tokenSeries(v) || [scalar(v)];
+                    if (!s.length) return '';
+                    var nums = s.map(toPreviewNumber);
+                    return nums.length ? Math.max.apply(null, nums) : '';
+                },
                 CONCAT: function() { return Array.prototype.slice.call(arguments).map(function(v) { return v == null ? '' : String(v); }).join(''); },
-                UPPER: function(v) { return String(v == null ? '' : v).toUpperCase(); },
-                LOWER: function(v) { return String(v == null ? '' : v).toLowerCase(); },
-                IFNULL: function(v, alt) { return (v == null || v === '') ? alt : v; },
+                UPPER: function(v) { v = scalar(v); return String(v == null ? '' : v).toUpperCase(); },
+                LOWER: function(v) { v = scalar(v); return String(v == null ? '' : v).toLowerCase(); },
+                IFNULL: function(v, alt) { v = scalar(v); return (v == null || v === '') ? alt : v; },
                 COALESCE: function() {
-                    for (var i = 0; i < arguments.length; i++) if (arguments[i] != null && arguments[i] !== '') return arguments[i];
+                    for (var i = 0; i < arguments.length; i++) {
+                        var sv = scalar(arguments[i]);
+                        if (sv != null && sv !== '') return sv;
+                    }
                     return '';
                 },
-                LEN: function(v) { return String(v == null ? '' : v).length; },
-                NUMBER: function(v) {
-                    if (typeof v === 'number') return v;
-                    var n = parseFloat(String(v == null ? '' : v).replace(',', '.'));
-                    return isNaN(n) ? 0 : n;
-                },
+                LEN: function(v) { v = scalar(v); return String(v == null ? '' : v).length; },
+                NUMBER: function(v) { return toPreviewNumber(v); },
                 ROUND: function(v, p) {
-                    var n = typeof v === 'number' ? v : parseFloat(String(v == null ? '' : v).replace(',', '.'));
-                    if (isNaN(n)) return 0;
+                    var n = toPreviewNumber(v);
                     var prec = parseInt(p, 10); if (isNaN(prec)) prec = 0;
                     var m = Math.pow(10, prec);
                     return Math.round(n * m) / m;
@@ -3162,8 +3256,10 @@
             try {
                 var result = evalCustomEditorExpression(customFieldPayloadTextarea ? customFieldPayloadTextarea.value : '');
                 customFieldPreviewResult.classList.remove('text-danger');
-                customFieldPreviewResult.textContent = (result == null || result === '') ? 'Пусто' : String(result);
+                customFieldPreviewResult.classList.add('text-success');
+                customFieldPreviewResult.textContent = 'Результат: ' + ((result == null || result === '') ? 'Пусто' : String(result));
             } catch (e) {
+                customFieldPreviewResult.classList.remove('text-success');
                 customFieldPreviewResult.classList.add('text-danger');
                 customFieldPreviewResult.textContent = e && e.message ? e.message : String(e);
             }
