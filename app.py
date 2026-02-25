@@ -3855,11 +3855,13 @@ def _entity_table_custom_field_storage_pg_type(field_type: str) -> str:
 def _entity_table_add_physical_custom_field_column(conn, storage_table: str, storage_column: str, storage_pg_type: str) -> None:
     ensure_table_base(conn, storage_table)
     ensure_columns(conn, storage_table, [(storage_column, storage_pg_type)])
+    _ENTITY_TABLE_EDITOR_TABLE_COL_CACHE.pop(str(storage_table), None)
 
 
 def _entity_table_drop_physical_custom_field_column(conn, storage_table: str, storage_column: str) -> None:
     with conn.cursor() as cur:
         cur.execute(f'ALTER TABLE {storage_table} DROP COLUMN IF EXISTS "{storage_column}";')
+    _ENTITY_TABLE_EDITOR_TABLE_COL_CACHE.pop(str(storage_table), None)
     conn.commit()
 
 
@@ -3872,7 +3874,6 @@ def _entity_table_fill_custom_field_column_test_value(
     with conn.cursor() as cur:
         cur.execute(f'UPDATE {storage_table} SET "{storage_column}"=%s WHERE id IS NOT NULL;', (str(value),))
         updated = int(cur.rowcount or 0)
-    conn.commit()
     return updated
 
 
@@ -3897,6 +3898,417 @@ def _entity_table_recalculate_custom_field_stub(conn, row: Dict[str, Any]) -> Di
         },
         "mode": "stub_test_fill",
         "editor_used": row.get("editor") or "",
+    }
+
+
+def _entity_table_editor_lookup_key(v: Any) -> str:
+    return str(v or "").strip().lower()
+
+
+def _entity_table_editor_split_ref_token(token: str) -> Tuple[str, str]:
+    s = str(token or "").strip()
+    if not s:
+        raise HTTPException(status_code=400, detail="Empty field reference in editor")
+    if "." not in s:
+        raise HTTPException(status_code=400, detail=f"Invalid field reference '{s}', expected {{Entity.Field}}")
+    entity_part, field_part = s.rsplit(".", 1)
+    entity_part = entity_part.strip()
+    field_part = field_part.strip()
+    if not entity_part or not field_part:
+        raise HTTPException(status_code=400, detail=f"Invalid field reference '{s}', expected {{Entity.Field}}")
+    return entity_part, field_part
+
+
+def _entity_table_editor_parse(expr_text: str) -> Any:
+    s = str(expr_text or "").strip()
+    if not s:
+        raise HTTPException(status_code=400, detail="editor is empty")
+
+    i = 0
+    n = len(s)
+
+    def skip_ws() -> None:
+        nonlocal i
+        while i < n and s[i].isspace():
+            i += 1
+
+    def parse_string() -> Any:
+        nonlocal i
+        quote = s[i]
+        i += 1
+        out: List[str] = []
+        while i < n:
+            ch = s[i]
+            if ch == "\\" and i + 1 < n:
+                out.append(s[i + 1])
+                i += 2
+                continue
+            if ch == quote:
+                i += 1
+                return ("string", "".join(out))
+            out.append(ch)
+            i += 1
+        raise HTTPException(status_code=400, detail="Unclosed string in editor")
+
+    def parse_number() -> Any:
+        nonlocal i
+        start = i
+        if s[i] in "+-":
+            i += 1
+        has_dot = False
+        while i < n and (s[i].isdigit() or (s[i] == "." and not has_dot)):
+            if s[i] == ".":
+                has_dot = True
+            i += 1
+        txt = s[start:i]
+        try:
+            if "." in txt:
+                return ("number", float(txt))
+            return ("number", int(txt))
+        except Exception:
+            raise HTTPException(status_code=400, detail=f"Invalid number in editor: {txt}")
+
+    def parse_ident() -> str:
+        nonlocal i
+        start = i
+        while i < n and (s[i].isalnum() or s[i] == "_"):
+            i += 1
+        ident = s[start:i]
+        if not ident:
+            raise HTTPException(status_code=400, detail=f"Unexpected token in editor at position {i}")
+        return ident
+
+    def parse_ref() -> Any:
+        nonlocal i
+        i += 1  # skip {
+        start = i
+        while i < n and s[i] != "}":
+            i += 1
+        if i >= n:
+            raise HTTPException(status_code=400, detail="Unclosed { in editor")
+        token = s[start:i]
+        i += 1  # skip }
+        entity_name, field_name = _entity_table_editor_split_ref_token(token)
+        return ("ref", entity_name, field_name)
+
+    def parse_expr() -> Any:
+        nonlocal i
+        skip_ws()
+        if i >= n:
+            raise HTTPException(status_code=400, detail="Unexpected end of editor")
+        ch = s[i]
+        if ch in ("'", '"'):
+            return parse_string()
+        if ch == "{":
+            return parse_ref()
+        if ch.isdigit() or (ch in "+-" and i + 1 < n and s[i + 1].isdigit()):
+            return parse_number()
+        if ch.isalpha() or ch == "_":
+            ident = parse_ident()
+            skip_ws()
+            if i < n and s[i] == "(":
+                i += 1
+                args: List[Any] = []
+                skip_ws()
+                if i < n and s[i] == ")":
+                    i += 1
+                    return ("call", ident.upper(), args)
+                while True:
+                    args.append(parse_expr())
+                    skip_ws()
+                    if i >= n:
+                        raise HTTPException(status_code=400, detail="Unclosed function call in editor")
+                    if s[i] == ",":
+                        i += 1
+                        continue
+                    if s[i] == ")":
+                        i += 1
+                        break
+                    raise HTTPException(status_code=400, detail=f"Unexpected token '{s[i]}' in function args")
+                return ("call", ident.upper(), args)
+            return ("ident", ident)
+        raise HTTPException(status_code=400, detail=f"Unsupported token '{ch}' in editor")
+
+    ast = parse_expr()
+    skip_ws()
+    if i != n:
+        raise HTTPException(status_code=400, detail=f"Unexpected trailing editor text: {s[i:]}")
+    return ast
+
+
+def _entity_table_editor_collect_entities(row: Dict[str, Any]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    seen: set = set()
+    for src in [row.get("target_entity")] + list(row.get("source_entities") or []):
+        if not isinstance(src, dict):
+            continue
+        key = json.dumps(src, ensure_ascii=False, sort_keys=True)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(dict(src))
+    return out
+
+
+def _entity_table_editor_resolve_entity(row: Dict[str, Any], entity_name: str) -> Dict[str, Any]:
+    lookup = _entity_table_editor_lookup_key(entity_name)
+    for item in _entity_table_editor_collect_entities(row):
+        candidates = [
+            item.get("title"),
+            item.get("entity_key"),
+            item.get("type"),
+        ]
+        for c in candidates:
+            if _entity_table_editor_lookup_key(c) == lookup:
+                resolved = _entity_table_resolve_storage_target(item)
+                return {
+                    "input": item,
+                    "storage_entity_key": resolved["storage_entity_key"],
+                    "storage_table": resolved["storage_table"],
+                }
+    raise HTTPException(status_code=400, detail=f"Unknown entity in editor reference: {entity_name}")
+
+
+def _entity_table_editor_field_candidates(field_name: str, row_meta: Dict[str, Any]) -> List[str]:
+    labels: List[str] = []
+    for k in ("column_name", "b24_field", "b24_title"):
+        v = row_meta.get(k)
+        if isinstance(v, str) and v.strip():
+            labels.append(v.strip())
+    b24_labels = row_meta.get("b24_labels")
+    if isinstance(b24_labels, dict):
+        for v in b24_labels.values():
+            s = _label_to_string(v)
+            if s:
+                labels.append(s)
+    return labels
+
+
+def _entity_table_editor_resolve_column(conn, entity_key: str, table_name: str, field_name: str) -> Tuple[str, Optional[str]]:
+    field_lookup = _entity_table_editor_lookup_key(field_name)
+    if _CUSTOM_FIELD_CODE_RE.fullmatch(str(field_name or "").strip()) and field_name in _table_columns_cached(conn, table_name):
+        return str(field_name).strip(), "text"
+
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute("""
+            SELECT column_name, b24_field, b24_type, b24_title, b24_labels
+            FROM b24_meta_fields
+            WHERE entity_key=%s
+        """, (entity_key,))
+        rows = cur.fetchall() or []
+
+    for meta in rows:
+        col = str(meta.get("column_name") or "").strip()
+        if not col:
+            continue
+        for cand in _entity_table_editor_field_candidates(field_name, meta):
+            if _entity_table_editor_lookup_key(cand) == field_lookup:
+                return col, (meta.get("b24_type") or None)
+
+    # Fallback: direct physical column passthrough (useful for custom_* and raw technical names)
+    for col in _table_columns_cached(conn, table_name):
+        if _entity_table_editor_lookup_key(col) == field_lookup:
+            return col, None
+
+    raise HTTPException(status_code=400, detail=f"Unknown field '{field_name}' for entity '{entity_key}'")
+
+
+_ENTITY_TABLE_EDITOR_TABLE_COL_CACHE: Dict[str, set] = {}
+
+
+def _table_columns_cached(conn, table_name: str) -> set:
+    cache_key = str(table_name)
+    cols = _ENTITY_TABLE_EDITOR_TABLE_COL_CACHE.get(cache_key)
+    if cols is not None:
+        return cols
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema='public' AND table_name=%s
+        """, (table_name,))
+        cols = {str(r[0]) for r in (cur.fetchall() or []) if r and r[0]}
+    _ENTITY_TABLE_EDITOR_TABLE_COL_CACHE[cache_key] = cols
+    return cols
+
+
+def _entity_table_editor_parse_number(v: Any) -> Optional[float]:
+    if v is None:
+        return None
+    if isinstance(v, bool):
+        return 1.0 if v else 0.0
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = str(v).strip()
+    if not s:
+        return None
+    s = s.replace(",", ".")
+    try:
+        return float(s)
+    except Exception:
+        return None
+
+
+def _entity_table_editor_fetch_column_values(conn, table_name: str, column_name: str) -> List[Any]:
+    with conn.cursor() as cur:
+        cur.execute(f'SELECT "{column_name}" FROM "{table_name}" WHERE id IS NOT NULL')
+        return [r[0] for r in (cur.fetchall() or [])]
+
+
+def _entity_table_editor_count_rows(conn, table_name: str) -> int:
+    with conn.cursor() as cur:
+        cur.execute(f'SELECT COUNT(*) FROM "{table_name}" WHERE id IS NOT NULL')
+        row = cur.fetchone()
+        return int(row[0] if row else 0)
+
+
+def _entity_table_editor_format_result_for_text(v: Any) -> Optional[str]:
+    if v is None:
+        return None
+    if isinstance(v, float):
+        if v.is_integer():
+            return str(int(v))
+        return str(v)
+    return str(v)
+
+
+def _entity_table_editor_eval_aggregate(conn, fn: str, args: List[Any], row: Dict[str, Any]) -> Any:
+    fn_up = fn.upper()
+    if fn_up == "COUNT" and len(args) == 0:
+        target_entity = row.get("target_entity") if isinstance(row.get("target_entity"), dict) else {}
+        resolved = _entity_table_resolve_storage_target(target_entity)
+        return _entity_table_editor_count_rows(conn, resolved["storage_table"])
+
+    if len(args) != 1:
+        raise HTTPException(status_code=400, detail=f"{fn_up} expects exactly one argument")
+    arg = args[0]
+    if not (isinstance(arg, tuple) and len(arg) >= 1 and arg[0] == "field_ref"):
+        raise HTTPException(status_code=400, detail=f"{fn_up} currently supports only direct field reference argument")
+
+    ref = arg[1]
+    values = _entity_table_editor_fetch_column_values(conn, ref["table"], ref["column"])
+    if fn_up == "COUNT":
+        return sum(1 for v in values if v is not None and str(v).strip() != "")
+
+    nums: List[float] = []
+    for v in values:
+        num = _entity_table_editor_parse_number(v)
+        if num is not None:
+            nums.append(num)
+
+    if fn_up == "SUM":
+        return sum(nums) if nums else 0
+    if fn_up == "AVG":
+        return (sum(nums) / len(nums)) if nums else None
+    if fn_up == "MIN":
+        return min(nums) if nums else None
+    if fn_up == "MAX":
+        return max(nums) if nums else None
+    raise HTTPException(status_code=400, detail=f"Unsupported aggregate function: {fn_up}")
+
+
+def _entity_table_editor_eval_ast(conn, ast: Any, row: Dict[str, Any]) -> Any:
+    if not isinstance(ast, tuple) or not ast:
+        raise HTTPException(status_code=400, detail="Invalid editor AST")
+    kind = ast[0]
+    if kind == "number":
+        return ast[1]
+    if kind == "string":
+        return ast[1]
+    if kind == "ident":
+        ident = str(ast[1] or "").strip()
+        if ident.upper() == "NULL":
+            return None
+        raise HTTPException(status_code=400, detail=f"Unsupported identifier in editor: {ident}")
+    if kind == "ref":
+        entity_name = ast[1]
+        field_name = ast[2]
+        ent = _entity_table_editor_resolve_entity(row, entity_name)
+        col, b24_type = _entity_table_editor_resolve_column(conn, ent["storage_entity_key"], ent["storage_table"], field_name)
+        return ("field_ref", {"entity_key": ent["storage_entity_key"], "table": ent["storage_table"], "column": col, "b24_type": b24_type})
+    if kind != "call":
+        raise HTTPException(status_code=400, detail=f"Unsupported editor node: {kind}")
+
+    fn = str(ast[1] or "").upper()
+    raw_args = list(ast[2] or [])
+    eval_args = [_entity_table_editor_eval_ast(conn, a, row) for a in raw_args]
+
+    if fn in ("COUNT", "SUM", "AVG", "MIN", "MAX"):
+        return _entity_table_editor_eval_aggregate(conn, fn, eval_args, row)
+
+    if fn == "CONCAT":
+        parts: List[str] = []
+        for v in eval_args:
+            if isinstance(v, tuple) and v and v[0] == "field_ref":
+                raise HTTPException(status_code=400, detail="CONCAT with direct field reference is not supported yet")
+            parts.append("" if v is None else str(v))
+        return "".join(parts)
+
+    if fn == "IFNULL":
+        if len(eval_args) != 2:
+            raise HTTPException(status_code=400, detail="IFNULL expects exactly two arguments")
+        left = eval_args[0]
+        if left is None:
+            return eval_args[1]
+        if isinstance(left, str) and left == "":
+            return eval_args[1]
+        return left
+
+    if fn == "ROUND":
+        if len(eval_args) not in (1, 2):
+            raise HTTPException(status_code=400, detail="ROUND expects one or two arguments")
+        val_num = _entity_table_editor_parse_number(eval_args[0])
+        if val_num is None:
+            return None
+        digits = 0
+        if len(eval_args) == 2:
+            d = _entity_table_editor_parse_number(eval_args[1])
+            digits = int(d or 0)
+        return round(val_num, digits)
+
+    if fn == "NUMBER":
+        if len(eval_args) != 1:
+            raise HTTPException(status_code=400, detail="NUMBER expects exactly one argument")
+        return _entity_table_editor_parse_number(eval_args[0])
+
+    raise HTTPException(status_code=400, detail=f"Unsupported function in editor: {fn}")
+
+
+def _entity_table_write_custom_field_scalar_value(conn, storage_table: str, storage_column: str, scalar_value: Optional[str]) -> int:
+    with conn.cursor() as cur:
+        cur.execute(f'UPDATE "{storage_table}" SET "{storage_column}"=%s WHERE id IS NOT NULL;', (scalar_value,))
+        updated = int(cur.rowcount or 0)
+    return updated
+
+
+def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> Dict[str, Any]:
+    storage_table = str(row.get("storage_table") or "").strip()
+    storage_column = str(row.get("storage_column") or row.get("code") or "").strip()
+    if not storage_table or not storage_column:
+        target_entity = row.get("target_entity") if isinstance(row.get("target_entity"), dict) else {}
+        resolved = _entity_table_resolve_storage_target(target_entity)
+        storage_table = resolved["storage_table"]
+        storage_column = storage_column or str(row.get("code") or "").strip()
+    editor = str(row.get("editor") or "").strip()
+    if not editor:
+        raise HTTPException(status_code=400, detail="editor is empty")
+
+    ast = _entity_table_editor_parse(editor)
+    value = _entity_table_editor_eval_ast(conn, ast, row)
+    if isinstance(value, tuple) and value and value[0] == "field_ref":
+        raise HTTPException(status_code=400, detail="editor cannot resolve to a direct field reference without aggregate/scalar function")
+    text_value = _entity_table_editor_format_result_for_text(value)
+    updated_rows = _entity_table_write_custom_field_scalar_value(conn, storage_table, storage_column, text_value)
+    return {
+        "updated_rows": updated_rows,
+        "mode": "editor_eval",
+        "storage": {
+            "table": storage_table,
+            "column": storage_column,
+            "pg_type": row.get("storage_pg_type") or "TEXT",
+        },
+        "value_preview": text_value,
+        "custom_field_id": _entity_table_custom_field_db_id_to_api(row.get("id")),
     }
 
 
@@ -4197,6 +4609,7 @@ async def create_entity_table_custom_field(request: Request):
     storage_pg_type = _entity_table_custom_field_storage_pg_type(data["custom_field"]["type"])
     storage_column = data["custom_field"]["code"]
     recalculate_now = bool(payload.get("recalculate_now"))
+    debug_stub_fill = bool(payload.get("debug_stub_fill"))
 
     conn = pg_conn()
     try:
@@ -4232,7 +4645,7 @@ async def create_entity_table_custom_field(request: Request):
                 )
                 VALUES (%s, %s, %s::jsonb, %s::jsonb, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), now(), %s, %s)
                 RETURNING id, name, code, description, field_type, editor, target_entity,
-                          storage_table, storage_column, storage_pg_type
+                          source_entities, storage_table, storage_column, storage_pg_type
             """, (
                 data["page_slug"],
                 data["table_index"],
@@ -4251,17 +4664,18 @@ async def create_entity_table_custom_field(request: Request):
                 actor,
             ))
             row = cur.fetchone() or {}
-        # Quick test fill so frontend can verify grid reads custom_* values from DB.
-        fill_stats = _entity_table_recalculate_custom_field_stub(conn, row)
+        recalc_result = None
+        if recalculate_now:
+            recalc_result = _entity_table_recalculate_custom_field_editor(conn, row)
+        elif debug_stub_fill:
+            recalc_result = _entity_table_recalculate_custom_field_stub(conn, row)
         conn.commit()
         out = {
             "ok": True,
             "custom_field": _entity_table_custom_field_row_to_api(row),
-            "fill_result": fill_stats,
         }
-        # Flag is accepted for forward compatibility; currently same stub behavior.
-        if recalculate_now:
-            out["recalculated"] = True
+        if recalc_result is not None:
+            out["recalculate_result"] = recalc_result
         return out
     except psycopg2.errors.UniqueViolation:
         try:
@@ -4330,6 +4744,13 @@ async def recalculate_entity_table_custom_field(custom_field_id: str, request: R
         raise HTTPException(status_code=403, detail="Guest is not allowed to recalculate custom fields")
 
     db_id = _entity_table_custom_field_parse_id(custom_field_id)
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+    debug_stub_fill = bool(payload.get("debug_stub_fill"))
 
     conn = pg_conn()
     try:
@@ -4337,7 +4758,7 @@ async def recalculate_entity_table_custom_field(custom_field_id: str, request: R
         _ensure_entity_table_custom_fields_schema(conn)
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                SELECT id, page_slug, table_index, code, editor, target_entity,
+                SELECT id, page_slug, table_index, code, editor, target_entity, source_entities,
                        storage_table, storage_column, storage_pg_type
                 FROM entity_table_custom_fields
                 WHERE id=%s
@@ -4347,11 +4768,18 @@ async def recalculate_entity_table_custom_field(custom_field_id: str, request: R
             if not row:
                 raise HTTPException(status_code=404, detail="custom field not found")
 
-        result = _entity_table_recalculate_custom_field_stub(conn, row)
+        if debug_stub_fill:
+            result = _entity_table_recalculate_custom_field_stub(conn, row)
+        else:
+            result = _entity_table_recalculate_custom_field_editor(conn, row)
         conn.commit()
         return {
             "ok": True,
-            "custom_field_id": _entity_table_custom_field_db_id_to_api(db_id),
+            "recalculate_result": {
+                "updated_rows": int(result.get("updated_rows") or 0),
+                "mode": result.get("mode") or ("stub_test_fill" if debug_stub_fill else "editor_eval"),
+                "custom_field_id": _entity_table_custom_field_db_id_to_api(db_id),
+            },
             "result": result,
         }
     except HTTPException:
