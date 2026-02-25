@@ -404,7 +404,8 @@
                                     <textarea class="form-control flex-grow-1" id="customFieldPayloadTextarea" rows="6" placeholder="Форма и логика SQL"></textarea>
                                     <button type="button" class="btn btn-outline-primary flex-shrink-0" id="customFieldActionBtn" aria-label="Дополнительно">...</button>
                                 </div>
-                                <div class="d-flex justify-content-end mt-2">
+                                <div class="d-flex justify-content-end gap-2 mt-2">
+                                    <button type="button" class="btn btn-danger btn-sm" id="customFieldDeleteOpenBtn">Удалить поле</button>
                                     <button type="button" class="btn btn-primary btn-sm" id="customFieldSaveBtn">Сохранить кастомное поле</button>
                                 </div>
                             </div>
@@ -415,6 +416,25 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <button type="button" class="btn btn-primary" id="modalFieldsSave">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="customFieldDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Удалить кастомное поле</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="small text-muted mb-2">Выберите поле для удаления</div>
+                <div id="customFieldDeleteList" class="d-flex flex-column gap-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" id="customFieldDeleteConfirmBtn">Удалить</button>
             </div>
         </div>
     </div>
@@ -725,9 +745,14 @@
         const customFieldDescriptionInput = document.getElementById('customFieldDescriptionInput');
         const customFieldTypeSelect = document.getElementById('customFieldTypeSelect');
         const customFieldSaveBtn = document.getElementById('customFieldSaveBtn');
+        const customFieldDeleteOpenBtn = document.getElementById('customFieldDeleteOpenBtn');
         const customFieldEditorHelpBtn = document.getElementById('customFieldEditorHelpBtn');
         const customFieldPreviewBtn = document.getElementById('customFieldPreviewBtn');
         const customFieldPreviewResult = document.getElementById('customFieldPreviewResult');
+        const customFieldDeleteModalEl = document.getElementById('customFieldDeleteModal');
+        const customFieldDeleteList = document.getElementById('customFieldDeleteList');
+        const customFieldDeleteConfirmBtn = document.getElementById('customFieldDeleteConfirmBtn');
+        const customFieldDeleteModal = customFieldDeleteModalEl ? new bootstrap.Modal(customFieldDeleteModalEl) : null;
         const toggleCustomFieldsInFieldsTabBtn = document.getElementById('toggleCustomFieldsInFieldsTabBtn');
         const customFieldsSectionInFieldsTab = document.getElementById('customFieldsSectionInFieldsTab');
         const customFieldsListInFieldsTab = document.getElementById('customFieldsListInFieldsTab');
@@ -828,9 +853,60 @@
             saveConfig();
         }
 
+        function renderCustomFieldDeleteList() {
+            if (!customFieldDeleteList) return;
+            var st = tableStates[currentTableIndex];
+            var list = ensureCustomFieldsArray(st);
+            if (!list.length) {
+                customFieldDeleteList.innerHTML = '<div class="text-muted small">Нет кастомных полей</div>';
+                return;
+            }
+            customFieldDeleteList.innerHTML = list.map(function(cf, idx) {
+                var id = 'customFieldDeletePick_' + idx;
+                var name = String((cf && cf.name) || '').trim() || '(без названия)';
+                var code = String((cf && cf.code) || '').trim();
+                var type = String((cf && cf.type) || 'single').trim();
+                var label = name + (code ? (' [' + code + ']') : '') + (type ? (' (' + type + ')') : '');
+                var safe = label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return ''
+                    + '<div class="form-check">'
+                    + '  <input class="form-check-input" type="radio" name="customFieldDeletePick" id="' + id + '" value="' + idx + '"' + (idx === 0 ? ' checked' : '') + '>'
+                    + '  <label class="form-check-label" for="' + id + '">' + safe + '</label>'
+                    + '</div>';
+            }).join('');
+        }
+
+        function deleteSelectedCustomField() {
+            var st = tableStates[currentTableIndex];
+            if (!st) return;
+            var list = ensureCustomFieldsArray(st);
+            if (!list.length) return;
+            var checked = customFieldDeleteList ? customFieldDeleteList.querySelector('input[name="customFieldDeletePick"]:checked') : null;
+            if (!checked) return;
+            var idx = parseInt(checked.value, 10);
+            if (!Number.isFinite(idx) || idx < 0 || idx >= list.length) return;
+            list.splice(idx, 1);
+            renderCustomFieldsInFieldsTab(currentTableIndex);
+            renderCustomFieldDeleteList();
+            saveConfigToStorage();
+            saveConfig();
+            if (customFieldDeleteModal && !list.length) customFieldDeleteModal.hide();
+        }
+
         if (customFieldSaveBtn) {
             customFieldSaveBtn.addEventListener('click', function() {
                 saveCustomFieldFromForm();
+            });
+        }
+        if (customFieldDeleteOpenBtn) {
+            customFieldDeleteOpenBtn.addEventListener('click', function() {
+                renderCustomFieldDeleteList();
+                if (customFieldDeleteModal) customFieldDeleteModal.show();
+            });
+        }
+        if (customFieldDeleteConfirmBtn) {
+            customFieldDeleteConfirmBtn.addEventListener('click', function() {
+                deleteSelectedCustomField();
             });
         }
 
@@ -2375,6 +2451,7 @@
                     table_style: st.tableStyle || 'hoverable_rows',
                     entities: st.selectedEntities,
                     fields: buildFieldsFromAllColumns(st),
+                    custom_fields: (st.customFields && Array.isArray(st.customFields)) ? st.customFields : [],
                     filter_fields: getPersistedTableFilterFields(st),
                     column_order: keys.length ? keys : null,
                     column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
