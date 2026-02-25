@@ -4539,6 +4539,21 @@ def _entity_table_editor_find_direct_join_from_target(
             "via_b24_type": mrow.get("b24_type"),
         })
 
+    # Deduplicate metadata rows that point to the same physical relation field.
+    deduped_matches: List[Dict[str, Any]] = []
+    seen_match_keys: set = set()
+    for m in matches:
+        mk = (
+            _entity_table_editor_relation_field_match_key(m.get("join_column")),
+            _entity_table_editor_relation_field_match_key(m.get("via_b24_field")),
+            _entity_table_editor_lookup_key(m.get("target_entity_key")),
+        )
+        if mk in seen_match_keys:
+            continue
+        seen_match_keys.add(mk)
+        deduped_matches.append(m)
+    matches = deduped_matches
+
     if len(matches) == 1:
         return matches[0]
     if len(matches) > 1:
@@ -4669,6 +4684,7 @@ def _entity_table_editor_select_join_candidate_by_relation_hint(ambiguous_join: 
     hint_relation_keys = {k for k in hint_relation_keys if k}
 
     matched: List[Dict[str, Any]] = []
+    seen_matched_keys: set = set()
     for cand in candidates:
         if not isinstance(cand, dict):
             continue
@@ -4683,6 +4699,14 @@ def _entity_table_editor_select_join_candidate_by_relation_hint(ambiguous_join: 
         }
         cand_relation_keys = {k for k in cand_relation_keys if k}
         if cand_keys.intersection(hints) or cand_relation_keys.intersection(hint_relation_keys):
+            mk = (
+                _entity_table_editor_relation_field_match_key(cand.get("join_column")),
+                _entity_table_editor_relation_field_match_key(cand.get("via_b24_field")),
+                _entity_table_editor_lookup_key(cand.get("target_entity_key")),
+            )
+            if mk in seen_matched_keys:
+                continue
+            seen_matched_keys.add(mk)
             matched.append(cand)
     if len(matched) == 1:
         return matched[0]
