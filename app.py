@@ -4492,6 +4492,24 @@ def _entity_table_editor_entity_key_from_parent_id_name(name: str) -> Optional[s
     return f"sp:{num}"
 
 
+def _entity_table_editor_entity_key_meta_aliases(entity_key: str) -> List[str]:
+    ek = str(entity_key or "").strip()
+    out: List[str] = []
+    for v in (ek, _entity_table_editor_normalize_tech_entity_key_token(ek)):
+        s = str(v or "").strip()
+        if s and s not in out:
+            out.append(s)
+    m = re.match(r"^(?:sp:(\d+)|smart_process_(\d+)|entity_(\d+))$", ek, flags=re.IGNORECASE)
+    if not m:
+        m = re.match(r"^sp:(\d+)$", _entity_table_editor_normalize_tech_entity_key_token(ek) or "", flags=re.IGNORECASE)
+    if m:
+        etid = m.group(1) or m.group(2) or m.group(3)
+        for s in (f"sp:{int(etid)}", f"smart_process_{int(etid)}", f"entity_{int(etid)}"):
+            if s not in out:
+                out.append(s)
+    return out
+
+
 def _entity_table_editor_smart_process_table_candidates(entity_key: str, preferred_table: str) -> List[str]:
     ek = str(entity_key or "").strip().lower()
     pt = str(preferred_table or "").strip()
@@ -4609,15 +4627,17 @@ def _entity_table_editor_find_reverse_join_from_target_hint(
     if not hint_relation_keys:
         return None
 
+    meta_aliases = _entity_table_editor_entity_key_meta_aliases(ref_entity_key)
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("""
             SELECT column_name, b24_field, b24_type, settings
             FROM b24_meta_fields
-            WHERE entity_key=%s
-        """, (ref_entity_key,))
+            WHERE entity_key = ANY(%s)
+        """, (meta_aliases,))
         rows = cur.fetchall() or []
 
     matches: List[Dict[str, Any]] = []
+    target_only_matches: List[Dict[str, Any]] = []
     for ref_table_candidate in _entity_table_editor_smart_process_table_candidates(ref_entity_key, ref_table):
         existing_cols = _table_columns_cached(conn, ref_table_candidate)
         for mrow in rows:
@@ -4627,6 +4647,14 @@ def _entity_table_editor_find_reverse_join_from_target_hint(
             inferred_target = _entity_table_editor_infer_link_target_entity_key(mrow)
             if inferred_target != target_entity_key:
                 continue
+            candidate = {
+                "reverse_join_column": col,
+                "target_entity_key": inferred_target,
+                "via_b24_field": mrow.get("b24_field"),
+                "via_b24_type": mrow.get("b24_type"),
+                "to_table": ref_table_candidate,
+            }
+            target_only_matches.append(candidate)
             rel_keys = {
                 _entity_table_editor_relation_field_match_key(col),
                 _entity_table_editor_relation_field_match_key(mrow.get("b24_field")),
@@ -4634,32 +4662,37 @@ def _entity_table_editor_find_reverse_join_from_target_hint(
             rel_keys = {k for k in rel_keys if k}
             if not rel_keys.intersection(hint_relation_keys):
                 continue
-            matches.append({
-                "reverse_join_column": col,
-                "target_entity_key": inferred_target,
-                "via_b24_field": mrow.get("b24_field"),
-                "via_b24_type": mrow.get("b24_type"),
-                "to_table": ref_table_candidate,
-            })
+            matches.append(candidate)
 
-    # Dedup by physical reverse join column.
-    deduped: List[Dict[str, Any]] = []
-    seen: set = set()
-    for m in matches:
-        mk = (
-            _entity_table_editor_relation_field_match_key(m.get("reverse_join_column")) or _entity_table_editor_relation_field_match_key(m.get("via_b24_field")),
-            _entity_table_editor_lookup_key(m.get("target_entity_key")),
-        )
-        if mk in seen:
-            continue
-        seen.add(mk)
-        deduped.append(m)
-    matches = deduped
+    def _dedup_reverse(cands: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        deduped: List[Dict[str, Any]] = []
+        seen: set = set()
+        for m in cands:
+            mk = (
+                _entity_table_editor_relation_field_match_key(m.get("reverse_join_column")) or _entity_table_editor_relation_field_match_key(m.get("via_b24_field")),
+                _entity_table_editor_lookup_key(m.get("target_entity_key")),
+                str(m.get("to_table") or "").strip().lower(),
+            )
+            if mk in seen:
+                continue
+            seen.add(mk)
+            deduped.append(m)
+        return deduped
+
+    matches = _dedup_reverse(matches)
+    target_only_matches = _dedup_reverse(target_only_matches)
 
     if len(matches) == 1:
         return matches[0]
     if len(matches) > 1:
         return {"ambiguous": True, "candidates": matches}
+    # Fallback: frontend hint may describe nested-group relation identity (e.g. PARENT_ID_1114),
+    # while physical reverse join on the SP table is parentId2 (deal). If reverse link to target
+    # entity is unique, use it.
+    if len(target_only_matches) == 1:
+        return target_only_matches[0]
+    if len(target_only_matches) > 1:
+        return {"ambiguous": True, "candidates": target_only_matches}
     return None
 
 
