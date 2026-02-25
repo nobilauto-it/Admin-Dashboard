@@ -674,6 +674,44 @@ def entity_table_config():
         return make_response(jsonify({"ok": False, "error": str(e)}), 502)
 
 
+@blueprint.route('/api/entity-table/custom-fields', methods=['GET', 'POST'])
+@blueprint.route('/api/entity-table/custom-fields/<path:item_id>', methods=['DELETE'])
+def entity_table_custom_fields_proxy(item_id=None):
+    """Proxy custom fields CRUD to CRM backend (7070) to avoid browser CORS from 7474 UI."""
+    upstream_url = f"{_crm_base_url()}/api/entity-table/custom-fields"
+    if item_id is not None:
+        upstream_url = f"{upstream_url}/{item_id}"
+    if requests is None:
+        return make_response(jsonify({"ok": False, "error": "python-requests not available"}), 500)
+
+    try:
+        headers = {}
+        x_user_role = request.headers.get('x-user-role')
+        x_guest = request.headers.get('x-guest')
+        if x_user_role:
+            headers['x-user-role'] = x_user_role
+        if x_guest:
+            headers['x-guest'] = x_guest
+
+        if request.method == 'GET':
+            resp = requests.get(upstream_url, params=dict(request.args or {}), headers=headers, timeout=30)
+        elif request.method == 'POST':
+            payload = request.get_json(silent=True) or {}
+            headers['Content-Type'] = 'application/json'
+            resp = requests.post(upstream_url, json=payload, headers=headers, timeout=30)
+        else:  # DELETE
+            resp = requests.delete(upstream_url, headers=headers, timeout=30)
+
+        try:
+            body = resp.json()
+            return make_response(jsonify(body), resp.status_code)
+        except Exception:
+            return make_response(resp.text, resp.status_code)
+    except Exception as e:
+        current_app.logger.exception("Entity table custom-fields proxy: %s", e)
+        return make_response(jsonify({"ok": False, "error": str(e)}), 502)
+
+
 @blueprint.route('/api/entity-table/component-modes', methods=['GET', 'POST'])
 def entity_table_component_modes():
     """Параметры страниц и таблиц: edit, read_only, hide. GET — вернуть, POST — сохранить (для админки)."""
