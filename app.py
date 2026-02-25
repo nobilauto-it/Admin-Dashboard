@@ -5750,50 +5750,62 @@ def list_entity_table_custom_fields(
 @app.post("/api/entity-table/custom-fields/preview")
 async def preview_entity_table_custom_field(request: Request):
     if _entity_table_is_guest(request):
-        raise HTTPException(status_code=403, detail="Guest is not allowed to preview custom fields")
+        return _entity_table_error_response(403, "Editor preview failed", "Guest is not allowed to preview custom fields")
 
+    conn = None
     try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
 
-    data = _entity_table_validate_custom_field_preview_payload(payload)
-    storage_target = _entity_table_resolve_storage_target(data["target_entity"])
-    pseudo_row = {
-        "id": None,
-        "page_slug": data["page_slug"],
-        "table_index": data["table_index"],
-        "editor": data["editor"],
-        "target_entity": data["target_entity"],
-        "source_entities": data["source_entities"],
-        "storage_entity_key": storage_target["storage_entity_key"],
-        "storage_table": storage_target["storage_table"],
-        "storage_column": None,
-        "storage_pg_type": "TEXT",
-    }
+        data = _entity_table_validate_custom_field_preview_payload(payload)
+        storage_target = _entity_table_resolve_storage_target(data["target_entity"])
+        pseudo_row = {
+            "id": None,
+            "page_slug": data["page_slug"],
+            "table_index": data["table_index"],
+            "editor": data["editor"],
+            "target_entity": data["target_entity"],
+            "source_entities": data["source_entities"],
+            "storage_entity_key": storage_target["storage_entity_key"],
+            "storage_table": storage_target["storage_table"],
+            "storage_column": None,
+            "storage_pg_type": "TEXT",
+        }
 
-    conn = pg_conn()
-    try:
+        conn = pg_conn()
         conn.autocommit = False
         _ensure_entity_table_custom_fields_schema(conn)
         preview_result = _entity_table_preview_custom_field_editor(conn, pseudo_row)
-        conn.rollback()  # no writes expected; keep transaction clean
+        try:
+            conn.rollback()  # no writes expected; keep transaction clean
+        except Exception:
+            pass
         return {"ok": True, "preview_result": preview_result}
     except HTTPException as e:
         try:
-            conn.rollback()
+            if conn:
+                conn.rollback()
         except Exception:
             pass
         return _entity_table_error_response(e.status_code if getattr(e, "status_code", None) else 400, "Editor preview failed", _entity_table_http_error_text(e))
     except Exception as e:
         try:
-            conn.rollback()
+            if conn:
+                conn.rollback()
         except Exception:
             pass
-        raise HTTPException(status_code=500, detail=repr(e))
+        try:
+            print(f"ERROR: preview_entity_table_custom_field: {e}", file=sys.stderr, flush=True)
+            traceback.print_exc()
+        except Exception:
+            pass
+        return _entity_table_error_response(500, "Editor preview failed", "Internal error while evaluating preview")
     finally:
         try:
-            conn.close()
+            if conn:
+                conn.close()
         except Exception:
             pass
 
