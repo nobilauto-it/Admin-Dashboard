@@ -4565,6 +4565,78 @@ def _entity_table_editor_find_direct_join_from_target(
     return None
 
 
+def _entity_table_editor_find_reverse_join_from_target_hint(
+    conn,
+    target_entity_key: str,
+    ref_entity_key: str,
+    ref_table: str,
+    ref_input_entity: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    """
+    Find reverse row-wise relation on referenced entity table, e.g.:
+      target=deal, ref=sp:1114, ref table has parent_id_1114 -> deal.id
+    Uses relation metadata from nested source entity (field_code/b24_field/column_name/relation_*/link_*).
+    """
+    hints = _entity_table_editor_relation_hint_candidates(ref_input_entity)
+    if not hints:
+        return None
+    hint_relation_keys = {_entity_table_editor_relation_field_match_key(v) for v in hints}
+    hint_relation_keys = {k for k in hint_relation_keys if k}
+    if not hint_relation_keys:
+        return None
+
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute("""
+            SELECT column_name, b24_field, b24_type, settings
+            FROM b24_meta_fields
+            WHERE entity_key=%s
+        """, (ref_entity_key,))
+        rows = cur.fetchall() or []
+
+    existing_cols = _table_columns_cached(conn, ref_table)
+    matches: List[Dict[str, Any]] = []
+    for mrow in rows:
+        col = str(mrow.get("column_name") or "").strip()
+        if not col or col not in existing_cols:
+            continue
+        inferred_target = _entity_table_editor_infer_link_target_entity_key(mrow)
+        if inferred_target != target_entity_key:
+            continue
+        rel_keys = {
+            _entity_table_editor_relation_field_match_key(col),
+            _entity_table_editor_relation_field_match_key(mrow.get("b24_field")),
+        }
+        rel_keys = {k for k in rel_keys if k}
+        if not rel_keys.intersection(hint_relation_keys):
+            continue
+        matches.append({
+            "reverse_join_column": col,
+            "target_entity_key": inferred_target,
+            "via_b24_field": mrow.get("b24_field"),
+            "via_b24_type": mrow.get("b24_type"),
+        })
+
+    # Dedup by physical reverse join column.
+    deduped: List[Dict[str, Any]] = []
+    seen: set = set()
+    for m in matches:
+        mk = (
+            _entity_table_editor_relation_field_match_key(m.get("reverse_join_column")) or _entity_table_editor_relation_field_match_key(m.get("via_b24_field")),
+            _entity_table_editor_lookup_key(m.get("target_entity_key")),
+        )
+        if mk in seen:
+            continue
+        seen.add(mk)
+        deduped.append(m)
+    matches = deduped
+
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        return {"ambiguous": True, "candidates": matches}
+    return None
+
+
 def _entity_table_editor_build_rowwise_join_path(
     conn,
     current_target_entity_key: str,
@@ -4598,6 +4670,21 @@ def _entity_table_editor_build_rowwise_join_path(
             str(dst.get("storage_entity_key") or ""),
         )
         if not join:
+            reverse_join = _entity_table_editor_find_reverse_join_from_target_hint(
+                conn,
+                str(src.get("storage_entity_key") or ""),
+                str(dst.get("storage_entity_key") or ""),
+                str(dst.get("storage_table") or ""),
+                dst.get("input") if isinstance(dst, dict) else None,
+            )
+            if reverse_join and not reverse_join.get("ambiguous"):
+                join = {
+                    "reverse": True,
+                    "join_column": reverse_join.get("reverse_join_column"),
+                    "via_b24_field": reverse_join.get("via_b24_field"),
+                    "via_b24_type": reverse_join.get("via_b24_type"),
+                }
+        if not join:
             raise HTTPException(
                 status_code=400,
                 detail=f"Row-wise join path not found for {token_full}: no link field from target entity to source entity",
@@ -4607,25 +4694,50 @@ def _entity_table_editor_build_rowwise_join_path(
             if resolved_join:
                 join = resolved_join
             else:
-                try:
-                    dst_input = dst.get("input") if isinstance(dst, dict) else None
-                    hint_debug = _entity_table_editor_relation_hint_candidates(dst_input)
-                    cand_debug = []
-                    for c in list(join.get("candidates") or []):
-                        if not isinstance(c, dict):
-                            continue
-                        cand_debug.append({
-                            "join_column": c.get("join_column"),
-                            "via_b24_field": c.get("via_b24_field"),
-                            "target_entity_key": c.get("target_entity_key"),
-                        })
-                    debug_suffix = f" relation_hints={hint_debug}; candidates={cand_debug}"
-                except Exception:
-                    debug_suffix = ""
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Ambiguous row-wise join path for {token_full}: multiple link fields match source entity. Add relation metadata (b24_field/field_code/column_name) in nested source entity.{debug_suffix}",
+                reverse_join = _entity_table_editor_find_reverse_join_from_target_hint(
+                    conn,
+                    str(src.get("storage_entity_key") or ""),
+                    str(dst.get("storage_entity_key") or ""),
+                    str(dst.get("storage_table") or ""),
+                    dst.get("input") if isinstance(dst, dict) else None,
                 )
+                if reverse_join and not reverse_join.get("ambiguous"):
+                    join = {
+                        "reverse": True,
+                        "join_column": reverse_join.get("reverse_join_column"),
+                        "via_b24_field": reverse_join.get("via_b24_field"),
+                        "via_b24_type": reverse_join.get("via_b24_type"),
+                    }
+                else:
+                    try:
+                        dst_input = dst.get("input") if isinstance(dst, dict) else None
+                        hint_debug = _entity_table_editor_relation_hint_candidates(dst_input)
+                        cand_debug = []
+                        for c in list(join.get("candidates") or []):
+                            if not isinstance(c, dict):
+                                continue
+                            cand_debug.append({
+                                "join_column": c.get("join_column"),
+                                "via_b24_field": c.get("via_b24_field"),
+                                "target_entity_key": c.get("target_entity_key"),
+                            })
+                        rev_cand_debug = []
+                        if isinstance(reverse_join, dict) and reverse_join.get("ambiguous"):
+                            for c in list(reverse_join.get("candidates") or []):
+                                if not isinstance(c, dict):
+                                    continue
+                                rev_cand_debug.append({
+                                    "reverse_join_column": c.get("reverse_join_column"),
+                                    "via_b24_field": c.get("via_b24_field"),
+                                    "target_entity_key": c.get("target_entity_key"),
+                                })
+                        debug_suffix = f" relation_hints={hint_debug}; candidates={cand_debug}; reverse_candidates={rev_cand_debug}"
+                    except Exception:
+                        debug_suffix = ""
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Ambiguous row-wise join path for {token_full}: multiple link fields match source entity. Add relation metadata (b24_field/field_code/column_name) in nested source entity.{debug_suffix}",
+                    )
         join_col = str(join.get("join_column") or "").strip()
         if not join_col:
             raise HTTPException(
@@ -4639,6 +4751,7 @@ def _entity_table_editor_build_rowwise_join_path(
                 "to_entity_key": str(dst.get("storage_entity_key") or ""),
                 "to_table": str(dst.get("storage_table") or ""),
                 "join_column": join_col,
+                "reverse": bool(join.get("reverse")),
                 "via_b24_field": join.get("via_b24_field"),
                 "via_b24_type": join.get("via_b24_type"),
             }
@@ -5256,14 +5369,28 @@ def _entity_table_editor_resolve_rowwise_ref_raw_value(
             to_table = str(step.get("to_table") or "").strip()
             if not join_col or not to_table:
                 raise HTTPException(status_code=400, detail=f"{token_full} is not available for row_wise join yet")
-            join_raw_id = row_obj.get(join_col)
-            join_id_int = _entity_table_editor_extract_single_link_id(join_raw_id)
-            if not join_id_int:
-                return None
-            row_obj = _entity_table_editor_fetch_foreign_row_cached(conn, to_table, join_id_int, foreign_row_cache)
-            row_table = to_table
-            if not row_obj:
-                return None
+            if bool(step.get("reverse")):
+                current_row_id = _entity_table_editor_extract_single_link_id(row_obj.get("id"))
+                if not current_row_id:
+                    return None
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        f'SELECT * FROM "{to_table}" WHERE "{join_col}"=%s ORDER BY id DESC NULLS LAST LIMIT 1',
+                        (int(current_row_id),)
+                    )
+                    row_obj = cur.fetchone() or {}
+                row_table = to_table
+                if not row_obj:
+                    return None
+            else:
+                join_raw_id = row_obj.get(join_col)
+                join_id_int = _entity_table_editor_extract_single_link_id(join_raw_id)
+                if not join_id_int:
+                    return None
+                row_obj = _entity_table_editor_fetch_foreign_row_cached(conn, to_table, join_id_int, foreign_row_cache)
+                row_table = to_table
+                if not row_obj:
+                    return None
         if row_table != str(ref.get("table") or ""):
             raise HTTPException(status_code=400, detail=f"{token_full} is not available for row_wise join yet")
         return row_obj.get(ref["column"])
