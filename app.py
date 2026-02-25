@@ -4274,6 +4274,129 @@ def _entity_table_editor_eval_ast(conn, ast: Any, row: Dict[str, Any]) -> Any:
     raise HTTPException(status_code=400, detail=f"Unsupported function in editor: {fn}")
 
 
+def _entity_table_editor_ast_has_aggregate(ast: Any) -> bool:
+    if not isinstance(ast, tuple) or not ast:
+        return False
+    if ast[0] == "call":
+        fn = str(ast[1] or "").upper()
+        if fn in ("COUNT", "SUM", "AVG", "MIN", "MAX"):
+            return True
+        return any(_entity_table_editor_ast_has_aggregate(a) for a in (ast[2] or []))
+    return False
+
+
+def _entity_table_editor_prepare_ref(conn, cf_row: Dict[str, Any], entity_name: str, field_name: str) -> Dict[str, Any]:
+    ent = _entity_table_editor_resolve_entity(cf_row, entity_name)
+    col, b24_type = _entity_table_editor_resolve_column(conn, ent["storage_entity_key"], ent["storage_table"], field_name)
+    return {
+        "entity_key": ent["storage_entity_key"],
+        "table": ent["storage_table"],
+        "column": col,
+        "b24_type": b24_type,
+        "entity_name": entity_name,
+        "field_name": field_name,
+    }
+
+
+def _entity_table_editor_eval_ast_rowwise(
+    conn,
+    ast: Any,
+    cf_row: Dict[str, Any],
+    target_storage_table: str,
+    current_row: Dict[str, Any],
+    ref_cache: Dict[Tuple[str, str], Dict[str, Any]],
+) -> Any:
+    if not isinstance(ast, tuple) or not ast:
+        raise HTTPException(status_code=400, detail="Invalid editor AST")
+    kind = ast[0]
+
+    if kind == "number":
+        return ast[1]
+    if kind == "string":
+        return ast[1]
+    if kind == "ident":
+        ident = str(ast[1] or "").strip()
+        if ident.upper() == "NULL":
+            return None
+        raise HTTPException(status_code=400, detail=f"Unsupported identifier in editor: {ident}")
+    if kind == "ref":
+        entity_name = str(ast[1] or "").strip()
+        field_name = str(ast[2] or "").strip()
+        cache_key = (entity_name, field_name)
+        ref = ref_cache.get(cache_key)
+        if ref is None:
+            ref = _entity_table_editor_prepare_ref(conn, cf_row, entity_name, field_name)
+            ref_cache[cache_key] = ref
+        if str(ref["table"]) != str(target_storage_table):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Row-wise editor currently supports only target entity fields. Unsupported ref: {{{entity_name}.{field_name}}}",
+            )
+        return current_row.get(ref["column"])
+    if kind != "call":
+        raise HTTPException(status_code=400, detail=f"Unsupported editor node: {kind}")
+
+    fn = str(ast[1] or "").upper()
+    raw_args = list(ast[2] or [])
+
+    # Aggregates are handled by aggregate mode only.
+    if fn in ("COUNT", "SUM", "AVG", "MIN", "MAX"):
+        raise HTTPException(status_code=400, detail=f"{fn} cannot be used in row-wise mode")
+
+    eval_args = [
+        _entity_table_editor_eval_ast_rowwise(conn, a, cf_row, target_storage_table, current_row, ref_cache)
+        for a in raw_args
+    ]
+
+    if fn == "CONCAT":
+        return "".join("" if v is None else str(v) for v in eval_args)
+
+    if fn == "IFNULL":
+        if len(eval_args) != 2:
+            raise HTTPException(status_code=400, detail="IFNULL expects exactly two arguments")
+        left = eval_args[0]
+        if left is None:
+            return eval_args[1]
+        if isinstance(left, str) and left == "":
+            return eval_args[1]
+        return left
+
+    if fn == "ROUND":
+        if len(eval_args) not in (1, 2):
+            raise HTTPException(status_code=400, detail="ROUND expects one or two arguments")
+        val_num = _entity_table_editor_parse_number(eval_args[0])
+        if val_num is None:
+            return None
+        digits = 0
+        if len(eval_args) == 2:
+            d = _entity_table_editor_parse_number(eval_args[1])
+            digits = int(d or 0)
+        return round(val_num, digits)
+
+    if fn == "NUMBER":
+        if len(eval_args) != 1:
+            raise HTTPException(status_code=400, detail="NUMBER expects exactly one argument")
+        return _entity_table_editor_parse_number(eval_args[0])
+
+    raise HTTPException(status_code=400, detail=f"Unsupported function in editor: {fn}")
+
+
+def _entity_table_write_custom_field_row_values(
+    conn,
+    storage_table: str,
+    storage_column: str,
+    updates: List[Tuple[int, Optional[str]]],
+) -> int:
+    if not updates:
+        return 0
+    with conn.cursor() as cur:
+        cur.executemany(
+            f'UPDATE "{storage_table}" SET "{storage_column}"=%s WHERE id=%s',
+            [(val, int(rid)) for rid, val in updates],
+        )
+    return len(updates)
+
+
 def _entity_table_write_custom_field_scalar_value(conn, storage_table: str, storage_column: str, scalar_value: Optional[str]) -> int:
     with conn.cursor() as cur:
         cur.execute(f'UPDATE "{storage_table}" SET "{storage_column}"=%s WHERE id IS NOT NULL;', (scalar_value,))
@@ -4294,20 +4417,69 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
         raise HTTPException(status_code=400, detail="editor is empty")
 
     ast = _entity_table_editor_parse(editor)
-    value = _entity_table_editor_eval_ast(conn, ast, row)
-    if isinstance(value, tuple) and value and value[0] == "field_ref":
-        raise HTTPException(status_code=400, detail="editor cannot resolve to a direct field reference without aggregate/scalar function")
-    text_value = _entity_table_editor_format_result_for_text(value)
-    updated_rows = _entity_table_write_custom_field_scalar_value(conn, storage_table, storage_column, text_value)
+    if _entity_table_editor_ast_has_aggregate(ast):
+        value = _entity_table_editor_eval_ast(conn, ast, row)
+        if isinstance(value, tuple) and value and value[0] == "field_ref":
+            raise HTTPException(status_code=400, detail="editor cannot resolve to a direct field reference without aggregate/scalar function")
+        text_value = _entity_table_editor_format_result_for_text(value)
+        updated_rows = _entity_table_write_custom_field_scalar_value(conn, storage_table, storage_column, text_value)
+        mode = "editor_eval"
+        mode_detail = "aggregate"
+        value_preview = text_value
+    else:
+        # Row-wise expressions: resolve direct {Entity.Field} references against current target row.
+        cols_needed: set = {"id"}
+        ref_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
+
+        def collect_refs(node: Any) -> None:
+            if not isinstance(node, tuple) or not node:
+                return
+            if node[0] == "ref":
+                entity_name = str(node[1] or "").strip()
+                field_name = str(node[2] or "").strip()
+                key = (entity_name, field_name)
+                if key not in ref_cache:
+                    ref_cache[key] = _entity_table_editor_prepare_ref(conn, row, entity_name, field_name)
+                ref = ref_cache[key]
+                if str(ref["table"]) != str(storage_table):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Row-wise editor currently supports only target entity fields. Unsupported ref: {{{entity_name}.{field_name}}}",
+                    )
+                cols_needed.add(str(ref["column"]))
+                return
+            if node[0] == "call":
+                for a in (node[2] or []):
+                    collect_refs(a)
+
+        collect_refs(ast)
+        select_cols = [c for c in cols_needed if c]
+        cols_sql = ", ".join(f'"{c}"' for c in select_cols)
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(f'SELECT {cols_sql} FROM "{storage_table}" WHERE id IS NOT NULL')
+            rows = cur.fetchall() or []
+        updates: List[Tuple[int, Optional[str]]] = []
+        for db_row in rows:
+            rid = db_row.get("id")
+            if rid is None:
+                continue
+            val = _entity_table_editor_eval_ast_rowwise(conn, ast, row, storage_table, db_row, ref_cache)
+            updates.append((int(rid), _entity_table_editor_format_result_for_text(val)))
+        updated_rows = _entity_table_write_custom_field_row_values(conn, storage_table, storage_column, updates)
+        mode = "editor_eval"
+        mode_detail = "row_wise"
+        value_preview = updates[0][1] if updates else None
+
     return {
         "updated_rows": updated_rows,
-        "mode": "editor_eval",
+        "mode": mode,
+        "mode_detail": mode_detail,
         "storage": {
             "table": storage_table,
             "column": storage_column,
             "pg_type": row.get("storage_pg_type") or "TEXT",
         },
-        "value_preview": text_value,
+        "value_preview": value_preview,
         "custom_field_id": _entity_table_custom_field_db_id_to_api(row.get("id")),
     }
 
