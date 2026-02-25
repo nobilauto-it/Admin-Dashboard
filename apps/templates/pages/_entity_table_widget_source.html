@@ -3382,7 +3382,17 @@
                             }
                         }
                         if (!title) return '';
-                        var tokenBody = (prefixKey ? (prefixKey + '.') : '') + title;
+                        var parentEntityTitle = '';
+                        if (ek) {
+                            var parentHeader = customFieldPickerList.querySelector('.fields-modal-entity-header[data-entitykey="' + ek + '"]');
+                            parentEntityTitle = parentHeader ? String(parentHeader.textContent || '').trim() : '';
+                        }
+                        var tokenBody = '';
+                        if (nestedType && parentEntityTitle && prefixKey) {
+                            tokenBody = parentEntityTitle + '.' + prefixKey + '.' + title;
+                        } else {
+                            tokenBody = (prefixKey ? (prefixKey + '.') : '') + title;
+                        }
                         var token = '{' + tokenBody + '}';
                         var st = tableStates[currentTableIndex];
                         if (st) {
