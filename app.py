@@ -4690,6 +4690,43 @@ def _entity_table_editor_prepare_ref(conn, cf_row: Dict[str, Any], entity_name: 
     }
 
 
+def _entity_table_editor_prepare_ref_rowwise(
+    conn,
+    cf_row: Dict[str, Any],
+    target_entity_key: str,
+    target_storage_table: str,
+    entity_name: str,
+    field_name: str,
+) -> Dict[str, Any]:
+    # New frontend nested token format arrives as {ParentEntity.NestedEntity.Field}
+    # Parser already stores it as entity_name="ParentEntity.NestedEntity", field_name="Field".
+    parts = [p.strip() for p in str(entity_name or "").split(".")]
+    parts = [p for p in parts if p]
+    if len(parts) == 2:
+        parent_name, nested_name = parts
+        parent_ent = _entity_table_editor_resolve_entity(cf_row, parent_name)
+        # First step for nested row-wise path must be current target entity (explicit path).
+        if str(parent_ent.get("storage_entity_key") or "") != str(target_entity_key) or str(parent_ent.get("storage_table") or "") != str(target_storage_table):
+            raise HTTPException(
+                status_code=400,
+                detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet",
+            )
+        ref = _entity_table_editor_prepare_ref(conn, cf_row, nested_name, field_name)
+        ref["join_from_target"] = _entity_table_editor_find_direct_join_from_target(
+            conn,
+            str(parent_ent.get("storage_entity_key") or ""),
+            str(parent_ent.get("storage_table") or ""),
+            str(ref.get("entity_key") or ""),
+        )
+        ref["explicit_parent_entity_name"] = parent_name
+        ref["explicit_nested_entity_name"] = nested_name
+        ref["token_entity_path"] = entity_name
+        return ref
+
+    # Backward-compatible format {Entity.Field}
+    return _entity_table_editor_prepare_ref(conn, cf_row, entity_name, field_name)
+
+
 def _entity_table_editor_eval_ast_rowwise(
     conn,
     ast: Any,
@@ -4721,7 +4758,9 @@ def _entity_table_editor_eval_ast_rowwise(
         cache_key = (entity_name, field_name)
         ref = ref_cache.get(cache_key)
         if ref is None:
-            ref = _entity_table_editor_prepare_ref(conn, cf_row, entity_name, field_name)
+            ref = _entity_table_editor_prepare_ref_rowwise(
+                conn, cf_row, target_entity_key, target_storage_table, entity_name, field_name
+            )
             ref_cache[cache_key] = ref
         if str(ref["table"]) == str(target_storage_table):
             raw_val = current_row.get(ref["column"])
@@ -4885,7 +4924,9 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
                 field_name = str(node[2] or "").strip()
                 key = (entity_name, field_name)
                 if key not in ref_cache:
-                    ref_cache[key] = _entity_table_editor_prepare_ref(conn, row, entity_name, field_name)
+                    ref_cache[key] = _entity_table_editor_prepare_ref_rowwise(
+                        conn, row, target_storage_entity_key, storage_table, entity_name, field_name
+                    )
                 ref = ref_cache[key]
                 if str(ref["table"]) == str(storage_table):
                     cols_needed.add(str(ref["column"]))
@@ -5154,7 +5195,9 @@ def _entity_table_preview_custom_field_editor(conn, row: Dict[str, Any]) -> Dict
             field_name = str(node[2] or "").strip()
             key = (entity_name, field_name)
             if key not in ref_cache:
-                ref_cache[key] = _entity_table_editor_prepare_ref(conn, row, entity_name, field_name)
+                ref_cache[key] = _entity_table_editor_prepare_ref_rowwise(
+                    conn, row, target_storage_entity_key, storage_table, entity_name, field_name
+                )
             ref = ref_cache[key]
             if str(ref["table"]) == str(storage_table):
                 cols_needed.add(str(ref["column"]))
