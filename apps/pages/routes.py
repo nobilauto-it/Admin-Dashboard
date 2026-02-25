@@ -675,7 +675,7 @@ def entity_table_config():
 
 
 @blueprint.route('/api/entity-table/custom-fields', methods=['GET', 'POST'])
-@blueprint.route('/api/entity-table/custom-fields/<path:item_id>', methods=['DELETE'])
+@blueprint.route('/api/entity-table/custom-fields/<path:item_id>', methods=['DELETE', 'PUT', 'PATCH'])
 def entity_table_custom_fields_proxy(item_id=None):
     """Proxy custom fields CRUD to CRM backend (7070) to avoid browser CORS from 7474 UI."""
     upstream_url = f"{_crm_base_url()}/api/entity-table/custom-fields"
@@ -699,6 +699,13 @@ def entity_table_custom_fields_proxy(item_id=None):
             payload = request.get_json(silent=True) or {}
             headers['Content-Type'] = 'application/json'
             resp = requests.post(upstream_url, json=payload, headers=headers, timeout=30)
+        elif request.method in ('PUT', 'PATCH'):
+            payload = request.get_json(silent=True) or {}
+            headers['Content-Type'] = 'application/json'
+            if request.method == 'PUT':
+                resp = requests.put(upstream_url, json=payload, headers=headers, timeout=30)
+            else:
+                resp = requests.patch(upstream_url, json=payload, headers=headers, timeout=30)
         else:  # DELETE
             resp = requests.delete(upstream_url, headers=headers, timeout=30)
 
