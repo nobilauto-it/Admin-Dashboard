@@ -3902,7 +3902,67 @@ def _entity_table_recalculate_custom_field_stub(conn, row: Dict[str, Any]) -> Di
 
 
 def _entity_table_editor_lookup_key(v: Any) -> str:
-    return str(v or "").strip().lower()
+    s = str(v or "")
+    try:
+        s = unicodedata.normalize("NFKC", s)
+    except Exception:
+        pass
+    s = " ".join(s.strip().split())
+    return s.casefold()
+
+
+def _entity_table_editor_entity_candidate_keys(item: Dict[str, Any]) -> List[str]:
+    keys: List[str] = []
+
+    def add(x: Any) -> None:
+        k = _entity_table_editor_lookup_key(x)
+        if k:
+            keys.append(k)
+
+    if not isinstance(item, dict):
+        return []
+
+    title = item.get("title")
+    entity_key = str(item.get("entity_key") or "").strip()
+    entity_type = str(item.get("type") or "").strip().lower()
+    add(title)
+    add(entity_key)
+    add(entity_type)
+
+    # Smart-process aliases: smart_process_1036, sp:1036, 1036
+    if entity_type == "smart_process" or entity_key.startswith("smart_process_") or entity_key.startswith("sp:"):
+        m = re.match(r"^smart_process_(\d+)$", entity_key)
+        if m:
+            etid = m.group(1)
+            add(f"smart_process_{etid}")
+            add(f"sp:{etid}")
+            add(etid)
+        else:
+            m2 = re.match(r"^sp:(\d+)$", entity_key)
+            if m2:
+                etid = m2.group(1)
+                add(f"smart_process_{etid}")
+                add(f"sp:{etid}")
+                add(etid)
+
+    # Deal aliases: deal_25, deal, category id as string (if present)
+    if entity_type == "deal" or entity_key.startswith("deal"):
+        add("deal")
+        cid = item.get("category_id")
+        if cid not in (None, ""):
+            try:
+                add(str(int(str(cid).strip())))
+            except Exception:
+                add(cid)
+
+    # Remove duplicates preserving order.
+    out: List[str] = []
+    seen: set = set()
+    for k in keys:
+        if k and k not in seen:
+            seen.add(k)
+            out.append(k)
+    return out
 
 
 def _entity_table_editor_split_ref_token(token: str) -> Tuple[str, str, Optional[str]]:
@@ -4060,20 +4120,31 @@ def _entity_table_editor_collect_entities(row: Dict[str, Any]) -> List[Dict[str,
 def _entity_table_editor_resolve_entity(row: Dict[str, Any], entity_name: str) -> Dict[str, Any]:
     lookup = _entity_table_editor_lookup_key(entity_name)
     for item in _entity_table_editor_collect_entities(row):
-        candidates = [
-            item.get("title"),
-            item.get("entity_key"),
-            item.get("type"),
-        ]
-        for c in candidates:
-            if _entity_table_editor_lookup_key(c) == lookup:
+        for c in _entity_table_editor_entity_candidate_keys(item):
+            if c == lookup:
                 resolved = _entity_table_resolve_storage_target(item)
                 return {
                     "input": item,
                     "storage_entity_key": resolved["storage_entity_key"],
                     "storage_table": resolved["storage_table"],
                 }
-    raise HTTPException(status_code=400, detail=f"Unknown entity in editor reference: {entity_name}")
+    raise HTTPException(
+        status_code=400,
+        detail={
+            "error": "Unknown entity in editor reference",
+            "detail": f"Unknown entity in editor reference: {entity_name}",
+            "entity_token": entity_name,
+            "known_source_entities": [
+                {
+                    "title": it.get("title"),
+                    "entity_key": it.get("entity_key"),
+                    "type": it.get("type"),
+                }
+                for it in _entity_table_editor_collect_entities(row)
+                if isinstance(it, dict)
+            ],
+        },
+    )
 
 
 def _entity_table_editor_field_candidates(field_name: str, row_meta: Dict[str, Any]) -> List[str]:
