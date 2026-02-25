@@ -225,6 +225,7 @@ def _fetch_entity_fields_flat(conn, entity_key: str) -> List[Dict[str, Any]]:
                 "id": i,
                 "b24_field": col,
                 "column_name": col,
+                "field_code": (col or "").strip(),
                 "human_title": base_titles.get(col, col.replace("_", " ").title()),
                 "field_type": "string",
             }
@@ -243,6 +244,7 @@ def _fetch_entity_fields_flat(conn, entity_key: str) -> List[Dict[str, Any]]:
             "id": idx,
             "b24_field": b24_field,
             "column_name": column_name,
+            "field_code": (b24_field or column_name or "").strip(),
             "human_title": human_title,
             "field_type": field_type,
         })
@@ -350,6 +352,8 @@ def get_entity_meta_fields(
             )
         final_entity_key = entity_key
 
+    request_entity_key = (entity_key or "").strip() or final_entity_key
+
     conn = pg_conn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -412,12 +416,14 @@ def get_entity_meta_fields(
                     "id": idx,
                     "b24_field": col,
                     "column_name": col,
+                    "field_code": (col or "").strip(),
                     "human_title": human,
                     "field_type": "string",
                 })
             return {
                 "ok": True,
-                "entity_key": final_entity_key,
+                "entity_key": request_entity_key,
+                "resolved_entity_key": final_entity_key,
                 "type": type,
                 "fields_count": len(fields),
                 "fields": fields,
@@ -436,6 +442,7 @@ def get_entity_meta_fields(
                 "id": idx,
                 "b24_field": b24_field,
                 "column_name": column_name,
+                "field_code": (b24_field or column_name or "").strip(),
                 "human_title": human_title,
                 "field_type": field_type,
             }
@@ -456,15 +463,18 @@ def get_entity_meta_fields(
                 nested_key = _entity_key_from_parent_id(b24_field) or _entity_key_from_parent_id(column_name)
             if is_crm_ref or nested_key:
                 if nested_key:
+                    field_item["nested_entity_key"] = nested_key
                     field_item["nested_fields"] = _fetch_entity_fields_flat(conn, nested_key)
                 else:
+                    field_item["nested_entity_key"] = None
                     field_item["nested_fields"] = []
 
             fields.append(field_item)
 
         return {
             "ok": True,
-            "entity_key": final_entity_key,
+            "entity_key": request_entity_key,
+            "resolved_entity_key": final_entity_key,
             "type": type,
             "fields_count": len(fields),
             "fields": fields,
