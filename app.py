@@ -4285,6 +4285,68 @@ def _entity_table_editor_find_direct_join_from_target(
     return None
 
 
+def _entity_table_editor_build_rowwise_join_path(
+    conn,
+    current_target_entity_key: str,
+    current_target_table: str,
+    path_entities: List[Dict[str, Any]],
+    token_full: str,
+) -> List[Dict[str, Any]]:
+    if not path_entities:
+        return []
+    first = path_entities[0]
+    if (
+        str(first.get("storage_entity_key") or "") != str(current_target_entity_key)
+        or str(first.get("storage_table") or "") != str(current_target_table)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Row-wise join path not found for {token_full}: parent entity is not target entity context",
+        )
+
+    steps: List[Dict[str, Any]] = []
+    if len(path_entities) == 1:
+        return steps
+
+    for i in range(len(path_entities) - 1):
+        src = path_entities[i]
+        dst = path_entities[i + 1]
+        join = _entity_table_editor_find_direct_join_from_target(
+            conn,
+            str(src.get("storage_entity_key") or ""),
+            str(src.get("storage_table") or ""),
+            str(dst.get("storage_entity_key") or ""),
+        )
+        if not join:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Row-wise join path not found for {token_full}: no link field from target entity to source entity",
+            )
+        if isinstance(join, dict) and join.get("ambiguous"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Ambiguous row-wise join path for {token_full}: multiple link fields match source entity",
+            )
+        join_col = str(join.get("join_column") or "").strip()
+        if not join_col:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Row-wise join path not found for {token_full}: no link field from target entity to source entity",
+            )
+        steps.append(
+            {
+                "from_entity_key": str(src.get("storage_entity_key") or ""),
+                "from_table": str(src.get("storage_table") or ""),
+                "to_entity_key": str(dst.get("storage_entity_key") or ""),
+                "to_table": str(dst.get("storage_table") or ""),
+                "join_column": join_col,
+                "via_b24_field": join.get("via_b24_field"),
+                "via_b24_type": join.get("via_b24_type"),
+            }
+        )
+    return steps
+
+
 def _entity_table_editor_resolve_column(conn, entity_key: str, table_name: str, field_name: str) -> Dict[str, Any]:
     field_lookup = _entity_table_editor_lookup_key(field_name)
     if _CUSTOM_FIELD_CODE_RE.fullmatch(str(field_name or "").strip()) and field_name in _table_columns_cached(conn, table_name):
@@ -4643,6 +4705,122 @@ def _entity_table_editor_row_value_from_ref(
     return dmap.get(key, raw_value)
 
 
+def _entity_table_editor_extract_single_link_id(v: Any) -> Optional[int]:
+    # Deterministic rule for row-wise cardinality>1: use the first linked id.
+    if v is None:
+        return None
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, int):
+        return int(v) if v > 0 else None
+    if isinstance(v, float):
+        try:
+            iv = int(v)
+            return iv if iv > 0 else None
+        except Exception:
+            return None
+    if isinstance(v, list):
+        for item in v:
+            got = _entity_table_editor_extract_single_link_id(item)
+            if got:
+                return got
+        return None
+    if isinstance(v, dict):
+        # Common shapes: {"ID":123} / {"id":"123"} / {"VALUE":"123"}
+        for k in ("ID", "id", "VALUE", "value"):
+            if k in v:
+                got = _entity_table_editor_extract_single_link_id(v.get(k))
+                if got:
+                    return got
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+    if s.startswith("[") and s.endswith("]"):
+        try:
+            parsed = json.loads(s)
+            return _entity_table_editor_extract_single_link_id(parsed)
+        except Exception:
+            pass
+    if "," in s:
+        for part in [p.strip() for p in s.split(",") if p.strip()]:
+            got = _entity_table_editor_extract_single_link_id(part)
+            if got:
+                return got
+        return None
+    try:
+        iv = int(float(s))
+        return iv if iv > 0 else None
+    except Exception:
+        return None
+
+
+def _entity_table_editor_fetch_foreign_row_cached(
+    conn,
+    table_name: str,
+    row_id: int,
+    foreign_row_cache: Dict[Tuple[str, int], Dict[str, Any]],
+) -> Dict[str, Any]:
+    cache_key_row = (str(table_name), int(row_id))
+    foreign_db_row = foreign_row_cache.get(cache_key_row)
+    if foreign_db_row is None:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(f'SELECT * FROM "{table_name}" WHERE id=%s LIMIT 1', (int(row_id),))
+            foreign_db_row = cur.fetchone() or {}
+        foreign_row_cache[cache_key_row] = foreign_db_row
+    return foreign_db_row
+
+
+def _entity_table_editor_resolve_rowwise_ref_raw_value(
+    conn,
+    ref: Dict[str, Any],
+    target_storage_table: str,
+    current_row: Dict[str, Any],
+    foreign_row_cache: Dict[Tuple[str, int], Dict[str, Any]],
+    token_full: str,
+) -> Any:
+    if str(ref.get("table") or "") == str(target_storage_table):
+        return current_row.get(ref["column"])
+
+    steps = ref.get("rowwise_join_steps")
+    if isinstance(steps, list) and steps:
+        row_obj: Dict[str, Any] = current_row
+        row_table = str(target_storage_table)
+        for step in steps:
+            join_col = str(step.get("join_column") or "").strip()
+            to_table = str(step.get("to_table") or "").strip()
+            if not join_col or not to_table:
+                raise HTTPException(status_code=400, detail=f"{token_full} is not available for row_wise join yet")
+            join_raw_id = row_obj.get(join_col)
+            join_id_int = _entity_table_editor_extract_single_link_id(join_raw_id)
+            if not join_id_int:
+                return None
+            row_obj = _entity_table_editor_fetch_foreign_row_cached(conn, to_table, join_id_int, foreign_row_cache)
+            row_table = to_table
+            if not row_obj:
+                return None
+        if row_table != str(ref.get("table") or ""):
+            raise HTTPException(status_code=400, detail=f"{token_full} is not available for row_wise join yet")
+        return row_obj.get(ref["column"])
+
+    # Backward-compatible single-hop implicit resolver.
+    join = ref.get("join_from_target")
+    if not isinstance(join, dict):
+        join = None
+    if not join:
+        raise HTTPException(status_code=400, detail=f"{token_full} is not available for row_wise join yet")
+    if join.get("ambiguous"):
+        raise HTTPException(status_code=400, detail=f"{token_full} has ambiguous row_wise join from target entity")
+    join_col = str(join.get("join_column") or "").strip()
+    if not join_col:
+        raise HTTPException(status_code=400, detail=f"{token_full} is not available for row_wise join yet")
+    join_id_int = _entity_table_editor_extract_single_link_id(current_row.get(join_col))
+    if not join_id_int:
+        return None
+    foreign_db_row = _entity_table_editor_fetch_foreign_row_cached(conn, str(ref["table"]), int(join_id_int), foreign_row_cache)
+    return foreign_db_row.get(ref["column"])
+
+
 def _entity_table_editor_prepare_ref(conn, cf_row: Dict[str, Any], entity_name: str, field_name: str) -> Dict[str, Any]:
     ent = _entity_table_editor_resolve_entity(cf_row, entity_name)
     col_meta = _entity_table_editor_resolve_column(conn, ent["storage_entity_key"], ent["storage_table"], field_name)
@@ -4698,33 +4876,42 @@ def _entity_table_editor_prepare_ref_rowwise(
     entity_name: str,
     field_name: str,
 ) -> Dict[str, Any]:
+    token_full = "{" + str(entity_name or "").strip() + "." + str(field_name or "").strip() + "}"
     # New frontend nested token format arrives as {ParentEntity.NestedEntity.Field}
-    # Parser already stores it as entity_name="ParentEntity.NestedEntity", field_name="Field".
+    # Parser stores it as entity_name="ParentEntity.NestedEntity", field_name="Field".
     parts = [p.strip() for p in str(entity_name or "").split(".")]
     parts = [p for p in parts if p]
-    if len(parts) == 2:
-        parent_name, nested_name = parts
-        parent_ent = _entity_table_editor_resolve_entity(cf_row, parent_name)
-        # First step for nested row-wise path must be current target entity (explicit path).
-        if str(parent_ent.get("storage_entity_key") or "") != str(target_entity_key) or str(parent_ent.get("storage_table") or "") != str(target_storage_table):
-            raise HTTPException(
-                status_code=400,
-                detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet",
-            )
-        ref = _entity_table_editor_prepare_ref(conn, cf_row, nested_name, field_name)
-        ref["join_from_target"] = _entity_table_editor_find_direct_join_from_target(
+    if len(parts) >= 2:
+        path_entities = [_entity_table_editor_resolve_entity(cf_row, p) for p in parts]
+        join_steps = _entity_table_editor_build_rowwise_join_path(
             conn,
-            str(parent_ent.get("storage_entity_key") or ""),
-            str(parent_ent.get("storage_table") or ""),
-            str(ref.get("entity_key") or ""),
+            str(target_entity_key or ""),
+            str(target_storage_table or ""),
+            path_entities,
+            token_full,
         )
-        ref["explicit_parent_entity_name"] = parent_name
-        ref["explicit_nested_entity_name"] = nested_name
+        leaf_entity = path_entities[-1]
+        ref = _entity_table_editor_prepare_ref(conn, cf_row, parts[-1], field_name)
+        ref["rowwise_join_steps"] = join_steps
         ref["token_entity_path"] = entity_name
+        ref["token_full"] = token_full
+        ref["explicit_path_entities"] = [
+            {
+                "entity_key": pe.get("storage_entity_key"),
+                "table": pe.get("storage_table"),
+                "input": pe.get("input"),
+            }
+            for pe in path_entities
+        ]
+        # Ensure final entity descriptor aligns with explicit leaf from path.
+        ref["entity_key"] = leaf_entity.get("storage_entity_key")
+        ref["table"] = leaf_entity.get("storage_table")
         return ref
 
     # Backward-compatible format {Entity.Field}
-    return _entity_table_editor_prepare_ref(conn, cf_row, entity_name, field_name)
+    ref = _entity_table_editor_prepare_ref(conn, cf_row, entity_name, field_name)
+    ref["token_full"] = token_full
+    return ref
 
 
 def _entity_table_editor_eval_ast_rowwise(
@@ -4762,51 +4949,10 @@ def _entity_table_editor_eval_ast_rowwise(
                 conn, cf_row, target_entity_key, target_storage_table, entity_name, field_name
             )
             ref_cache[cache_key] = ref
-        if str(ref["table"]) == str(target_storage_table):
-            raw_val = current_row.get(ref["column"])
-            return _entity_table_editor_row_value_from_ref(
-                conn, ref, raw_val, ref_mode, display_cache
-            )
-
-        join = ref.get("join_from_target")
-        if not isinstance(join, dict):
-            join = _entity_table_editor_find_direct_join_from_target(conn, target_entity_key, target_storage_table, str(ref.get("entity_key") or ""))
-            ref["join_from_target"] = join
-        if not join:
-            raise HTTPException(
-                status_code=400,
-                detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet",
-            )
-        if join.get("ambiguous"):
-            raise HTTPException(
-                status_code=400,
-                detail=f"{{{entity_name}.{field_name}}} has ambiguous row_wise join from target entity",
-            )
-
-        join_col = str(join.get("join_column") or "").strip()
-        if not join_col:
-            raise HTTPException(
-                status_code=400,
-                detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet",
-            )
-        join_raw_id = current_row.get(join_col)
-        if join_raw_id is None or str(join_raw_id).strip() == "":
-            return None
-        try:
-            join_id_int = int(str(join_raw_id).strip())
-        except Exception:
-            return None
-        cache_key_row = (str(ref["table"]), int(join_id_int))
-        foreign_db_row = foreign_row_cache.get(cache_key_row)
-        if foreign_db_row is None:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute(
-                    f'SELECT "{ref["column"]}" FROM "{ref["table"]}" WHERE id=%s LIMIT 1',
-                    (int(join_id_int),),
-                )
-                foreign_db_row = cur.fetchone() or {}
-            foreign_row_cache[cache_key_row] = foreign_db_row
-        raw_val = foreign_db_row.get(ref["column"])
+        token_full = str(ref.get("token_full") or ("{" + entity_name + "." + field_name + "}"))
+        raw_val = _entity_table_editor_resolve_rowwise_ref_raw_value(
+            conn, ref, target_storage_table, current_row, foreign_row_cache, token_full
+        )
         return _entity_table_editor_row_value_from_ref(conn, ref, raw_val, ref_mode, display_cache)
     if kind != "call":
         raise HTTPException(status_code=400, detail=f"Unsupported editor node: {kind}")
@@ -4931,23 +5077,27 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
                 if str(ref["table"]) == str(storage_table):
                     cols_needed.add(str(ref["column"]))
                 else:
-                    join = ref.get("join_from_target")
-                    if not isinstance(join, dict):
-                        join = _entity_table_editor_find_direct_join_from_target(
-                            conn, target_storage_entity_key, storage_table, str(ref.get("entity_key") or "")
-                        )
-                        ref["join_from_target"] = join
-                    if not join:
-                        raise HTTPException(
-                            status_code=400,
-                            detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet",
-                        )
-                    if join.get("ambiguous"):
-                        raise HTTPException(
-                            status_code=400,
-                            detail=f"{{{entity_name}.{field_name}}} has ambiguous row_wise join from target entity",
-                        )
-                    join_col = str(join.get("join_column") or "").strip()
+                    steps = ref.get("rowwise_join_steps")
+                    if isinstance(steps, list) and steps:
+                        join_col = str((steps[0] or {}).get("join_column") or "").strip()
+                    else:
+                        join = ref.get("join_from_target")
+                        if not isinstance(join, dict):
+                            join = _entity_table_editor_find_direct_join_from_target(
+                                conn, target_storage_entity_key, storage_table, str(ref.get("entity_key") or "")
+                            )
+                            ref["join_from_target"] = join
+                        if not join:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet",
+                            )
+                        if join.get("ambiguous"):
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"{{{entity_name}.{field_name}}} has ambiguous row_wise join from target entity",
+                            )
+                        join_col = str(join.get("join_column") or "").strip()
                     if not join_col:
                         raise HTTPException(
                             status_code=400,
@@ -5202,17 +5352,21 @@ def _entity_table_preview_custom_field_editor(conn, row: Dict[str, Any]) -> Dict
             if str(ref["table"]) == str(storage_table):
                 cols_needed.add(str(ref["column"]))
             else:
-                join = ref.get("join_from_target")
-                if not isinstance(join, dict):
-                    join = _entity_table_editor_find_direct_join_from_target(
-                        conn, target_storage_entity_key, storage_table, str(ref.get("entity_key") or "")
-                    )
-                    ref["join_from_target"] = join
-                if not join:
-                    raise HTTPException(status_code=400, detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet")
-                if join.get("ambiguous"):
-                    raise HTTPException(status_code=400, detail=f"{{{entity_name}.{field_name}}} has ambiguous row_wise join from target entity")
-                join_col = str(join.get("join_column") or "").strip()
+                steps = ref.get("rowwise_join_steps")
+                if isinstance(steps, list) and steps:
+                    join_col = str((steps[0] or {}).get("join_column") or "").strip()
+                else:
+                    join = ref.get("join_from_target")
+                    if not isinstance(join, dict):
+                        join = _entity_table_editor_find_direct_join_from_target(
+                            conn, target_storage_entity_key, storage_table, str(ref.get("entity_key") or "")
+                        )
+                        ref["join_from_target"] = join
+                    if not join:
+                        raise HTTPException(status_code=400, detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet")
+                    if join.get("ambiguous"):
+                        raise HTTPException(status_code=400, detail=f"{{{entity_name}.{field_name}}} has ambiguous row_wise join from target entity")
+                    join_col = str(join.get("join_column") or "").strip()
                 if not join_col:
                     raise HTTPException(status_code=400, detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet")
                 cols_needed.add(join_col)
