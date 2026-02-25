@@ -588,6 +588,7 @@
             metaData: '/api/entity-table/entity-meta-data/',
             config: '/api/entity-table/config',
             customFields: '/api/entity-table/custom-fields',
+            customFieldsPreview: '/api/entity-table/custom-fields/preview',
             templates: '/api/entity-table/templates',
             componentModes: '/api/entity-table/component-modes',
         };
@@ -991,6 +992,33 @@
             }).then(function(res) {
                 if (!res.ok || !res.body || res.body.ok === false) {
                     throw new Error((res.body && (res.body.detail || res.body.error)) || ('Recalculate failed: ' + res.status));
+                }
+                return res.body;
+            });
+        }
+        function previewCustomFieldEditorViaApi(tableIndex, editorText) {
+            var st = tableStates[tableIndex];
+            if (!st) return Promise.reject(new Error('Нет активной таблицы'));
+            if (!Array.isArray(st.selectedEntities) || !st.selectedEntities.length) return Promise.reject(new Error('Сначала выберите сущность таблицы'));
+            var targetEntity = customFieldApiEntityPayload(st.selectedEntities[0]);
+            if (!targetEntity || !targetEntity.entity_key) return Promise.reject(new Error('Не удалось определить target entity'));
+            var payload = {
+                page_slug: getPageSlug(),
+                table_index: tableIndex,
+                target_entity: targetEntity,
+                source_entities: (st.selectedEntities || []).map(customFieldApiEntityPayload).filter(Boolean),
+                editor: String(editorText || '')
+            };
+            return fetch(API.customFieldsPreview, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(function(r) {
+                return r.json().catch(function() { return { ok: false, error: 'Invalid response' }; })
+                    .then(function(body) { return { ok: r.ok, body: body, status: r.status }; });
+            }).then(function(res) {
+                if (!res.ok || !res.body || res.body.ok === false) {
+                    throw new Error((res.body && (res.body.detail || res.body.error)) || ('Preview failed: ' + res.status));
                 }
                 return res.body;
             });
@@ -3571,16 +3599,23 @@
 
         function renderCustomEditorPreview() {
             if (!customFieldPreviewResult) return;
-            try {
-                var result = evalCustomEditorExpression(customFieldPayloadTextarea ? customFieldPayloadTextarea.value : '');
-                customFieldPreviewResult.classList.remove('text-danger');
-                customFieldPreviewResult.classList.add('text-success');
-                customFieldPreviewResult.textContent = 'Результат: ' + ((result == null || result === '') ? 'Пусто' : String(result));
-            } catch (e) {
-                customFieldPreviewResult.classList.remove('text-success');
-                customFieldPreviewResult.classList.add('text-danger');
-                customFieldPreviewResult.textContent = e && e.message ? e.message : String(e);
-            }
+            customFieldPreviewResult.classList.remove('text-danger', 'text-success');
+            customFieldPreviewResult.classList.add('text-muted');
+            customFieldPreviewResult.textContent = 'Проверка...';
+            previewCustomFieldEditorViaApi(currentTableIndex, customFieldPayloadTextarea ? customFieldPayloadTextarea.value : '')
+                .then(function(body) {
+                    var pr = (body && body.preview_result) ? body.preview_result : {};
+                    var val = (pr.sample_value != null) ? pr.sample_value : '';
+                    var modeDetail = pr.mode_detail ? String(pr.mode_detail) : '';
+                    customFieldPreviewResult.classList.remove('text-muted', 'text-danger');
+                    customFieldPreviewResult.classList.add('text-success');
+                    customFieldPreviewResult.textContent = 'Результат: ' + ((val == null || val === '') ? 'Пусто' : String(val)) + (modeDetail ? (' (' + modeDetail + ')') : '');
+                })
+                .catch(function(e) {
+                    customFieldPreviewResult.classList.remove('text-muted', 'text-success');
+                    customFieldPreviewResult.classList.add('text-danger');
+                    customFieldPreviewResult.textContent = e && e.message ? e.message : String(e);
+                });
         }
 
         if (customFieldPreviewBtn) {
