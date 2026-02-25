@@ -3863,6 +3863,43 @@ def _entity_table_drop_physical_custom_field_column(conn, storage_table: str, st
     conn.commit()
 
 
+def _entity_table_fill_custom_field_column_test_value(
+    conn,
+    storage_table: str,
+    storage_column: str,
+    value: str = "TEST",
+) -> int:
+    with conn.cursor() as cur:
+        cur.execute(f'UPDATE {storage_table} SET "{storage_column}"=%s WHERE id IS NOT NULL;', (str(value),))
+        updated = int(cur.rowcount or 0)
+    conn.commit()
+    return updated
+
+
+def _entity_table_recalculate_custom_field_stub(conn, row: Dict[str, Any]) -> Dict[str, Any]:
+    storage_table = str(row.get("storage_table") or "").strip()
+    storage_column = str(row.get("storage_column") or row.get("code") or "").strip()
+    if not storage_table or not storage_column:
+        target_entity = row.get("target_entity") if isinstance(row.get("target_entity"), dict) else {}
+        resolved = _entity_table_resolve_storage_target(target_entity)
+        storage_table = resolved["storage_table"]
+        storage_column = storage_column or str(row.get("code") or "").strip()
+    if not storage_table or not storage_column:
+        raise HTTPException(status_code=400, detail="custom field storage is not defined")
+
+    updated_rows = _entity_table_fill_custom_field_column_test_value(conn, storage_table, storage_column, "TEST")
+    return {
+        "updated_rows": updated_rows,
+        "storage": {
+            "table": storage_table,
+            "column": storage_column,
+            "pg_type": row.get("storage_pg_type") or "TEXT",
+        },
+        "mode": "stub_test_fill",
+        "editor_used": row.get("editor") or "",
+    }
+
+
 def _entity_table_validate_custom_field_payload(payload: Any) -> Dict[str, Any]:
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="JSON body must be an object")
@@ -4159,6 +4196,7 @@ async def create_entity_table_custom_field(request: Request):
     storage_target = _entity_table_resolve_storage_target(data["target_entity"])
     storage_pg_type = _entity_table_custom_field_storage_pg_type(data["custom_field"]["type"])
     storage_column = data["custom_field"]["code"]
+    recalculate_now = bool(payload.get("recalculate_now"))
 
     conn = pg_conn()
     try:
@@ -4213,8 +4251,18 @@ async def create_entity_table_custom_field(request: Request):
                 actor,
             ))
             row = cur.fetchone() or {}
+        # Quick test fill so frontend can verify grid reads custom_* values from DB.
+        fill_stats = _entity_table_recalculate_custom_field_stub(conn, row)
         conn.commit()
-        return {"ok": True, "custom_field": _entity_table_custom_field_row_to_api(row)}
+        out = {
+            "ok": True,
+            "custom_field": _entity_table_custom_field_row_to_api(row),
+            "fill_result": fill_stats,
+        }
+        # Flag is accepted for forward compatibility; currently same stub behavior.
+        if recalculate_now:
+            out["recalculated"] = True
+        return out
     except psycopg2.errors.UniqueViolation:
         try:
             conn.rollback()
@@ -4268,6 +4316,55 @@ def list_entity_table_custom_fields(
     except HTTPException:
         raise
     except Exception as e:
+        raise HTTPException(status_code=500, detail=repr(e))
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+@app.post("/api/entity-table/custom-fields/{custom_field_id}/recalculate")
+async def recalculate_entity_table_custom_field(custom_field_id: str, request: Request):
+    if _entity_table_is_guest(request):
+        raise HTTPException(status_code=403, detail="Guest is not allowed to recalculate custom fields")
+
+    db_id = _entity_table_custom_field_parse_id(custom_field_id)
+
+    conn = pg_conn()
+    try:
+        conn.autocommit = False
+        _ensure_entity_table_custom_fields_schema(conn)
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, page_slug, table_index, code, editor, target_entity,
+                       storage_table, storage_column, storage_pg_type
+                FROM entity_table_custom_fields
+                WHERE id=%s
+                LIMIT 1
+            """, (db_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="custom field not found")
+
+        result = _entity_table_recalculate_custom_field_stub(conn, row)
+        conn.commit()
+        return {
+            "ok": True,
+            "custom_field_id": _entity_table_custom_field_db_id_to_api(db_id),
+            "result": result,
+        }
+    except HTTPException:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         raise HTTPException(status_code=500, detail=repr(e))
     finally:
         try:
