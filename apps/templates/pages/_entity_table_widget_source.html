@@ -396,7 +396,7 @@
                                             data-bs-toggle="tooltip"
                                             data-bs-placement="top"
                                             data-bs-html="true"
-                                            title="<div class='text-start'><div><b>Как пользоваться:</b></div><div>1) Нажмите <b>...</b> и вставьте поля</div><div>2) Напишите формулу в Editor</div><div>3) Нажмите <b>Проверить</b></div><hr class='my-1'><div><b>Токены:</b> {Сущность.Поле}</div><div><b>Агрегаты:</b> COUNT(), SUM(...), AVG(...), MIN(...), MAX(...)</div><div><b>Функции:</b> CONCAT, UPPER, LOWER, IFNULL, COALESCE, LEN, NUMBER, ROUND</div><div><b>Пример:</b> ROUND(AVG({Vânzări realizare.Сумма}), 2)</div><div><b>Важно:</b> локальный расчет по загруженным строкам текущей таблицы</div></div>"
+                                            title="<div class='text-start'><div><b>Как пользоваться:</b></div><div>1) Нажмите <b>...</b> и вставьте поля</div><div>2) Напишите формулу в Editor</div><div>3) Нажмите <b>Проверить</b> (локально) или <b>Пересчитать</b> (записать в БД)</div><hr class='my-1'><div><b>Токены:</b> {Сущность.Поле}</div><div><b>Агрегаты:</b> COUNT(), SUM(...), AVG(...), MIN(...), MAX(...)</div><div><b>Функции:</b> CONCAT, UPPER, LOWER, IFNULL, COALESCE, LEN, NUMBER, ROUND</div><div><b>Пример:</b> ROUND(AVG({Vânzări realizare.Сумма}), 2)</div><div><b>Важно:</b> локальный расчет идет по загруженным строкам текущей таблицы</div><div><b>Важно (server row_wise):</b> пока только поля target entity (другие сущности дадут ошибку)</div></div>"
                                             aria-label="Шпаргалка по Editor"
                                     >i</button>
                                 </div>
@@ -1135,8 +1135,9 @@
                     if (customFieldRecalcModal) customFieldRecalcModal.hide();
                     loadData(currentTableIndex);
                     var upd = res && res.recalculate_result && res.recalculate_result.updated_rows != null ? res.recalculate_result.updated_rows : null;
+                    var modeDetail = res && res.recalculate_result && res.recalculate_result.mode_detail ? String(res.recalculate_result.mode_detail) : '';
                     if (upd != null) {
-                        alert('Пересчет выполнен. Обновлено строк: ' + upd);
+                        alert('Пересчет выполнен. Обновлено строк: ' + upd + (modeDetail ? ('\nРежим: ' + modeDetail) : ''));
                     }
                 })
                 .catch(function(err) {
