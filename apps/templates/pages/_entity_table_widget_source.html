@@ -816,6 +816,15 @@
             if (!Array.isArray(st.customFields)) st.customFields = [];
             return st.customFields;
         }
+        function normalizeCustomFieldCodeInputValue(raw, fallbackName) {
+            var code = String(raw || '').trim();
+            if (!code && fallbackName) code = String(fallbackName || '').trim();
+            code = code.toLowerCase();
+            code = code.replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+            if (!code) code = String(Date.now());
+            if (code.indexOf('custom_') !== 0) code = 'custom_' + code.replace(/^_+/, '');
+            return code;
+        }
         function ensureSelectedCustomFieldCodes(st) {
             if (!st) return [];
             if (!Array.isArray(st.selectedCustomFieldCodes)) st.selectedCustomFieldCodes = [];
@@ -995,10 +1004,8 @@
             ensureCustomFieldsArray(st);
             var name = customFieldNameInput ? String(customFieldNameInput.value || '').trim() : '';
             if (!name) { alert('Введите название поля'); return; }
-            var code = customFieldCodeInput ? String(customFieldCodeInput.value || '').trim() : '';
-            if (!code) code = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
-            if (!code) code = 'custom_' + Date.now();
-            if (code.indexOf('custom_') !== 0) code = 'custom_' + code.replace(/^_+/, '');
+            var code = normalizeCustomFieldCodeInputValue(customFieldCodeInput ? customFieldCodeInput.value : '', name);
+            if (customFieldCodeInput) customFieldCodeInput.value = code;
             var targetEntity = customFieldApiEntityPayload(st.selectedEntities[0]);
             if (!targetEntity || !targetEntity.entity_key) {
                 alert('Не удалось определить сущность для создания поля');
