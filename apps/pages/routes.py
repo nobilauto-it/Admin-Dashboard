@@ -661,9 +661,9 @@ def entity_table_config():
             resp = requests.post(upstream_url, json=payload, headers=headers, timeout=30)
 
         try:
-            body = resp.json()
             if request.method == 'POST' and resp.status_code < 400 and isinstance(payload, dict):
                 _save_local_cache_non_dash(page_slug, payload)
+            body = resp.json()
             if request.method == 'GET':
                 body = _merge_local_cache_non_dash(page_slug, body)
             return make_response(jsonify(body), resp.status_code)
