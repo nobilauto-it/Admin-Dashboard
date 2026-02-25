@@ -4492,6 +4492,30 @@ def _entity_table_editor_entity_key_from_parent_id_name(name: str) -> Optional[s
     return f"sp:{num}"
 
 
+def _entity_table_editor_smart_process_table_candidates(entity_key: str, preferred_table: str) -> List[str]:
+    ek = str(entity_key or "").strip().lower()
+    pt = str(preferred_table or "").strip()
+    out: List[str] = []
+    if pt:
+        out.append(pt)
+    m = re.match(r"^sp:(\d+)$", ek)
+    if m:
+        etid = m.group(1)
+        for t in (f"b24_sp_{etid}", f"b24_sp_f_{etid}"):
+            if t and t not in out:
+                out.append(t)
+    return out
+
+
+def _entity_table_editor_tables_equivalent_for_entity(entity_key: str, table_a: str, table_b: str) -> bool:
+    a = str(table_a or "").strip().lower()
+    b = str(table_b or "").strip().lower()
+    if a == b:
+        return True
+    cands = [t.lower() for t in _entity_table_editor_smart_process_table_candidates(entity_key, "")]
+    return bool(a and b and a in cands and b in cands)
+
+
 def _entity_table_editor_infer_link_target_entity_key(meta_row: Dict[str, Any]) -> Optional[str]:
     col = str(meta_row.get("column_name") or "").strip()
     b24_field = str(meta_row.get("b24_field") or "").strip()
@@ -4593,28 +4617,30 @@ def _entity_table_editor_find_reverse_join_from_target_hint(
         """, (ref_entity_key,))
         rows = cur.fetchall() or []
 
-    existing_cols = _table_columns_cached(conn, ref_table)
     matches: List[Dict[str, Any]] = []
-    for mrow in rows:
-        col = str(mrow.get("column_name") or "").strip()
-        if not col or col not in existing_cols:
-            continue
-        inferred_target = _entity_table_editor_infer_link_target_entity_key(mrow)
-        if inferred_target != target_entity_key:
-            continue
-        rel_keys = {
-            _entity_table_editor_relation_field_match_key(col),
-            _entity_table_editor_relation_field_match_key(mrow.get("b24_field")),
-        }
-        rel_keys = {k for k in rel_keys if k}
-        if not rel_keys.intersection(hint_relation_keys):
-            continue
-        matches.append({
-            "reverse_join_column": col,
-            "target_entity_key": inferred_target,
-            "via_b24_field": mrow.get("b24_field"),
-            "via_b24_type": mrow.get("b24_type"),
-        })
+    for ref_table_candidate in _entity_table_editor_smart_process_table_candidates(ref_entity_key, ref_table):
+        existing_cols = _table_columns_cached(conn, ref_table_candidate)
+        for mrow in rows:
+            col = str(mrow.get("column_name") or "").strip()
+            if not col or col not in existing_cols:
+                continue
+            inferred_target = _entity_table_editor_infer_link_target_entity_key(mrow)
+            if inferred_target != target_entity_key:
+                continue
+            rel_keys = {
+                _entity_table_editor_relation_field_match_key(col),
+                _entity_table_editor_relation_field_match_key(mrow.get("b24_field")),
+            }
+            rel_keys = {k for k in rel_keys if k}
+            if not rel_keys.intersection(hint_relation_keys):
+                continue
+            matches.append({
+                "reverse_join_column": col,
+                "target_entity_key": inferred_target,
+                "via_b24_field": mrow.get("b24_field"),
+                "via_b24_type": mrow.get("b24_type"),
+                "to_table": ref_table_candidate,
+            })
 
     # Dedup by physical reverse join column.
     deduped: List[Dict[str, Any]] = []
@@ -4681,6 +4707,7 @@ def _entity_table_editor_build_rowwise_join_path(
                 join = {
                     "reverse": True,
                     "join_column": reverse_join.get("reverse_join_column"),
+                    "to_table": reverse_join.get("to_table"),
                     "via_b24_field": reverse_join.get("via_b24_field"),
                     "via_b24_type": reverse_join.get("via_b24_type"),
                 }
@@ -4705,6 +4732,7 @@ def _entity_table_editor_build_rowwise_join_path(
                     join = {
                         "reverse": True,
                         "join_column": reverse_join.get("reverse_join_column"),
+                        "to_table": reverse_join.get("to_table"),
                         "via_b24_field": reverse_join.get("via_b24_field"),
                         "via_b24_type": reverse_join.get("via_b24_type"),
                     }
@@ -4749,7 +4777,7 @@ def _entity_table_editor_build_rowwise_join_path(
                 "from_entity_key": str(src.get("storage_entity_key") or ""),
                 "from_table": str(src.get("storage_table") or ""),
                 "to_entity_key": str(dst.get("storage_entity_key") or ""),
-                "to_table": str(dst.get("storage_table") or ""),
+                "to_table": str(join.get("to_table") or dst.get("storage_table") or ""),
                 "join_column": join_col,
                 "reverse": bool(join.get("reverse")),
                 "via_b24_field": join.get("via_b24_field"),
@@ -5391,7 +5419,11 @@ def _entity_table_editor_resolve_rowwise_ref_raw_value(
                 row_table = to_table
                 if not row_obj:
                     return None
-        if row_table != str(ref.get("table") or ""):
+        if not _entity_table_editor_tables_equivalent_for_entity(
+            str(ref.get("entity_key") or ""),
+            row_table,
+            str(ref.get("table") or ""),
+        ):
             raise HTTPException(status_code=400, detail=f"{token_full} is not available for row_wise join yet")
         return row_obj.get(ref["column"])
 
