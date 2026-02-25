@@ -3966,6 +3966,43 @@ def _entity_table_editor_entity_candidate_keys(item: Dict[str, Any]) -> List[str
     return out
 
 
+def _entity_table_editor_entity_tech_keys(item: Dict[str, Any]) -> List[str]:
+    keys: List[str] = []
+    if not isinstance(item, dict):
+        return keys
+    entity_key = str(item.get("entity_key") or "").strip()
+    entity_type = str(item.get("type") or "").strip().lower()
+    if entity_key:
+        keys.append(_entity_table_editor_lookup_key(entity_key))
+        m = re.match(r"^smart_process_(\d+)$", entity_key)
+        if m:
+            etid = m.group(1)
+            keys.extend([
+                _entity_table_editor_lookup_key(f"smart_process_{etid}"),
+                _entity_table_editor_lookup_key(f"sp:{etid}"),
+                _entity_table_editor_lookup_key(etid),
+            ])
+        m2 = re.match(r"^sp:(\d+)$", entity_key)
+        if m2:
+            etid = m2.group(1)
+            keys.extend([
+                _entity_table_editor_lookup_key(f"smart_process_{etid}"),
+                _entity_table_editor_lookup_key(f"sp:{etid}"),
+                _entity_table_editor_lookup_key(etid),
+            ])
+        if entity_key.startswith("deal"):
+            keys.append(_entity_table_editor_lookup_key("deal"))
+    if entity_type:
+        keys.append(_entity_table_editor_lookup_key(entity_type))
+    out: List[str] = []
+    seen: set = set()
+    for k in keys:
+        if k and k not in seen:
+            seen.add(k)
+            out.append(k)
+    return out
+
+
 def _entity_table_editor_split_ref_token(token: str) -> Tuple[str, str, Optional[str]]:
     s = str(token or "").strip()
     if not s:
@@ -3985,6 +4022,33 @@ def _entity_table_editor_split_ref_token(token: str) -> Tuple[str, str, Optional
         if not field_part:
             raise HTTPException(status_code=400, detail=f"Invalid field reference '{s}'")
     return entity_part, field_part, value_mode
+
+
+def _entity_table_editor_split_tech_ref_token(token: str) -> Tuple[str, Optional[str], str, Optional[str]]:
+    """
+    Technical token formats:
+      {deal_25||TITLE}
+      {deal_25|smart_process_1036|TITLE}
+    Optional value mode suffix on field:
+      TITLE:raw / TITLE:display
+    """
+    s = str(token or "").strip()
+    parts = s.split("|")
+    if len(parts) != 3:
+        raise HTTPException(status_code=400, detail=f"Invalid technical field reference '{s}'")
+    parent_entity_key = str(parts[0] or "").strip()
+    nested_entity_key = str(parts[1] or "").strip() or None
+    field_code = str(parts[2] or "").strip()
+    if not parent_entity_key or not field_code:
+        raise HTTPException(status_code=400, detail=f"Invalid technical field reference '{s}'")
+    value_mode: Optional[str] = None
+    m = re.match(r"^(.*?):(raw|display)$", field_code, flags=re.IGNORECASE)
+    if m:
+        field_code = m.group(1).strip()
+        value_mode = m.group(2).strip().lower()
+    if not field_code:
+        raise HTTPException(status_code=400, detail=f"Invalid technical field reference '{s}'")
+    return parent_entity_key, nested_entity_key, field_code, value_mode
 
 
 def _entity_table_editor_parse(expr_text: str) -> Any:
@@ -4056,6 +4120,9 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
             raise HTTPException(status_code=400, detail="Unclosed { in editor")
         token = s[start:i]
         i += 1  # skip }
+        if "|" in token and "." not in token:
+            p_key, n_key, field_code, value_mode = _entity_table_editor_split_tech_ref_token(token)
+            return ("tech_ref", p_key, n_key, field_code, value_mode)
         entity_name, field_name, value_mode = _entity_table_editor_split_ref_token(token)
         return ("ref", entity_name, field_name, value_mode)
 
@@ -4148,6 +4215,22 @@ def _entity_table_editor_resolve_entity_from_list(entities: List[Dict[str, Any]]
     return None
 
 
+def _entity_table_editor_resolve_entity_by_tech_key_from_list(entities: List[Dict[str, Any]], entity_key_token: str) -> Optional[Dict[str, Any]]:
+    lookup = _entity_table_editor_lookup_key(entity_key_token)
+    for item in entities:
+        if not isinstance(item, dict):
+            continue
+        for c in _entity_table_editor_entity_tech_keys(item):
+            if c == lookup:
+                resolved = _entity_table_resolve_storage_target(item)
+                return {
+                    "input": item,
+                    "storage_entity_key": resolved["storage_entity_key"],
+                    "storage_table": resolved["storage_table"],
+                }
+    return None
+
+
 def _entity_table_editor_resolve_entity(row: Dict[str, Any], entity_name: str) -> Dict[str, Any]:
     found = _entity_table_editor_resolve_entity_from_list(_entity_table_editor_collect_entities(row), entity_name)
     if found:
@@ -4164,6 +4247,21 @@ def _entity_table_editor_resolve_nested_entity(row: Dict[str, Any], entity_name:
     if found:
         return found
     raise HTTPException(status_code=400, detail=f"Unknown entity in editor reference: {entity_name}")
+
+
+def _entity_table_editor_resolve_entity_tech(row: Dict[str, Any], entity_key_token: str, nested: bool = False) -> Dict[str, Any]:
+    if nested:
+        found = _entity_table_editor_resolve_entity_by_tech_key_from_list(
+            _entity_table_editor_collect_source_entities(row), entity_key_token
+        )
+        if found:
+            return found
+    found = _entity_table_editor_resolve_entity_by_tech_key_from_list(
+        _entity_table_editor_collect_entities(row), entity_key_token
+    )
+    if found:
+        return found
+    raise HTTPException(status_code=400, detail=f"Unknown entity technical key in editor reference: {entity_key_token}")
 
 
 def _entity_table_http_error_text(e: HTTPException) -> str:
@@ -4428,6 +4526,57 @@ def _entity_table_editor_resolve_column(conn, entity_key: str, table_name: str, 
     raise HTTPException(status_code=400, detail=f"Unknown field '{field_name}' for entity '{entity_key}'")
 
 
+def _entity_table_editor_resolve_column_tech(conn, entity_key: str, table_name: str, field_code: str) -> Dict[str, Any]:
+    code_lookup = _entity_table_editor_lookup_key(field_code)
+    if _CUSTOM_FIELD_CODE_RE.fullmatch(str(field_code or "").strip()) and str(field_code).strip() in _table_columns_cached(conn, table_name):
+        return {
+            "column": str(field_code).strip(),
+            "b24_type": "text",
+            "b24_field": str(field_code).strip(),
+            "b24_title": str(field_code).strip(),
+            "settings": None,
+        }
+
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute("""
+            SELECT column_name, b24_field, b24_type, b24_title, settings
+            FROM b24_meta_fields
+            WHERE entity_key=%s
+        """, (entity_key,))
+        rows = cur.fetchall() or []
+
+    for meta in rows:
+        col = str(meta.get("column_name") or "").strip()
+        b24f = str(meta.get("b24_field") or "").strip()
+        if b24f and _entity_table_editor_lookup_key(b24f) == code_lookup:
+            return {
+                "column": col,
+                "b24_type": meta.get("b24_type"),
+                "b24_field": meta.get("b24_field"),
+                "b24_title": meta.get("b24_title"),
+                "settings": meta.get("settings"),
+            }
+        if col and _entity_table_editor_lookup_key(col) == code_lookup:
+            return {
+                "column": col,
+                "b24_type": meta.get("b24_type"),
+                "b24_field": meta.get("b24_field") or col,
+                "b24_title": meta.get("b24_title"),
+                "settings": meta.get("settings"),
+            }
+
+    for col in _table_columns_cached(conn, table_name):
+        if _entity_table_editor_lookup_key(col) == code_lookup:
+            return {
+                "column": col,
+                "b24_type": None,
+                "b24_field": col,
+                "b24_title": col,
+                "settings": None,
+            }
+    raise HTTPException(status_code=400, detail=f"Unknown field technical code '{field_code}' for entity '{entity_key}'")
+
+
 _ENTITY_TABLE_EDITOR_TABLE_COL_CACHE: Dict[str, set] = {}
 
 
@@ -4540,6 +4689,22 @@ def _entity_table_editor_eval_ast(conn, ast: Any, row: Dict[str, Any]) -> Any:
         field_name = ast[2]
         ent = _entity_table_editor_resolve_entity(row, entity_name)
         col_meta = _entity_table_editor_resolve_column(conn, ent["storage_entity_key"], ent["storage_table"], field_name)
+        return (
+            "field_ref",
+            {
+                "entity_key": ent["storage_entity_key"],
+                "table": ent["storage_table"],
+                "column": col_meta.get("column"),
+                "b24_type": col_meta.get("b24_type"),
+                "b24_field": col_meta.get("b24_field"),
+            },
+        )
+    if kind == "tech_ref":
+        parent_key = str(ast[1] or "").strip()
+        nested_key = (str(ast[2]).strip() if len(ast) > 2 and ast[2] else None)
+        field_code = str(ast[3] or "").strip()
+        ent = _entity_table_editor_resolve_entity_tech(row, nested_key or parent_key, nested=bool(nested_key))
+        col_meta = _entity_table_editor_resolve_column_tech(conn, ent["storage_entity_key"], ent["storage_table"], field_code)
         return (
             "field_ref",
             {
@@ -4958,6 +5123,30 @@ def _entity_table_editor_prepare_ref_from_resolved_entity(
     }
 
 
+def _entity_table_editor_prepare_tech_ref_from_resolved_entity(
+    conn,
+    resolved_ent: Dict[str, Any],
+    entity_name: str,
+    field_code: str,
+) -> Dict[str, Any]:
+    col_meta = _entity_table_editor_resolve_column_tech(
+        conn,
+        str(resolved_ent.get("storage_entity_key") or ""),
+        str(resolved_ent.get("storage_table") or ""),
+        field_code,
+    )
+    # Reuse display-kind inference path by adapting resolved entity + field label.
+    # `entity_name` here is technical token segment for diagnostics only.
+    ref = _entity_table_editor_prepare_ref_from_resolved_entity(conn, resolved_ent, entity_name, str(col_meta.get("column") or field_code))
+    # Override exact resolved column metadata from tech resolver (prevents title-based ambiguity).
+    ref["column"] = str(col_meta.get("column") or ref.get("column") or "")
+    ref["b24_type"] = col_meta.get("b24_type")
+    ref["b24_field"] = str(col_meta.get("b24_field") or ref.get("b24_field") or "")
+    ref["settings"] = col_meta.get("settings")
+    ref["field_name"] = field_code
+    return ref
+
+
 def _entity_table_editor_prepare_ref_rowwise(
     conn,
     cf_row: Dict[str, Any],
@@ -5071,6 +5260,45 @@ def _entity_table_editor_eval_ast_rowwise(
             conn, ref, target_storage_table, current_row, foreign_row_cache, token_full
         )
         return _entity_table_editor_row_value_from_ref(conn, ref, raw_val, ref_mode, display_cache)
+    if kind == "tech_ref":
+        parent_key = str(ast[1] or "").strip()
+        nested_key = (str(ast[2]).strip() if len(ast) > 2 and ast[2] else None)
+        field_code = str(ast[3] or "").strip()
+        ref_mode = (str(ast[4]).strip().lower() if len(ast) > 4 and ast[4] else None)
+        cache_key = (f"TECH:{parent_key}|{nested_key or ''}", field_code)
+        ref = ref_cache.get(cache_key)
+        token_full = "{" + parent_key + "|" + (nested_key or "") + "|" + field_code + "}"
+        if ref is None:
+            # Technical tokens are primary path: resolve by entity_key and field code, no title matching.
+            parent_ent = _entity_table_editor_resolve_entity_tech(cf_row, parent_key, nested=False)
+            if nested_key:
+                nested_ent = _entity_table_editor_resolve_entity_tech(cf_row, nested_key, nested=True)
+                path_entities = [parent_ent, nested_ent]
+                join_steps = _entity_table_editor_build_rowwise_join_path(
+                    conn, target_entity_key, target_storage_table, path_entities, token_full
+                )
+                ref = _entity_table_editor_prepare_tech_ref_from_resolved_entity(conn, nested_ent, nested_key, field_code)
+                ref["rowwise_join_steps"] = join_steps
+            else:
+                ref = _entity_table_editor_prepare_tech_ref_from_resolved_entity(conn, parent_ent, parent_key, field_code)
+                # If technical parent is not current target entity, build single/multi-step path from target to parent.
+                if (
+                    str(parent_ent.get("storage_entity_key") or "") != str(target_entity_key)
+                    or str(parent_ent.get("storage_table") or "") != str(target_storage_table)
+                ):
+                    target_ctx_ent = {
+                        "input": cf_row.get("target_entity") if isinstance(cf_row.get("target_entity"), dict) else {},
+                        "storage_entity_key": target_entity_key,
+                        "storage_table": target_storage_table,
+                    }
+                    ref["rowwise_join_steps"] = _entity_table_editor_build_rowwise_join_path(
+                        conn, target_entity_key, target_storage_table, [target_ctx_ent, parent_ent], token_full
+                    )
+            ref["token_full"] = token_full
+            ref["resolver_path_attempted"] = "tech_token"
+            ref_cache[cache_key] = ref
+        raw_val = _entity_table_editor_resolve_rowwise_ref_raw_value(conn, ref, target_storage_table, current_row, foreign_row_cache, token_full)
+        return _entity_table_editor_row_value_from_ref(conn, ref, raw_val, ref_mode, display_cache)
     if kind != "call":
         raise HTTPException(status_code=400, detail=f"Unsupported editor node: {kind}")
 
@@ -5182,15 +5410,49 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
         def collect_refs(node: Any) -> None:
             if not isinstance(node, tuple) or not node:
                 return
-            if node[0] == "ref":
+            if node[0] in ("ref", "tech_ref"):
                 entity_name = str(node[1] or "").strip()
-                field_name = str(node[2] or "").strip()
-                key = (entity_name, field_name)
+                if node[0] == "ref":
+                    field_name = str(node[2] or "").strip()
+                    key = (entity_name, field_name)
+                else:
+                    field_name = str(node[3] or "").strip()
+                    nested_key = (str(node[2]).strip() if len(node) > 2 and node[2] else "")
+                    key = (f"TECH:{entity_name}|{nested_key}", field_name)
                 if key not in ref_cache:
-                    ref_cache[key] = _entity_table_editor_prepare_ref_rowwise(
-                        conn, row, target_storage_entity_key, storage_table, entity_name, field_name
-                    )
+                    if node[0] == "ref":
+                        ref_cache[key] = _entity_table_editor_prepare_ref_rowwise(
+                            conn, row, target_storage_entity_key, storage_table, entity_name, field_name
+                        )
+                    else:
+                        ref_cache[key] = None  # built below for tech_ref
                 ref = ref_cache[key]
+                if not isinstance(ref, dict):
+                    # build directly (tech_ref path)
+                    if node[0] == "tech_ref":
+                        p_key = str(node[1] or "").strip()
+                        n_key = (str(node[2]).strip() if len(node) > 2 and node[2] else None)
+                        token_full = "{" + p_key + "|" + (n_key or "") + "|" + field_name + "}"
+                        parent_ent = _entity_table_editor_resolve_entity_tech(row, p_key, nested=False)
+                        if n_key:
+                            nested_ent = _entity_table_editor_resolve_entity_tech(row, n_key, nested=True)
+                            ref = _entity_table_editor_prepare_tech_ref_from_resolved_entity(conn, nested_ent, n_key, field_name)
+                            ref["rowwise_join_steps"] = _entity_table_editor_build_rowwise_join_path(
+                                conn, target_storage_entity_key, storage_table,
+                                [{"input": row.get("target_entity") if isinstance(row.get("target_entity"), dict) else {}, "storage_entity_key": target_storage_entity_key, "storage_table": storage_table}, parent_ent, nested_ent]
+                                if str(parent_ent.get("storage_entity_key") or "") != str(target_storage_entity_key) else [parent_ent, nested_ent],
+                                token_full
+                            )
+                        else:
+                            ref = _entity_table_editor_prepare_tech_ref_from_resolved_entity(conn, parent_ent, p_key, field_name)
+                            if str(parent_ent.get("storage_entity_key") or "") != str(target_storage_entity_key) or str(parent_ent.get("storage_table") or "") != str(storage_table):
+                                ref["rowwise_join_steps"] = _entity_table_editor_build_rowwise_join_path(
+                                    conn, target_storage_entity_key, storage_table,
+                                    [{"input": row.get("target_entity") if isinstance(row.get("target_entity"), dict) else {}, "storage_entity_key": target_storage_entity_key, "storage_table": storage_table}, parent_ent],
+                                    token_full
+                                )
+                        ref["token_full"] = token_full
+                        ref_cache[key] = ref
                 if str(ref["table"]) == str(storage_table):
                     cols_needed.add(str(ref["column"]))
                 else:
@@ -5457,14 +5719,42 @@ def _entity_table_preview_custom_field_editor(conn, row: Dict[str, Any]) -> Dict
     def collect_refs(node: Any) -> None:
         if not isinstance(node, tuple) or not node:
             return
-        if node[0] == "ref":
+        if node[0] in ("ref", "tech_ref"):
             entity_name = str(node[1] or "").strip()
-            field_name = str(node[2] or "").strip()
-            key = (entity_name, field_name)
+            if node[0] == "ref":
+                field_name = str(node[2] or "").strip()
+                key = (entity_name, field_name)
+            else:
+                field_name = str(node[3] or "").strip()
+                nested_key = (str(node[2]).strip() if len(node) > 2 and node[2] else "")
+                key = (f"TECH:{entity_name}|{nested_key}", field_name)
             if key not in ref_cache:
-                ref_cache[key] = _entity_table_editor_prepare_ref_rowwise(
-                    conn, row, target_storage_entity_key, storage_table, entity_name, field_name
-                )
+                if node[0] == "ref":
+                    ref_cache[key] = _entity_table_editor_prepare_ref_rowwise(
+                        conn, row, target_storage_entity_key, storage_table, entity_name, field_name
+                    )
+                else:
+                    p_key = str(node[1] or "").strip()
+                    n_key = (str(node[2]).strip() if len(node) > 2 and node[2] else None)
+                    token_full = "{" + p_key + "|" + (n_key or "") + "|" + field_name + "}"
+                    parent_ent = _entity_table_editor_resolve_entity_tech(row, p_key, nested=False)
+                    if n_key:
+                        nested_ent = _entity_table_editor_resolve_entity_tech(row, n_key, nested=True)
+                        ref = _entity_table_editor_prepare_tech_ref_from_resolved_entity(conn, nested_ent, n_key, field_name)
+                        base_path = [parent_ent, nested_ent]
+                        if str(parent_ent.get("storage_entity_key") or "") != str(target_storage_entity_key):
+                            base_path = [{"input": row.get("target_entity") if isinstance(row.get("target_entity"), dict) else {}, "storage_entity_key": target_storage_entity_key, "storage_table": storage_table}] + base_path
+                        ref["rowwise_join_steps"] = _entity_table_editor_build_rowwise_join_path(conn, target_storage_entity_key, storage_table, base_path, token_full)
+                    else:
+                        ref = _entity_table_editor_prepare_tech_ref_from_resolved_entity(conn, parent_ent, p_key, field_name)
+                        if str(parent_ent.get("storage_entity_key") or "") != str(target_storage_entity_key) or str(parent_ent.get("storage_table") or "") != str(storage_table):
+                            ref["rowwise_join_steps"] = _entity_table_editor_build_rowwise_join_path(
+                                conn, target_storage_entity_key, storage_table,
+                                [{"input": row.get("target_entity") if isinstance(row.get("target_entity"), dict) else {}, "storage_entity_key": target_storage_entity_key, "storage_table": storage_table}, parent_ent],
+                                token_full
+                            )
+                    ref["token_full"] = token_full
+                    ref_cache[key] = ref
             ref = ref_cache[key]
             if str(ref["table"]) == str(storage_table):
                 cols_needed.add(str(ref["column"]))
