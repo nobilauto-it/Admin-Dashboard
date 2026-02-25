@@ -5916,7 +5916,11 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
                 else:
                     steps = ref.get("rowwise_join_steps")
                     if isinstance(steps, list) and steps:
-                        join_col = str((steps[0] or {}).get("join_column") or "").strip()
+                        first_step = (steps[0] or {})
+                        if bool(first_step.get("reverse")):
+                            join_col = ""
+                        else:
+                            join_col = str(first_step.get("join_column") or "").strip()
                     else:
                         join = ref.get("join_from_target")
                         if not isinstance(join, dict):
@@ -5935,12 +5939,13 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
                                 detail=f"{{{entity_name}.{field_name}}} has ambiguous row_wise join from target entity",
                             )
                         join_col = str(join.get("join_column") or "").strip()
-                    if not join_col:
+                    if not join_col and not (isinstance(steps, list) and steps and bool((steps[0] or {}).get("reverse"))):
                         raise HTTPException(
                             status_code=400,
                             detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet",
                         )
-                    cols_needed.add(join_col)
+                    if join_col:
+                        cols_needed.add(join_col)
                 return
             if node[0] == "call":
                 for a in (node[2] or []):
@@ -6219,7 +6224,11 @@ def _entity_table_preview_custom_field_editor(conn, row: Dict[str, Any]) -> Dict
             else:
                 steps = ref.get("rowwise_join_steps")
                 if isinstance(steps, list) and steps:
-                    join_col = str((steps[0] or {}).get("join_column") or "").strip()
+                    first_step = (steps[0] or {})
+                    if bool(first_step.get("reverse")):
+                        join_col = ""
+                    else:
+                        join_col = str(first_step.get("join_column") or "").strip()
                 else:
                     join = ref.get("join_from_target")
                     if not isinstance(join, dict):
@@ -6232,9 +6241,10 @@ def _entity_table_preview_custom_field_editor(conn, row: Dict[str, Any]) -> Dict
                     if join.get("ambiguous"):
                         raise HTTPException(status_code=400, detail=f"{{{entity_name}.{field_name}}} has ambiguous row_wise join from target entity")
                     join_col = str(join.get("join_column") or "").strip()
-                if not join_col:
+                if not join_col and not (isinstance(steps, list) and steps and bool((steps[0] or {}).get("reverse"))):
                     raise HTTPException(status_code=400, detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet")
-                cols_needed.add(join_col)
+                if join_col:
+                    cols_needed.add(join_col)
             return
         if node[0] == "call":
             for a in (node[2] or []):
