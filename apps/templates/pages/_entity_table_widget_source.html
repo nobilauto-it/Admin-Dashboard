@@ -326,10 +326,7 @@
                         <button type="button" class="btn btn-sm btn-outline-primary d-none mb-2" id="toggleCustomFieldsInFieldsTabBtn">Кастомные поля</button>
                         <div class="fields-modal-grid" id="fieldsList"></div>
                         <div class="mt-3 d-none" id="customFieldsSectionInFieldsTab">
-                            <div class="border rounded p-2">
-                                <div class="small fw-semibold mb-2">Кастомные поля</div>
-                                <div id="customFieldsListInFieldsTab" class="d-flex flex-column gap-2"></div>
-                            </div>
+                            <div id="customFieldsListInFieldsTab" class="fields-modal-grid"></div>
                         </div>
                     </div>
                     <div class="tab-pane" id="settingsTabPane" role="tabpanel">
@@ -773,23 +770,37 @@
             if (!list.length) {
                 customFieldsSectionInFieldsTab.classList.add('d-none');
                 customFieldsListInFieldsTab.innerHTML = '';
+                toggleCustomFieldsInFieldsTabBtn.classList.remove('active', 'btn-primary');
+                toggleCustomFieldsInFieldsTabBtn.classList.add('btn-outline-primary');
                 return;
             }
-            customFieldsListInFieldsTab.innerHTML = list.map(function(cf) {
+            var html = '<div class="field-row fields-modal-entity-header" data-entity-header="1" data-entitykey="custom_fields"><span>Кастомные поля</span></div>';
+            html += list.map(function(cf, idx) {
                 var name = String((cf && cf.name) || '').trim() || '(без названия)';
                 var code = String((cf && cf.code) || '').trim();
                 var type = String((cf && cf.type) || 'single').trim();
-                return '<div class="border rounded p-2 small">'
-                    + '<div class="fw-semibold">' + name.replace(/</g, '&lt;') + '</div>'
-                    + '<div class="text-muted">' + (code ? code.replace(/</g, '&lt;') + ' • ' : '') + type.replace(/</g, '&lt;') + '</div>'
+                var label = name + (code ? (' [' + code + ']') : '') + (type ? (' (' + type + ')') : '');
+                var safeId = 'cf_fields_tab_' + idx;
+                return '<div class="form-check field-row" data-entitykey="custom_fields" data-nested-type="">'
+                    + '<input class="form-check-input" type="checkbox" id="' + safeId + '">'
+                    + '<label class="form-check-label" for="' + safeId + '">' + label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</label>'
                     + '</div>';
             }).join('');
+            customFieldsListInFieldsTab.innerHTML = html;
+            var isOpen = !customFieldsSectionInFieldsTab.classList.contains('d-none');
+            toggleCustomFieldsInFieldsTabBtn.classList.toggle('active', isOpen);
+            toggleCustomFieldsInFieldsTabBtn.classList.toggle('btn-primary', isOpen);
+            toggleCustomFieldsInFieldsTabBtn.classList.toggle('btn-outline-primary', !isOpen);
         }
 
         if (toggleCustomFieldsInFieldsTabBtn) {
             toggleCustomFieldsInFieldsTabBtn.addEventListener('click', function() {
                 if (!customFieldsSectionInFieldsTab) return;
                 customFieldsSectionInFieldsTab.classList.toggle('d-none');
+                var isOpen = !customFieldsSectionInFieldsTab.classList.contains('d-none');
+                toggleCustomFieldsInFieldsTabBtn.classList.toggle('active', isOpen);
+                toggleCustomFieldsInFieldsTabBtn.classList.toggle('btn-primary', isOpen);
+                toggleCustomFieldsInFieldsTabBtn.classList.toggle('btn-outline-primary', !isOpen);
             });
         }
 
