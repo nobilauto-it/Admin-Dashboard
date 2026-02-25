@@ -5436,8 +5436,8 @@ def _entity_table_editor_resolve_rowwise_ref_raw_value(
                     return None
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                     cur.execute(
-                        f'SELECT * FROM "{to_table}" WHERE "{join_col}"=%s ORDER BY id DESC NULLS LAST LIMIT 1',
-                        (int(current_row_id),)
+                        f'SELECT * FROM "{to_table}" WHERE "{join_col}"::text=%s ORDER BY id DESC NULLS LAST LIMIT 1',
+                        (str(int(current_row_id)),)
                     )
                     row_obj = cur.fetchone() or {}
                 row_table = to_table
