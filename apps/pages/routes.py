@@ -712,6 +712,31 @@ def entity_table_custom_fields_proxy(item_id=None):
         return make_response(jsonify({"ok": False, "error": str(e)}), 502)
 
 
+@blueprint.route('/api/entity-table/custom-fields/<path:item_id>/recalculate', methods=['POST'])
+def entity_table_custom_fields_recalculate_proxy(item_id):
+    """Proxy custom field recalculate to CRM backend (7070)."""
+    upstream_url = f"{_crm_base_url()}/api/entity-table/custom-fields/{item_id}/recalculate"
+    if requests is None:
+        return make_response(jsonify({"ok": False, "error": "python-requests not available"}), 500)
+    try:
+        headers = {'Content-Type': 'application/json'}
+        x_user_role = request.headers.get('x-user-role')
+        x_guest = request.headers.get('x-guest')
+        if x_user_role:
+            headers['x-user-role'] = x_user_role
+        if x_guest:
+            headers['x-guest'] = x_guest
+        payload = request.get_json(silent=True) or {}
+        resp = requests.post(upstream_url, json=payload, headers=headers, timeout=30)
+        try:
+            return make_response(jsonify(resp.json()), resp.status_code)
+        except Exception:
+            return make_response(resp.text, resp.status_code)
+    except Exception as e:
+        current_app.logger.exception("Entity table custom-fields recalculate proxy: %s", e)
+        return make_response(jsonify({"ok": False, "error": str(e)}), 502)
+
+
 @blueprint.route('/api/entity-table/component-modes', methods=['GET', 'POST'])
 def entity_table_component_modes():
     """Параметры страниц и таблиц: edit, read_only, hide. GET — вернуть, POST — сохранить (для админки)."""
