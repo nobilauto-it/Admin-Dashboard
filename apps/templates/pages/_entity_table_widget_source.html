@@ -720,6 +720,11 @@
         const customFieldPickerNestedRow = document.getElementById('customFieldPickerNestedRow');
         const customFieldPayloadTextarea = document.getElementById('customFieldPayloadTextarea');
         const customFieldActionBtn = document.getElementById('customFieldActionBtn');
+        const customFieldNameInput = document.getElementById('customFieldNameInput');
+        const customFieldCodeInput = document.getElementById('customFieldCodeInput');
+        const customFieldDescriptionInput = document.getElementById('customFieldDescriptionInput');
+        const customFieldTypeSelect = document.getElementById('customFieldTypeSelect');
+        const customFieldSaveBtn = document.getElementById('customFieldSaveBtn');
         const customFieldEditorHelpBtn = document.getElementById('customFieldEditorHelpBtn');
         const customFieldPreviewBtn = document.getElementById('customFieldPreviewBtn');
         const customFieldPreviewResult = document.getElementById('customFieldPreviewResult');
@@ -782,6 +787,35 @@
             toggleCustomFieldsInFieldsTabBtn.addEventListener('click', function() {
                 if (!customFieldsSectionInFieldsTab) return;
                 customFieldsSectionInFieldsTab.classList.toggle('d-none');
+            });
+        }
+
+        function saveCustomFieldFromForm() {
+            var st = tableStates[currentTableIndex];
+            if (!st) return;
+            ensureCustomFieldsArray(st);
+            var name = customFieldNameInput ? String(customFieldNameInput.value || '').trim() : '';
+            if (!name) { alert('Введите название поля'); return; }
+            var code = customFieldCodeInput ? String(customFieldCodeInput.value || '').trim() : '';
+            if (!code) code = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+            if (!code) code = 'custom_' + Date.now();
+            var payload = {
+                id: 'cf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                name: name,
+                code: code,
+                description: customFieldDescriptionInput ? String(customFieldDescriptionInput.value || '').trim() : '',
+                type: (customFieldTypeSelect && customFieldTypeSelect.value === 'card') ? 'card' : 'single',
+                editor: customFieldPayloadTextarea ? String(customFieldPayloadTextarea.value || '') : ''
+            };
+            st.customFields.push(payload);
+            renderCustomFieldsInFieldsTab(currentTableIndex);
+            saveConfigToStorage();
+            saveConfig();
+        }
+
+        if (customFieldSaveBtn) {
+            customFieldSaveBtn.addEventListener('click', function() {
+                saveCustomFieldFromForm();
             });
         }
 
