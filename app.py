@@ -4607,9 +4607,24 @@ def _entity_table_editor_build_rowwise_join_path(
             if resolved_join:
                 join = resolved_join
             else:
+                try:
+                    dst_input = dst.get("input") if isinstance(dst, dict) else None
+                    hint_debug = _entity_table_editor_relation_hint_candidates(dst_input)
+                    cand_debug = []
+                    for c in list(join.get("candidates") or []):
+                        if not isinstance(c, dict):
+                            continue
+                        cand_debug.append({
+                            "join_column": c.get("join_column"),
+                            "via_b24_field": c.get("via_b24_field"),
+                            "target_entity_key": c.get("target_entity_key"),
+                        })
+                    debug_suffix = f" relation_hints={hint_debug}; candidates={cand_debug}"
+                except Exception:
+                    debug_suffix = ""
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Ambiguous row-wise join path for {token_full}: multiple link fields match source entity. Add relation metadata (b24_field/field_code/column_name) in nested source entity.",
+                    detail=f"Ambiguous row-wise join path for {token_full}: multiple link fields match source entity. Add relation metadata (b24_field/field_code/column_name) in nested source entity.{debug_suffix}",
                 )
         join_col = str(join.get("join_column") or "").strip()
         if not join_col:
