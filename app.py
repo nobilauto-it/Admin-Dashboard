@@ -4881,8 +4881,17 @@ def _entity_table_editor_prepare_ref_rowwise(
     # Parser stores it as entity_name="ParentEntity.NestedEntity", field_name="Field".
     parts = [p.strip() for p in str(entity_name or "").split(".")]
     parts = [p for p in parts if p]
-    if len(parts) >= 2:
-        path_entities = [_entity_table_editor_resolve_entity(cf_row, p) for p in parts]
+    total_segments = len(parts) + (1 if str(field_name or "").strip() else 0)
+    if total_segments >= 3:
+        try:
+            path_entities = [_entity_table_editor_resolve_entity(cf_row, p) for p in parts]
+        except HTTPException as e:
+            # Nested path must not silently fall back to legacy 2-part resolver.
+            msg = _entity_table_http_error_text(e)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Nested token resolve failed for {token_full}: {msg}",
+            )
         join_steps = _entity_table_editor_build_rowwise_join_path(
             conn,
             str(target_entity_key or ""),
@@ -4891,10 +4900,19 @@ def _entity_table_editor_prepare_ref_rowwise(
             token_full,
         )
         leaf_entity = path_entities[-1]
-        ref = _entity_table_editor_prepare_ref(conn, cf_row, parts[-1], field_name)
+        try:
+            ref = _entity_table_editor_prepare_ref(conn, cf_row, parts[-1], field_name)
+        except HTTPException as e:
+            msg = _entity_table_http_error_text(e)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Nested token resolve failed for {token_full}: {msg}",
+            )
         ref["rowwise_join_steps"] = join_steps
         ref["token_entity_path"] = entity_name
         ref["token_full"] = token_full
+        ref["resolver_path_attempted"] = "nested_path"
+        ref["parsed_segments"] = parts + [str(field_name or "").strip()]
         ref["explicit_path_entities"] = [
             {
                 "entity_key": pe.get("storage_entity_key"),
@@ -4911,6 +4929,8 @@ def _entity_table_editor_prepare_ref_rowwise(
     # Backward-compatible format {Entity.Field}
     ref = _entity_table_editor_prepare_ref(conn, cf_row, entity_name, field_name)
     ref["token_full"] = token_full
+    ref["resolver_path_attempted"] = "legacy_2part"
+    ref["parsed_segments"] = parts + [str(field_name or "").strip()]
     return ref
 
 
