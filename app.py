@@ -3623,12 +3623,20 @@ def _ensure_entity_table_custom_fields_schema(conn) -> None:
                 description TEXT,
                 field_type TEXT NOT NULL,
                 editor TEXT,
+                storage_entity_key TEXT,
+                storage_table TEXT,
+                storage_column TEXT,
+                storage_pg_type TEXT,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                 created_by TEXT,
                 updated_by TEXT
             );
         """)
+        cur.execute("ALTER TABLE entity_table_custom_fields ADD COLUMN IF NOT EXISTS storage_entity_key TEXT;")
+        cur.execute("ALTER TABLE entity_table_custom_fields ADD COLUMN IF NOT EXISTS storage_table TEXT;")
+        cur.execute("ALTER TABLE entity_table_custom_fields ADD COLUMN IF NOT EXISTS storage_column TEXT;")
+        cur.execute("ALTER TABLE entity_table_custom_fields ADD COLUMN IF NOT EXISTS storage_pg_type TEXT;")
         cur.execute("""
             CREATE UNIQUE INDEX IF NOT EXISTS ux_entity_table_custom_fields_slug_table_code
             ON entity_table_custom_fields(page_slug, table_index, code);
@@ -3788,6 +3796,73 @@ def _entity_table_custom_field_parse_id(raw_id: str) -> int:
     return out
 
 
+def _entity_table_resolve_storage_target(target_entity: Dict[str, Any]) -> Dict[str, str]:
+    """
+    Frontend target_entity examples:
+      deal_25            -> internal entity_key=deal -> table b24_crm_deal
+      smart_process_1036 -> internal entity_key=sp:1036 -> table b24_sp_1036
+    """
+    if not isinstance(target_entity, dict):
+        raise HTTPException(status_code=400, detail="target_entity must be an object")
+
+    raw_entity_key = str(target_entity.get("entity_key") or "").strip()
+    entity_type = str(target_entity.get("type") or "").strip().lower()
+    if not raw_entity_key:
+        raise HTTPException(status_code=400, detail="target_entity.entity_key is required")
+
+    internal_entity_key: Optional[str] = None
+
+    if entity_type in ("deal", "contact", "lead", "company"):
+        internal_entity_key = entity_type
+    elif entity_type == "smart_process":
+        m = re.match(r"^smart_process_(\d+)$", raw_entity_key)
+        if m:
+            internal_entity_key = f"sp:{int(m.group(1))}"
+        elif raw_entity_key.startswith("sp:"):
+            try:
+                internal_entity_key = f"sp:{int(raw_entity_key.split(':', 1)[1])}"
+            except Exception:
+                internal_entity_key = None
+    else:
+        if raw_entity_key in ("deal", "contact", "lead", "company"):
+            internal_entity_key = raw_entity_key
+        else:
+            m_deal = re.match(r"^deal(?:_\d+)?$", raw_entity_key)
+            if m_deal:
+                internal_entity_key = "deal"
+            m_sp = re.match(r"^(?:smart_process_(\d+)|sp:(\d+))$", raw_entity_key)
+            if m_sp:
+                etid = m_sp.group(1) or m_sp.group(2)
+                internal_entity_key = f"sp:{int(etid)}"
+
+    if not internal_entity_key:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported target_entity for storage. Expected deal/contact/lead/company or smart_process_<id>",
+        )
+
+    return {
+        "storage_entity_key": internal_entity_key,
+        "storage_table": table_name_for_entity(internal_entity_key),
+    }
+
+
+def _entity_table_custom_field_storage_pg_type(field_type: str) -> str:
+    # Formula is not evaluated yet, so store computed/future value as text for both UI variants.
+    return "TEXT"
+
+
+def _entity_table_add_physical_custom_field_column(conn, storage_table: str, storage_column: str, storage_pg_type: str) -> None:
+    ensure_table_base(conn, storage_table)
+    ensure_columns(conn, storage_table, [(storage_column, storage_pg_type)])
+
+
+def _entity_table_drop_physical_custom_field_column(conn, storage_table: str, storage_column: str) -> None:
+    with conn.cursor() as cur:
+        cur.execute(f'ALTER TABLE {storage_table} DROP COLUMN IF EXISTS "{storage_column}";')
+    conn.commit()
+
+
 def _entity_table_validate_custom_field_payload(payload: Any) -> Dict[str, Any]:
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="JSON body must be an object")
@@ -3867,7 +3942,7 @@ def _entity_table_validate_custom_field_payload(payload: Any) -> Dict[str, Any]:
 
 
 def _entity_table_custom_field_row_to_api(row: Dict[str, Any]) -> Dict[str, Any]:
-    return {
+    out = {
         "id": _entity_table_custom_field_db_id_to_api(row.get("id")),
         "name": row.get("name") or "",
         "code": row.get("code") or "",
@@ -3876,6 +3951,16 @@ def _entity_table_custom_field_row_to_api(row: Dict[str, Any]) -> Dict[str, Any]
         "editor": row.get("editor") or "",
         "target_entity": row.get("target_entity") if isinstance(row.get("target_entity"), dict) else {},
     }
+    storage_table = row.get("storage_table")
+    storage_column = row.get("storage_column")
+    storage_pg_type = row.get("storage_pg_type")
+    if storage_table or storage_column or storage_pg_type:
+        out["storage"] = {
+            "table": storage_table or None,
+            "column": storage_column or None,
+            "pg_type": storage_pg_type or None,
+        }
+    return out
 
 
 @app.get("/api/entity-table/config")
@@ -4071,20 +4156,45 @@ async def create_entity_table_custom_field(request: Request):
 
     data = _entity_table_validate_custom_field_payload(payload)
     actor = _entity_table_actor_from_request(request)
+    storage_target = _entity_table_resolve_storage_target(data["target_entity"])
+    storage_pg_type = _entity_table_custom_field_storage_pg_type(data["custom_field"]["type"])
+    storage_column = data["custom_field"]["code"]
 
     conn = pg_conn()
     try:
         conn.autocommit = False
         _ensure_entity_table_custom_fields_schema(conn)
+        # Create physical column in entity data table first (same transaction).
+        _entity_table_add_physical_custom_field_column(
+            conn,
+            storage_target["storage_table"],
+            storage_column,
+            storage_pg_type,
+        )
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id
+                FROM entity_table_custom_fields
+                WHERE storage_table=%s AND storage_column=%s
+                LIMIT 1
+            """, (storage_target["storage_table"], storage_column))
+            existing_storage_ref = cur.fetchone()
+            if existing_storage_ref:
+                raise HTTPException(
+                    status_code=409,
+                    detail="custom_field.code already exists for target entity storage table",
+                )
+
             cur.execute("""
                 INSERT INTO entity_table_custom_fields(
                     page_slug, table_index, target_entity, source_entities,
                     name, code, description, field_type, editor,
+                    storage_entity_key, storage_table, storage_column, storage_pg_type,
                     created_at, updated_at, created_by, updated_by
                 )
-                VALUES (%s, %s, %s::jsonb, %s::jsonb, %s, %s, %s, %s, %s, now(), now(), %s, %s)
-                RETURNING id, name, code, description, field_type, editor, target_entity
+                VALUES (%s, %s, %s::jsonb, %s::jsonb, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), now(), %s, %s)
+                RETURNING id, name, code, description, field_type, editor, target_entity,
+                          storage_table, storage_column, storage_pg_type
             """, (
                 data["page_slug"],
                 data["table_index"],
@@ -4095,6 +4205,10 @@ async def create_entity_table_custom_field(request: Request):
                 data["custom_field"]["description"],
                 data["custom_field"]["type"],
                 data["custom_field"]["editor"],
+                storage_target["storage_entity_key"],
+                storage_target["storage_table"],
+                storage_column,
+                storage_pg_type,
                 actor,
                 actor,
             ))
@@ -4143,7 +4257,8 @@ def list_entity_table_custom_fields(
         _ensure_entity_table_custom_fields_schema(conn)
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                SELECT id, name, code, description, field_type, editor, target_entity
+                SELECT id, name, code, description, field_type, editor, target_entity,
+                       storage_table, storage_column, storage_pg_type
                 FROM entity_table_custom_fields
                 WHERE page_slug=%s AND table_index=%s
                 ORDER BY created_at ASC, id ASC
@@ -4173,7 +4288,23 @@ def delete_entity_table_custom_field(custom_field_id: str, request: Request):
     try:
         conn.autocommit = False
         _ensure_entity_table_custom_fields_schema(conn)
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, code, target_entity, storage_table, storage_column
+                FROM entity_table_custom_fields
+                WHERE id=%s
+                LIMIT 1
+            """, (db_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="custom field not found")
+
+            storage_table = str(row.get("storage_table") or "").strip()
+            storage_column = str(row.get("storage_column") or row.get("code") or "").strip()
+            if not storage_table:
+                target_entity = row.get("target_entity") if isinstance(row.get("target_entity"), dict) else {}
+                storage_table = _entity_table_resolve_storage_target(target_entity)["storage_table"]
+
             cur.execute("""
                 UPDATE entity_table_custom_fields
                 SET updated_at=now(), updated_by=%s
@@ -4181,6 +4312,18 @@ def delete_entity_table_custom_field(custom_field_id: str, request: Request):
             """, (actor, db_id))
             cur.execute("DELETE FROM entity_table_custom_fields WHERE id=%s", (db_id,))
             deleted = cur.rowcount or 0
+            if deleted > 0 and storage_table and storage_column:
+                cur.execute("""
+                    SELECT COUNT(*) AS cnt
+                    FROM entity_table_custom_fields
+                    WHERE storage_table=%s AND storage_column=%s
+                """, (storage_table, storage_column))
+                cnt_row = cur.fetchone() or {}
+                refs_left = int(cnt_row.get("cnt") or 0)
+            else:
+                refs_left = 0
+        if deleted > 0 and storage_table and storage_column and refs_left <= 0:
+            _entity_table_drop_physical_custom_field_column(conn, storage_table, storage_column)
         conn.commit()
         if deleted <= 0:
             raise HTTPException(status_code=404, detail="custom field not found")
