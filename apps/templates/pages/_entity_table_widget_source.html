@@ -412,6 +412,7 @@
                                     <button type="button" class="btn btn-primary btn-sm" id="customFieldSaveBtn">Сохранить кастомное поле</button>
                                 </div>
                                 <div class="small text-primary mt-1 d-none" id="customFieldEditModeHint"></div>
+                                <div class="small text-secondary mt-1 d-none" id="customFieldEditorReadableHint"></div>
                                 <div class="small text-muted mt-2" id="customFieldPreviewResult"></div>
                             </div>
                         </div>
@@ -798,6 +799,7 @@
         const customFieldDeleteOpenBtn = document.getElementById('customFieldDeleteOpenBtn');
         const customFieldEditorHelpBtn = document.getElementById('customFieldEditorHelpBtn');
         const customFieldEditModeHint = document.getElementById('customFieldEditModeHint');
+        const customFieldEditorReadableHint = document.getElementById('customFieldEditorReadableHint');
         const customFieldPreviewBtn = document.getElementById('customFieldPreviewBtn');
         const customFieldPreviewResult = document.getElementById('customFieldPreviewResult');
         const customFieldEditModalEl = document.getElementById('customFieldEditModal');
@@ -864,6 +866,11 @@
             if (!st) return {};
             if (!st.customFieldTokenMap || typeof st.customFieldTokenMap !== 'object') st.customFieldTokenMap = {};
             return st.customFieldTokenMap;
+        }
+        function ensureCustomFieldTokenRelationMap(st) {
+            if (!st) return {};
+            if (!st.customFieldTokenRelationMap || typeof st.customFieldTokenRelationMap !== 'object') st.customFieldTokenRelationMap = {};
+            return st.customFieldTokenRelationMap;
         }
         function resolveColumnKeyForEditorTokenInsert(st, title, prefixKey, rowEntityKey, nestedType) {
             if (!st || !Array.isArray(st.allColumns)) return '';
@@ -1067,6 +1074,206 @@
                 });
             });
         }
+        function normalizeTechEntityKeyComparable(rawKey) {
+            var k = String(rawKey || '').trim().toLowerCase();
+            if (!k) return '';
+            var sp1 = k.match(/^sp:(\d+)$/);
+            if (sp1) return 'smart_process_' + sp1[1];
+            var sp2 = k.match(/^entity_(\d+)$/);
+            if (sp2) return 'smart_process_' + sp2[1];
+            return k;
+        }
+        function buildCustomFieldReadableTokenMap(tableIndex) {
+            var st = tableStates[tableIndex];
+            if (!st || !Array.isArray(st.selectedEntities) || !st.selectedEntities.length) return Promise.resolve({});
+            return Promise.all((st.selectedEntities || []).map(function(ent) {
+                return loadFieldsForEntity(ent)
+                    .then(function(res) { return { ent: ent, res: res || { fields: [] } }; })
+                    .catch(function() { return { ent: ent, res: { fields: [] } }; });
+            })).then(function(items) {
+                var map = {};
+                items.forEach(function(item) {
+                    var ent = item.ent || {};
+                    var parentKey = String(entityKey(ent) || '').trim();
+                    if (!parentKey) return;
+                    var parentTitle = String((ent && ent.title) || entityTitleForNested(ent) || parentKey).trim();
+                    (item.res.fields || []).forEach(function(f) {
+                        if (!f) return;
+                        var groupLabel = String((f.human_title || f.column_name || '')).trim();
+                        if (Array.isArray(f.nested_fields) && f.nested_fields.length && groupLabel) {
+                            var nestedKeyVariants = {};
+                            [
+                                f.nested_entity_key,
+                                normalizeTechnicalNestedEntityKeyForEditor(f.nested_entity_key),
+                                normalizeTechEntityKeyComparable(f.nested_entity_key)
+                            ].forEach(function(v) {
+                                v = String(v || '').trim();
+                                if (!v) return;
+                                nestedKeyVariants[v] = true;
+                                nestedKeyVariants[normalizeTechEntityKeyComparable(v)] = true;
+                            });
+                            (f.nested_fields || []).forEach(function(n) {
+                                var fieldCode = String((n && (n.field_code || n.b24_field || n.column_name) || '')).trim();
+                                var fieldLabel = String((n && (n.human_title || n.column_name) || '')).trim();
+                                if (!fieldCode || !fieldLabel) return;
+                                Object.keys(nestedKeyVariants).forEach(function(nestedKeyNorm) {
+                                    if (!nestedKeyNorm) return;
+                                    map[parentKey + '|' + nestedKeyNorm + '|' + String(fieldCode).toLowerCase()] =
+                                        parentTitle + '.' + groupLabel + '.' + fieldLabel;
+                                });
+                            });
+                            return;
+                        }
+                        var topFieldCode = String((f.field_code || f.b24_field || f.column_name || '')).trim();
+                        var topFieldLabel = String((f.human_title || f.column_name || '')).trim();
+                        if (!topFieldCode || !topFieldLabel) return;
+                        map[parentKey + '||' + String(topFieldCode).toLowerCase()] = parentTitle + '.' + topFieldLabel;
+                    });
+                });
+                return map;
+            });
+        }
+        var customFieldReadableHintRenderSeq = 0;
+        function renderCustomFieldEditorReadableHint() {
+            if (!customFieldEditorReadableHint) return;
+            if (!customFieldPayloadTextarea) {
+                customFieldEditorReadableHint.textContent = '';
+                customFieldEditorReadableHint.classList.add('d-none');
+                return;
+            }
+            var editor = String(customFieldPayloadTextarea.value || '');
+            if (!editor || editor.indexOf('{') < 0 || editor.indexOf('|') < 0) {
+                customFieldEditorReadableHint.textContent = '';
+                customFieldEditorReadableHint.classList.add('d-none');
+                return;
+            }
+            var seq = ++customFieldReadableHintRenderSeq;
+            buildCustomFieldReadableTokenMap(currentTableIndex).then(function(readableMap) {
+                if (seq !== customFieldReadableHintRenderSeq) return;
+                var rendered = editor.replace(/\{([^}]+)\}/g, function(full, tokenBody) {
+                    var parts = splitEditorTokenModeSuffix(tokenBody);
+                    var core = String(parts.core || '').trim();
+                    if (!core || core.indexOf('|') < 0) return full;
+                    var seg = core.split('|');
+                    if (seg.length !== 3) return full;
+                    var parentKey = String(seg[0] || '').trim();
+                    var nestedKey = normalizeTechEntityKeyComparable(seg[1]);
+                    var fieldCode = String(seg[2] || '').trim().toLowerCase();
+                    if (!parentKey || !fieldCode) return full;
+                    var key = parentKey + '|' + (nestedKey || '') + '|' + fieldCode;
+                    var label = readableMap && readableMap[key] ? readableMap[key] : '';
+                    if (!label) return full;
+                    return '{' + label + (parts.suffix || '') + '}';
+                });
+                if (rendered === editor) {
+                    customFieldEditorReadableHint.textContent = '';
+                    customFieldEditorReadableHint.classList.add('d-none');
+                    return;
+                }
+                customFieldEditorReadableHint.textContent = 'Читаемо: ' + rendered;
+                customFieldEditorReadableHint.classList.remove('d-none');
+            }).catch(function() {
+                if (seq !== customFieldReadableHintRenderSeq) return;
+                customFieldEditorReadableHint.textContent = '';
+                customFieldEditorReadableHint.classList.add('d-none');
+            });
+        }
+        function buildNestedSourceEntityHintsForEditor(tableIndex, originalEditorText, normalizedEditorText) {
+            var st = tableStates[tableIndex];
+            if (!st || !Array.isArray(st.selectedEntities) || !st.selectedEntities.length) return Promise.resolve([]);
+            var originalEditor = String(originalEditorText || '');
+            var normalizedEditor = String(normalizedEditorText || '');
+            var tokenRelationMap = ensureCustomFieldTokenRelationMap(st);
+            return Promise.all((st.selectedEntities || []).map(function(ent) {
+                return loadFieldsForEntity(ent)
+                    .then(function(res) { return { ent: ent, res: res || { fields: [] } }; })
+                    .catch(function() { return { ent: ent, res: { fields: [] } }; });
+            })).then(function(items) {
+                var hints = [];
+                var seen = {};
+                function pushHint(h) {
+                    if (!h) return;
+                    var relKey = String(h.field_code || h.b24_field || h.column_name || '').trim();
+                    var nestedKey = String(h.nested_entity_key || h.entity_key || '').trim();
+                    var parentKey = String(h.parent_entity_key || '').trim();
+                    if (!relKey || !nestedKey || !parentKey) return;
+                    var k = parentKey + '|' + normalizeTechEntityKeyComparable(nestedKey) + '|' + relKey.toLowerCase();
+                    if (seen[k]) return;
+                    seen[k] = true;
+                    hints.push(h);
+                }
+                // 1) Hints remembered from picker inserted technical tokens.
+                if (normalizedEditor) {
+                    normalizedEditor.replace(/\{([^}]+)\}/g, function(_, tokenBody) {
+                        var parts = splitEditorTokenModeSuffix(tokenBody);
+                        var core = String(parts.core || '').trim();
+                        if (!core || core.indexOf('|') < 0) return _;
+                        var mapped = tokenRelationMap[core];
+                        if (mapped && typeof mapped === 'object') {
+                            pushHint({
+                                nested_entity_key: mapped.nested_entity_key,
+                                entity_key: mapped.nested_entity_key,
+                                parent_entity_key: mapped.parent_entity_key,
+                                field_code: mapped.field_code || mapped.relation_field_code,
+                                b24_field: mapped.b24_field || mapped.relation_b24_field,
+                                column_name: mapped.column_name || mapped.relation_column_name,
+                                relation_field_code: mapped.relation_field_code || mapped.field_code,
+                                relation_b24_field: mapped.relation_b24_field || mapped.b24_field,
+                                relation_column_name: mapped.relation_column_name || mapped.column_name
+                            });
+                        }
+                        return _;
+                    });
+                }
+                // 2) Hints derived from readable legacy nested tokens (Entity.Group.Field).
+                if (originalEditor && originalEditor.indexOf('{') >= 0) {
+                    var legacyCandidates = {};
+                    items.forEach(function(item) {
+                        var ent = item.ent || {};
+                        var parentEntityKey = String(entityKey(ent) || '').trim();
+                        if (!parentEntityKey) return;
+                        var parentTitles = [
+                            String((ent && ent.title) || '').trim(),
+                            String(entityTitleForNested(ent) || '').trim()
+                        ].filter(Boolean);
+                        (item.res.fields || []).forEach(function(f) {
+                            if (!f || !Array.isArray(f.nested_fields) || !f.nested_fields.length) return;
+                            var groupLabel = String((f.human_title || f.column_name || '')).trim();
+                            var nestedEntityKey = normalizeTechnicalNestedEntityKeyForEditor(f.nested_entity_key);
+                            var relFieldCode = String(f.field_code || f.b24_field || f.column_name || '').trim();
+                            var relB24Field = String(f.b24_field || '').trim();
+                            var relColumnName = String(f.column_name || '').trim();
+                            if (!groupLabel || !nestedEntityKey || !(relFieldCode || relB24Field || relColumnName)) return;
+                            (f.nested_fields || []).forEach(function(n) {
+                                var fieldLabel = String((n && (n.human_title || n.column_name) || '')).trim();
+                                if (!fieldLabel) return;
+                                parentTitles.forEach(function(parentTitle) {
+                                    legacyCandidates[parentTitle + '.' + groupLabel + '.' + fieldLabel] = {
+                                        nested_entity_key: nestedEntityKey,
+                                        entity_key: nestedEntityKey,
+                                        parent_entity_key: parentEntityKey,
+                                        field_code: relFieldCode || relB24Field || relColumnName,
+                                        b24_field: relB24Field || relFieldCode || '',
+                                        column_name: relColumnName || '',
+                                        relation_field_code: relFieldCode || relB24Field || relColumnName,
+                                        relation_b24_field: relB24Field || relFieldCode || '',
+                                        relation_column_name: relColumnName || ''
+                                    };
+                                });
+                            });
+                        });
+                    });
+                    originalEditor.replace(/\{([^}]+)\}/g, function(_, tokenBody) {
+                        var parts = splitEditorTokenModeSuffix(tokenBody);
+                        var core = String(parts.core || '').trim();
+                        if (!core || core.indexOf('|') >= 0) return _;
+                        if (legacyCandidates[core]) pushHint(legacyCandidates[core]);
+                        return _;
+                    });
+                }
+                return hints;
+            });
+        }
         function previewCustomFieldEditorViaApi(tableIndex, editorText) {
             var st = tableStates[tableIndex];
             if (!st) return Promise.reject(new Error('Нет активной таблицы'));
@@ -1074,11 +1281,12 @@
             var targetEntity = customFieldApiEntityPayload(st.selectedEntities[0]);
             if (!targetEntity || !targetEntity.entity_key) return Promise.reject(new Error('Не удалось определить target entity'));
             return normalizeCustomFieldEditorForBackend(tableIndex, editorText).then(function(normalizedEditor) {
+                return buildNestedSourceEntityHintsForEditor(tableIndex, editorText, normalizedEditor).then(function(nestedHints) {
                 var payload = {
                     page_slug: getPageSlug(),
                     table_index: tableIndex,
                     target_entity: targetEntity,
-                    source_entities: (st.selectedEntities || []).map(customFieldApiEntityPayload).filter(Boolean),
+                    source_entities: (st.selectedEntities || []).map(customFieldApiEntityPayload).filter(Boolean).concat(Array.isArray(nestedHints) ? nestedHints : []),
                     editor: String(normalizedEditor || '')
                 };
                 return fetch(API.customFieldsPreview, {
@@ -1093,6 +1301,7 @@
                         throw new Error((res.body && (res.body.detail || res.body.error)) || ('Preview failed: ' + res.status));
                     }
                     return res.body;
+                });
                 });
             });
         }
@@ -1184,9 +1393,16 @@
                     if (requestPayload && requestPayload.custom_field) {
                         requestPayload.custom_field.editor = String(normalizedEditor || '');
                     }
-                    return (isEditMode
-                        ? updateCustomFieldViaApi(customFieldEditingId, requestPayload, 'PATCH')
-                        : createCustomFieldViaApi(currentTableIndex, requestPayload));
+                    return buildNestedSourceEntityHintsForEditor(currentTableIndex, (customFieldPayloadTextarea ? String(customFieldPayloadTextarea.value || '') : ''), String(normalizedEditor || ''))
+                        .then(function(nestedHints) {
+                            if (Array.isArray(nestedHints) && nestedHints.length) {
+                                if (!Array.isArray(requestPayload.source_entities)) requestPayload.source_entities = [];
+                                requestPayload.source_entities = requestPayload.source_entities.concat(nestedHints);
+                            }
+                            return (isEditMode
+                                ? updateCustomFieldViaApi(customFieldEditingId, requestPayload, 'PATCH')
+                                : createCustomFieldViaApi(currentTableIndex, requestPayload));
+                        });
                 })
                 .then(function(created) {
                     if (!created) return loadCustomFieldsForTable(currentTableIndex);
@@ -1261,6 +1477,8 @@
                 }
                 if (customFieldSaveBtn) customFieldSaveBtn.textContent = 'Сохранить кастомное поле';
                 if (customFieldCodeInput) customFieldCodeInput.disabled = false;
+                if (customFieldPayloadTextarea) customFieldPayloadTextarea.value = '';
+                renderCustomFieldEditorReadableHint();
                 return;
             }
             customFieldEditingId = item.id || null;
@@ -1277,6 +1495,7 @@
                 customFieldEditModeHint.classList.remove('d-none');
             }
             if (customFieldSaveBtn) customFieldSaveBtn.textContent = 'Сохранить изменения';
+            renderCustomFieldEditorReadableHint();
         }
         function renderCustomFieldRecalcList() {
             if (!customFieldRecalcList) return;
@@ -3344,7 +3563,10 @@
                             if (!nestedByGroup[groupKey]) nestedByGroup[groupKey] = {
                                 label: f.human_title || f.column_name || nestedTypeLabel(t),
                                 fields: [],
-                                nestedEntityKey: customFieldPickerMetaNestedEntityKey(f, null)
+                                nestedEntityKey: customFieldPickerMetaNestedEntityKey(f, null),
+                                relationFieldCode: String(f.field_code || f.b24_field || f.column_name || '').trim(),
+                                relationB24Field: String(f.b24_field || '').trim(),
+                                relationColumnName: String(f.column_name || '').trim()
                             };
                             f.nested_fields.forEach(function(n) {
                                 nestedByGroup[groupKey].fields.push({
@@ -3418,7 +3640,7 @@
                             var id = 'cfp_' + key.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + typ.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + idx;
                             var nestedFieldCode = customFieldPickerMetaFieldCode(n);
                             var nestedEntityKey = customFieldPickerMetaNestedEntityKey(n, group);
-                            row.innerHTML = '<input class="form-check-input custom-field-picker-cb" type="checkbox" id="' + id + '" data-title="' + title.replace(/"/g, '&quot;') + '" data-token-prefix="' + String(group.label || typ).replace(/"/g, '&quot;') + '" data-parent-entity-key="' + String(key || '').replace(/"/g, '&quot;') + '" data-nested-entity-key="' + String(nestedEntityKey || '').replace(/"/g, '&quot;') + '" data-field-code="' + String(nestedFieldCode || '').replace(/"/g, '&quot;') + '"><label class="form-check-label" for="' + id + '">' + title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</label>';
+                            row.innerHTML = '<input class="form-check-input custom-field-picker-cb" type="checkbox" id="' + id + '" data-title="' + title.replace(/"/g, '&quot;') + '" data-token-prefix="' + String(group.label || typ).replace(/"/g, '&quot;') + '" data-parent-entity-key="' + String(key || '').replace(/"/g, '&quot;') + '" data-nested-entity-key="' + String(nestedEntityKey || '').replace(/"/g, '&quot;') + '" data-field-code="' + String(nestedFieldCode || '').replace(/"/g, '&quot;') + '" data-relation-field-code="' + String(group.relationFieldCode || '').replace(/"/g, '&quot;') + '" data-relation-b24-field="' + String(group.relationB24Field || '').replace(/"/g, '&quot;') + '" data-relation-column-name="' + String(group.relationColumnName || '').replace(/"/g, '&quot;') + '"><label class="form-check-label" for="' + id + '">' + title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</label>';
                             customFieldPickerList.appendChild(row);
                         });
                     });
@@ -3526,6 +3748,23 @@
                             if (colKey) {
                                 ensureCustomFieldTokenMap(st)[tokenBody] = colKey;
                             }
+                            if (technicalParentEntityKey && technicalNestedEntityKey && nestedType) {
+                                var relFieldCode = String(cb.getAttribute('data-relation-field-code') || '').trim();
+                                var relB24Field = String(cb.getAttribute('data-relation-b24-field') || '').trim();
+                                var relColumnName = String(cb.getAttribute('data-relation-column-name') || '').trim();
+                                if (relFieldCode || relB24Field || relColumnName) {
+                                    ensureCustomFieldTokenRelationMap(st)[tokenBody] = {
+                                        parent_entity_key: technicalParentEntityKey,
+                                        nested_entity_key: technicalNestedEntityKey,
+                                        field_code: relFieldCode || relB24Field || relColumnName,
+                                        b24_field: relB24Field || relFieldCode || '',
+                                        column_name: relColumnName || '',
+                                        relation_field_code: relFieldCode || relB24Field || relColumnName,
+                                        relation_b24_field: relB24Field || relFieldCode || '',
+                                        relation_column_name: relColumnName || ''
+                                    };
+                                }
+                            }
                         }
                         return token;
                     })
@@ -3548,6 +3787,11 @@
 
         if (customFieldEditorHelpBtn && window.bootstrap && bootstrap.Tooltip) {
             bootstrap.Tooltip.getOrCreateInstance(customFieldEditorHelpBtn);
+        }
+        if (customFieldPayloadTextarea) {
+            customFieldPayloadTextarea.addEventListener('input', function() {
+                renderCustomFieldEditorReadableHint();
+            });
         }
 
         function resolveCustomEditorTokenValue(tokenBody, st, row) {
