@@ -1219,7 +1219,10 @@
                                 column_name: mapped.column_name || mapped.relation_column_name,
                                 relation_field_code: mapped.relation_field_code || mapped.field_code,
                                 relation_b24_field: mapped.relation_b24_field || mapped.b24_field,
-                                relation_column_name: mapped.relation_column_name || mapped.column_name
+                                relation_column_name: mapped.relation_column_name || mapped.column_name,
+                                link_field_code: mapped.link_field_code || mapped.relation_field_code || mapped.field_code,
+                                link_b24_field: mapped.link_b24_field || mapped.relation_b24_field || mapped.b24_field,
+                                link_column_name: mapped.link_column_name || mapped.relation_column_name || mapped.column_name
                             });
                         }
                         return _;
@@ -1257,7 +1260,10 @@
                                         column_name: relColumnName || '',
                                         relation_field_code: relFieldCode || relB24Field || relColumnName,
                                         relation_b24_field: relB24Field || relFieldCode || '',
-                                        relation_column_name: relColumnName || ''
+                                        relation_column_name: relColumnName || '',
+                                        link_field_code: relFieldCode || relB24Field || relColumnName,
+                                        link_b24_field: relB24Field || relFieldCode || '',
+                                        link_column_name: relColumnName || ''
                                     };
                                 });
                             });
@@ -3761,7 +3767,10 @@
                                         column_name: relColumnName || '',
                                         relation_field_code: relFieldCode || relB24Field || relColumnName,
                                         relation_b24_field: relB24Field || relFieldCode || '',
-                                        relation_column_name: relColumnName || ''
+                                        relation_column_name: relColumnName || '',
+                                        link_field_code: relFieldCode || relB24Field || relColumnName,
+                                        link_b24_field: relB24Field || relFieldCode || '',
+                                        link_column_name: relColumnName || ''
                                     };
                                 }
                             }
