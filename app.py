@@ -6253,16 +6253,48 @@ def _entity_table_preview_custom_field_editor(conn, row: Dict[str, Any]) -> Dict
     collect_refs(ast)
     select_cols = [c for c in cols_needed if c]
     cols_sql = ", ".join(f'"{c}"' for c in select_cols)
+
+    def _is_nonempty_preview_value(v: Any) -> bool:
+        return not (v is None or (isinstance(v, str) and v == ""))
+
+    def _score_row_for_preview(db_row: Dict[str, Any]) -> Tuple[int, int, int]:
+        # Prefer rows where nested/foreign references are resolvable and non-empty.
+        foreign_nonempty = 0
+        local_nonempty = 0
+        tmp_foreign_cache: Dict[Tuple[str, int], Dict[str, Any]] = {}
+        for ref in list(ref_cache.values()):
+            if not isinstance(ref, dict):
+                continue
+            token_full = str(ref.get("token_full") or "{...}")
+            try:
+                raw_v = _entity_table_editor_resolve_rowwise_ref_raw_value(
+                    conn, ref, target_storage_entity_key and storage_table or storage_table, db_row, tmp_foreign_cache, token_full
+                )
+            except Exception:
+                raw_v = None
+            if str(ref.get("table") or "") == str(storage_table):
+                if _is_nonempty_preview_value(raw_v):
+                    local_nonempty += 1
+            else:
+                if _is_nonempty_preview_value(raw_v):
+                    foreign_nonempty += 1
+        # Result length is a weak tie-breaker.
+        return (foreign_nonempty, local_nonempty, int(db_row.get("id") or 0))
+
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-        cur.execute(f'SELECT {cols_sql} FROM "{storage_table}" WHERE id IS NOT NULL ORDER BY id DESC LIMIT 1')
-        sample_row = cur.fetchone() or {}
-    if not sample_row:
+        cur.execute(f'SELECT {cols_sql} FROM "{storage_table}" WHERE id IS NOT NULL ORDER BY id DESC LIMIT 20')
+        sample_rows = cur.fetchall() or []
+    if not sample_rows:
         return {
             "mode": "editor_eval",
             "mode_detail": "row_wise",
             "sample_value": None,
             "sample_row_id": None,
         }
+
+    # Choose the best preview row, not only the latest one: mixed/nested formulas often need a row
+    # that actually has linked foreign data.
+    sample_row = max(sample_rows, key=_score_row_for_preview)
     sample_val = _entity_table_editor_eval_ast_rowwise(
         conn, ast, row, target_storage_entity_key, storage_table, sample_row, ref_cache, display_cache, foreign_row_cache
     )
