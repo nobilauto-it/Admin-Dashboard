@@ -1277,6 +1277,54 @@
                         return _;
                     });
                 }
+                // 3) Hints derived directly from technical tokens via metadata (works after reload/manual edit too).
+                if (normalizedEditor && normalizedEditor.indexOf('{') >= 0) {
+                    normalizedEditor.replace(/\{([^}]+)\}/g, function(_, tokenBody) {
+                        var parts = splitEditorTokenModeSuffix(tokenBody);
+                        var core = String(parts.core || '').trim();
+                        if (!core || core.indexOf('|') < 0) return _;
+                        var seg = core.split('|');
+                        if (seg.length !== 3) return _;
+                        var parentEntityKey = String(seg[0] || '').trim();
+                        var nestedEntityKeyNeed = normalizeTechEntityKeyComparable(seg[1]);
+                        var fieldCodeNeed = String(seg[2] || '').trim().toLowerCase();
+                        if (!parentEntityKey || !nestedEntityKeyNeed || !fieldCodeNeed) return _;
+                        items.forEach(function(item) {
+                            var ent = item.ent || {};
+                            if (String(entityKey(ent) || '').trim() !== parentEntityKey) return;
+                            (item.res.fields || []).forEach(function(f) {
+                                if (!f || !Array.isArray(f.nested_fields) || !f.nested_fields.length) return;
+                                var nestedRaw = String(f.nested_entity_key || '').trim();
+                                var nestedNorm = normalizeTechEntityKeyComparable(f.nested_entity_key);
+                                if (!nestedNorm || nestedNorm !== nestedEntityKeyNeed) return;
+                                var relFieldCode = String(f.field_code || f.b24_field || f.column_name || '').trim();
+                                var relB24Field = String(f.b24_field || '').trim();
+                                var relColumnName = String(f.column_name || '').trim();
+                                if (!(relFieldCode || relB24Field || relColumnName)) return;
+                                var hasField = (f.nested_fields || []).some(function(n) {
+                                    var fc = String((n && (n.field_code || n.b24_field || n.column_name) || '')).trim().toLowerCase();
+                                    return !!fc && fc === fieldCodeNeed;
+                                });
+                                if (!hasField) return;
+                                pushHint({
+                                    nested_entity_key: nestedRaw || nestedNorm,
+                                    entity_key: nestedNorm,
+                                    parent_entity_key: parentEntityKey,
+                                    field_code: relFieldCode || relB24Field || relColumnName,
+                                    b24_field: relB24Field || relFieldCode || '',
+                                    column_name: relColumnName || '',
+                                    relation_field_code: relFieldCode || relB24Field || relColumnName,
+                                    relation_b24_field: relB24Field || relFieldCode || '',
+                                    relation_column_name: relColumnName || '',
+                                    link_field_code: relFieldCode || relB24Field || relColumnName,
+                                    link_b24_field: relB24Field || relFieldCode || '',
+                                    link_column_name: relColumnName || ''
+                                });
+                            });
+                        });
+                        return _;
+                    });
+                }
                 return hints;
             });
         }
