@@ -17,6 +17,7 @@ import requests
 import psycopg2
 from psycopg2.extras import execute_values, Json
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import JSONResponse
 
 # -----------------------------
 # CONFIG
@@ -4128,23 +4129,27 @@ def _entity_table_editor_resolve_entity(row: Dict[str, Any], entity_name: str) -
                     "storage_entity_key": resolved["storage_entity_key"],
                     "storage_table": resolved["storage_table"],
                 }
-    raise HTTPException(
-        status_code=400,
-        detail={
-            "error": "Unknown entity in editor reference",
-            "detail": f"Unknown entity in editor reference: {entity_name}",
-            "entity_token": entity_name,
-            "known_source_entities": [
-                {
-                    "title": it.get("title"),
-                    "entity_key": it.get("entity_key"),
-                    "type": it.get("type"),
-                }
-                for it in _entity_table_editor_collect_entities(row)
-                if isinstance(it, dict)
-            ],
-        },
-    )
+    raise HTTPException(status_code=400, detail=f"Unknown entity in editor reference: {entity_name}")
+
+
+def _entity_table_http_error_text(e: HTTPException) -> str:
+    d = getattr(e, "detail", None)
+    if isinstance(d, str):
+        return d
+    if isinstance(d, dict):
+        for k in ("message", "detail", "error"):
+            v = d.get(k)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        try:
+            return json.dumps(d, ensure_ascii=False)
+        except Exception:
+            return str(d)
+    return str(d) if d is not None else "Unknown error"
+
+
+def _entity_table_error_response(status_code: int, error: str, detail: str):
+    return JSONResponse(status_code=status_code, content={"ok": False, "error": error, "detail": detail})
 
 
 def _entity_table_editor_field_candidates(field_name: str, row_meta: Dict[str, Any]) -> List[str]:
@@ -5582,8 +5587,7 @@ async def preview_entity_table_custom_field(request: Request):
             conn.rollback()
         except Exception:
             pass
-        # token-specific messages already embedded in detail where possible
-        raise e
+        return _entity_table_error_response(e.status_code if getattr(e, "status_code", None) else 400, "Editor preview failed", _entity_table_http_error_text(e))
     except Exception as e:
         try:
             conn.rollback()
@@ -5721,12 +5725,15 @@ async def recalculate_entity_table_custom_field(custom_field_id: str, request: R
             },
             "result": result,
         }
-    except HTTPException:
+    except HTTPException as e:
         try:
             conn.rollback()
         except Exception:
             pass
-        raise
+        # Keep contract human-readable for frontend modal/alerts.
+        err_text = _entity_table_http_error_text(e)
+        err_name = "Editor eval failed" if (getattr(e, "status_code", 400) == 400) else "Custom field recalculate failed"
+        return _entity_table_error_response(e.status_code if getattr(e, "status_code", None) else 400, err_name, err_text)
     except Exception as e:
         try:
             conn.rollback()
