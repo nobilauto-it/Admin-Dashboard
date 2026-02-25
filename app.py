@@ -3970,7 +3970,7 @@ def _entity_table_editor_entity_tech_keys(item: Dict[str, Any]) -> List[str]:
     keys: List[str] = []
     if not isinstance(item, dict):
         return keys
-    entity_key = str(item.get("entity_key") or "").strip()
+    entity_key = str(item.get("entity_key") or item.get("nested_entity_key") or "").strip()
     entity_type = str(item.get("type") or "").strip().lower()
     if entity_key:
         keys.append(_entity_table_editor_lookup_key(entity_key))
@@ -4000,6 +4000,50 @@ def _entity_table_editor_entity_tech_keys(item: Dict[str, Any]) -> List[str]:
         if k and k not in seen:
             seen.add(k)
             out.append(k)
+    return out
+
+
+def _entity_table_editor_normalize_tech_entity_key_token(entity_key_token: Any) -> str:
+    s = str(entity_key_token or "").strip()
+    if not s:
+        return ""
+    m_sp = re.match(r"^(?:smart_process_(\d+)|sp:(\d+))$", s, flags=re.IGNORECASE)
+    if m_sp:
+        etid = m_sp.group(1) or m_sp.group(2)
+        return f"sp:{int(etid)}"
+    m_deal = re.match(r"^deal(?:_\d+)?$", s, flags=re.IGNORECASE)
+    if m_deal:
+        # Preserve deal_25 form for row-context matching; normalize case only.
+        return s.lower()
+    if s.lower() in ("deal", "contact", "lead", "company"):
+        return s.lower()
+    return s
+
+
+def _entity_table_editor_infer_entity_type_from_key(entity_key: str) -> str:
+    s = str(entity_key or "").strip().lower()
+    if not s:
+        return ""
+    if s in ("deal", "contact", "lead", "company"):
+        return s
+    if s.startswith("deal_"):
+        return "deal"
+    if s.startswith("sp:") or s.startswith("smart_process_"):
+        return "smart_process"
+    return ""
+
+
+def _entity_table_editor_normalize_entity_item(item: Any) -> Optional[Dict[str, Any]]:
+    if not isinstance(item, dict):
+        return None
+    out = dict(item)
+    raw_entity_key = str(out.get("entity_key") or out.get("nested_entity_key") or "").strip()
+    if raw_entity_key:
+        out["entity_key"] = _entity_table_editor_normalize_tech_entity_key_token(raw_entity_key) or raw_entity_key
+    if not str(out.get("type") or "").strip():
+        inferred_type = _entity_table_editor_infer_entity_type_from_key(str(out.get("entity_key") or ""))
+        if inferred_type:
+            out["type"] = inferred_type
     return out
 
 
@@ -4175,13 +4219,14 @@ def _entity_table_editor_collect_entities(row: Dict[str, Any]) -> List[Dict[str,
     out: List[Dict[str, Any]] = []
     seen: set = set()
     for src in [row.get("target_entity")] + list(row.get("source_entities") or []):
-        if not isinstance(src, dict):
+        norm = _entity_table_editor_normalize_entity_item(src)
+        if not isinstance(norm, dict):
             continue
-        key = json.dumps(src, ensure_ascii=False, sort_keys=True)
+        key = json.dumps(norm, ensure_ascii=False, sort_keys=True)
         if key in seen:
             continue
         seen.add(key)
-        out.append(dict(src))
+        out.append(norm)
     return out
 
 
@@ -4189,13 +4234,14 @@ def _entity_table_editor_collect_source_entities(row: Dict[str, Any]) -> List[Di
     out: List[Dict[str, Any]] = []
     seen: set = set()
     for src in list(row.get("source_entities") or []):
-        if not isinstance(src, dict):
+        norm = _entity_table_editor_normalize_entity_item(src)
+        if not isinstance(norm, dict):
             continue
-        key = json.dumps(src, ensure_ascii=False, sort_keys=True)
+        key = json.dumps(norm, ensure_ascii=False, sort_keys=True)
         if key in seen:
             continue
         seen.add(key)
-        out.append(dict(src))
+        out.append(norm)
     return out
 
 
@@ -4216,12 +4262,26 @@ def _entity_table_editor_resolve_entity_from_list(entities: List[Dict[str, Any]]
 
 
 def _entity_table_editor_resolve_entity_by_tech_key_from_list(entities: List[Dict[str, Any]], entity_key_token: str) -> Optional[Dict[str, Any]]:
-    lookup = _entity_table_editor_lookup_key(entity_key_token)
+    token_raw = str(entity_key_token or "").strip()
+    token_norm = _entity_table_editor_normalize_tech_entity_key_token(token_raw) or token_raw
+    lookup_candidates = [
+        _entity_table_editor_lookup_key(token_raw),
+        _entity_table_editor_lookup_key(token_norm),
+    ]
+    m_sp = re.match(r"^sp:(\d+)$", str(token_norm), flags=re.IGNORECASE)
+    if m_sp:
+        etid = m_sp.group(1)
+        lookup_candidates.extend([
+            _entity_table_editor_lookup_key(f"smart_process_{etid}"),
+            _entity_table_editor_lookup_key(f"sp:{etid}"),
+            _entity_table_editor_lookup_key(etid),
+        ])
+    lookup_set = {x for x in lookup_candidates if x}
     for item in entities:
         if not isinstance(item, dict):
             continue
         for c in _entity_table_editor_entity_tech_keys(item):
-            if c == lookup:
+            if c in lookup_set:
                 resolved = _entity_table_resolve_storage_target(item)
                 return {
                     "input": item,
@@ -4250,18 +4310,31 @@ def _entity_table_editor_resolve_nested_entity(row: Dict[str, Any], entity_name:
 
 
 def _entity_table_editor_resolve_entity_tech(row: Dict[str, Any], entity_key_token: str, nested: bool = False) -> Dict[str, Any]:
+    token_raw = str(entity_key_token or "").strip()
+    token_norm = _entity_table_editor_normalize_tech_entity_key_token(token_raw) or token_raw
     if nested:
         found = _entity_table_editor_resolve_entity_by_tech_key_from_list(
-            _entity_table_editor_collect_source_entities(row), entity_key_token
+            _entity_table_editor_collect_source_entities(row), token_norm
         )
         if found:
             return found
     found = _entity_table_editor_resolve_entity_by_tech_key_from_list(
-        _entity_table_editor_collect_entities(row), entity_key_token
+        _entity_table_editor_collect_entities(row), token_norm
     )
     if found:
         return found
-    raise HTTPException(status_code=400, detail=f"Unknown entity technical key in editor reference: {entity_key_token}")
+    if re.match(r"^(?:sp:\d+|smart_process_\d+)$", token_raw, flags=re.IGNORECASE):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Unknown entity technical key in editor reference: {token_raw} "
+                f"(normalized as {token_norm}). Supported smart-process formats: sp:<id>, smart_process_<id>"
+            ),
+        )
+    raise HTTPException(
+        status_code=400,
+        detail=f"Unknown entity technical key in editor reference: {token_raw}",
+    )
 
 
 def _entity_table_http_error_text(e: HTTPException) -> str:
