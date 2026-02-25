@@ -4585,10 +4585,14 @@ def _entity_table_editor_build_rowwise_join_path(
                 detail=f"Row-wise join path not found for {token_full}: no link field from target entity to source entity",
             )
         if isinstance(join, dict) and join.get("ambiguous"):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Ambiguous row-wise join path for {token_full}: multiple link fields match source entity",
-            )
+            resolved_join = _entity_table_editor_select_join_candidate_by_relation_hint(join, dst)
+            if resolved_join:
+                join = resolved_join
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Ambiguous row-wise join path for {token_full}: multiple link fields match source entity. Add relation metadata (b24_field/field_code/column_name) in nested source entity.",
+                )
         join_col = str(join.get("join_column") or "").strip()
         if not join_col:
             raise HTTPException(
@@ -4607,6 +4611,60 @@ def _entity_table_editor_build_rowwise_join_path(
             }
         )
     return steps
+
+
+def _entity_table_editor_relation_hint_candidates(entity_item: Any) -> List[str]:
+    if not isinstance(entity_item, dict):
+        return []
+    raw_vals: List[Any] = []
+    for k in (
+        "relation_field_code",
+        "relation_b24_field",
+        "relation_column_name",
+        "link_field_code",
+        "link_b24_field",
+        "link_column_name",
+        "field_code",
+        "b24_field",
+        "column_name",
+    ):
+        if k in entity_item:
+            raw_vals.append(entity_item.get(k))
+    out: List[str] = []
+    seen: set = set()
+    for v in raw_vals:
+        lk = _entity_table_editor_lookup_key(v)
+        if lk and lk not in seen:
+            seen.add(lk)
+            out.append(lk)
+    return out
+
+
+def _entity_table_editor_select_join_candidate_by_relation_hint(ambiguous_join: Dict[str, Any], dst_path_entity: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    if not isinstance(ambiguous_join, dict) or not ambiguous_join.get("ambiguous"):
+        return None
+    candidates = ambiguous_join.get("candidates")
+    if not isinstance(candidates, list) or not candidates:
+        return None
+    dst_input = dst_path_entity.get("input") if isinstance(dst_path_entity, dict) else None
+    hints = _entity_table_editor_relation_hint_candidates(dst_input)
+    if not hints:
+        return None
+
+    matched: List[Dict[str, Any]] = []
+    for cand in candidates:
+        if not isinstance(cand, dict):
+            continue
+        cand_keys = {
+            _entity_table_editor_lookup_key(cand.get("join_column")),
+            _entity_table_editor_lookup_key(cand.get("via_b24_field")),
+        }
+        cand_keys = {k for k in cand_keys if k}
+        if cand_keys.intersection(hints):
+            matched.append(cand)
+    if len(matched) == 1:
+        return matched[0]
+    return None
 
 
 def _entity_table_editor_resolve_column(conn, entity_key: str, table_name: str, field_name: str) -> Dict[str, Any]:
