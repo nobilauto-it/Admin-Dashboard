@@ -1002,6 +1002,13 @@
             if (!m) return { core: raw, suffix: '' };
             return { core: m[1] || '', suffix: m[2] || '' };
         }
+        function normalizeTechnicalNestedEntityKeyForEditor(rawKey) {
+            var k = String(rawKey || '').trim();
+            if (!k) return '';
+            var m = k.match(/^sp:(\d+)$/i);
+            if (m) return 'smart_process_' + m[1];
+            return k;
+        }
         function buildLegacyNestedTokenReplacementMap(tableIndex) {
             var st = tableStates[tableIndex];
             if (!st || !Array.isArray(st.selectedEntities) || !st.selectedEntities.length) return Promise.resolve({});
@@ -1021,7 +1028,7 @@
                     ].filter(Boolean);
                     (item.res.fields || []).forEach(function(f) {
                         if (!f || !Array.isArray(f.nested_fields) || !f.nested_fields.length) return;
-                        var nestedEntityKey = String(f.nested_entity_key || '').trim();
+                        var nestedEntityKey = normalizeTechnicalNestedEntityKeyForEditor(f.nested_entity_key);
                         var groupLabel = String((f.human_title || f.column_name || '')).trim();
                         if (!nestedEntityKey || !groupLabel) return;
                         (f.nested_fields || []).forEach(function(n) {
@@ -1045,7 +1052,15 @@
                 return editor.replace(/\{([^}]+)\}/g, function(full, tokenBody) {
                     var parts = splitEditorTokenModeSuffix(tokenBody);
                     var core = String(parts.core || '').trim();
-                    if (!core || core.indexOf('|') >= 0) return full;
+                    if (!core) return full;
+                    if (core.indexOf('|') >= 0) {
+                        var seg = core.split('|');
+                        if (seg.length === 3) {
+                            seg[1] = normalizeTechnicalNestedEntityKeyForEditor(seg[1]);
+                            return '{' + seg.join('|') + (parts.suffix || '') + '}';
+                        }
+                        return full;
+                    }
                     var next = replMap[core];
                     if (!next) return full;
                     return '{' + next + (parts.suffix || '') + '}';
@@ -3446,7 +3461,7 @@
             }
             for (var i = 0; i < candidates.length; i++) {
                 var v = String(candidates[i] || '').trim();
-                if (v) return v;
+                if (v) return normalizeTechnicalNestedEntityKeyForEditor(v);
             }
             return '';
         }
@@ -3472,7 +3487,7 @@
                 var tokens = selected
                     .map(function(cb) {
                         var technicalParentEntityKey = (cb.getAttribute('data-parent-entity-key') || '').trim();
-                        var technicalNestedEntityKey = (cb.getAttribute('data-nested-entity-key') || '').trim();
+                        var technicalNestedEntityKey = normalizeTechnicalNestedEntityKeyForEditor(cb.getAttribute('data-nested-entity-key'));
                         var technicalFieldCode = (cb.getAttribute('data-field-code') || '').trim();
                         var title = (cb.getAttribute('data-title') || '').trim();
                         var prefixKey = (cb.getAttribute('data-token-prefix') || '').trim();
