@@ -4816,6 +4816,50 @@ def _entity_table_validate_custom_field_payload(payload: Any) -> Dict[str, Any]:
     }
 
 
+def _entity_table_validate_custom_field_update_payload(payload: Any) -> Dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="JSON body must be an object")
+
+    custom_field = payload.get("custom_field")
+    if not isinstance(custom_field, dict):
+        raise HTTPException(status_code=400, detail="custom_field must be an object")
+
+    updates: Dict[str, Any] = {}
+
+    if "name" in custom_field:
+        name = str(custom_field.get("name") or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="custom_field.name must not be empty")
+        updates["name"] = name
+
+    if "description" in custom_field:
+        desc = custom_field.get("description")
+        updates["description"] = "" if desc is None else str(desc)
+
+    if "type" in custom_field:
+        field_type = str(custom_field.get("type") or "").strip().lower()
+        if field_type not in ("single", "card"):
+            raise HTTPException(status_code=400, detail="custom_field.type must be 'single' or 'card'")
+        updates["field_type"] = field_type
+
+    if "editor" in custom_field:
+        editor = custom_field.get("editor")
+        updates["editor"] = "" if editor is None else str(editor)
+
+    if "code" in custom_field:
+        code = str(custom_field.get("code") or "").strip()
+        if not code:
+            raise HTTPException(status_code=400, detail="custom_field.code must not be empty")
+        if not _CUSTOM_FIELD_CODE_RE.fullmatch(code):
+            raise HTTPException(status_code=400, detail="custom_field.code must match ^custom_[a-z0-9_]+$")
+        updates["code_requested"] = code
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No updatable fields provided in custom_field")
+
+    return updates
+
+
 def _entity_table_custom_field_row_to_api(row: Dict[str, Any]) -> Dict[str, Any]:
     out = {
         "id": _entity_table_custom_field_db_id_to_api(row.get("id")),
@@ -5156,6 +5200,86 @@ def list_entity_table_custom_fields(
     except HTTPException:
         raise
     except Exception as e:
+        raise HTTPException(status_code=500, detail=repr(e))
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+@app.put("/api/entity-table/custom-fields/{custom_field_id}")
+@app.patch("/api/entity-table/custom-fields/{custom_field_id}")
+async def update_entity_table_custom_field(custom_field_id: str, request: Request):
+    if _entity_table_is_guest(request):
+        raise HTTPException(status_code=403, detail="Guest is not allowed to update custom fields")
+
+    db_id = _entity_table_custom_field_parse_id(custom_field_id)
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    updates = _entity_table_validate_custom_field_update_payload(payload)
+    actor = _entity_table_actor_from_request(request)
+
+    conn = pg_conn()
+    try:
+        conn.autocommit = False
+        _ensure_entity_table_custom_fields_schema(conn)
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, name, code, description, field_type, editor, target_entity,
+                       storage_table, storage_column, storage_pg_type
+                FROM entity_table_custom_fields
+                WHERE id=%s
+                LIMIT 1
+            """, (db_id,))
+            existing = cur.fetchone()
+            if not existing:
+                raise HTTPException(status_code=404, detail="custom field not found")
+
+            requested_code = updates.pop("code_requested", None)
+            if requested_code is not None and str(requested_code) != str(existing.get("code") or ""):
+                raise HTTPException(status_code=400, detail="custom_field.code change is not supported yet")
+
+            set_parts: List[str] = []
+            params: List[Any] = []
+            allowed_cols = ("name", "description", "field_type", "editor")
+            for col in allowed_cols:
+                if col in updates:
+                    set_parts.append(f"{col}=%s")
+                    params.append(updates[col])
+            if not set_parts:
+                raise HTTPException(status_code=400, detail="No updatable fields provided in custom_field")
+
+            set_parts.append("updated_at=now()")
+            set_parts.append("updated_by=%s")
+            params.append(actor)
+            params.append(db_id)
+
+            cur.execute(f"""
+                UPDATE entity_table_custom_fields
+                SET {", ".join(set_parts)}
+                WHERE id=%s
+                RETURNING id, name, code, description, field_type, editor, target_entity,
+                          storage_table, storage_column, storage_pg_type
+            """, tuple(params))
+            row = cur.fetchone()
+
+        conn.commit()
+        return {"ok": True, "custom_field": _entity_table_custom_field_row_to_api(row or existing)}
+    except HTTPException:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         raise HTTPException(status_code=500, detail=repr(e))
     finally:
         try:
