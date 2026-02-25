@@ -3608,6 +3608,38 @@ def _ensure_entity_table_config_schema(conn) -> None:
     conn.commit()
 
 
+def _ensure_entity_table_custom_fields_schema(conn) -> None:
+    """Safety net: create custom fields table for entity-table feature."""
+    with conn.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS entity_table_custom_fields (
+                id BIGSERIAL PRIMARY KEY,
+                page_slug TEXT NOT NULL,
+                table_index INT NOT NULL,
+                target_entity JSONB NOT NULL DEFAULT '{}'::jsonb,
+                source_entities JSONB NOT NULL DEFAULT '[]'::jsonb,
+                name TEXT NOT NULL,
+                code TEXT NOT NULL,
+                description TEXT,
+                field_type TEXT NOT NULL,
+                editor TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                created_by TEXT,
+                updated_by TEXT
+            );
+        """)
+        cur.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_entity_table_custom_fields_slug_table_code
+            ON entity_table_custom_fields(page_slug, table_index, code);
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_entity_table_custom_fields_slug_table
+            ON entity_table_custom_fields(page_slug, table_index, created_at DESC, id DESC);
+        """)
+    conn.commit()
+
+
 def _entity_table_default_table() -> Dict[str, Any]:
     return {
         "table_title": "",
@@ -3729,6 +3761,121 @@ def _entity_table_is_guest(request: Request) -> bool:
     role = (request.headers.get("x-user-role") or request.headers.get("x-role") or "").strip().lower()
     x_guest = (request.headers.get("x-guest") or "").strip().lower()
     return role == "guest" or x_guest in ("1", "true", "yes", "y", "on")
+
+
+_CUSTOM_FIELD_CODE_RE = re.compile(r"^custom_[a-z0-9_]+$")
+
+
+def _entity_table_custom_field_db_id_to_api(v: Any) -> str:
+    try:
+        return f"cf_{int(v)}"
+    except Exception:
+        return "cf_0"
+
+
+def _entity_table_custom_field_parse_id(raw_id: str) -> int:
+    s = str(raw_id or "").strip()
+    if not s:
+        raise HTTPException(status_code=400, detail="id is required")
+    if s.lower().startswith("cf_"):
+        s = s[3:]
+    try:
+        out = int(s)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid custom field id")
+    if out <= 0:
+        raise HTTPException(status_code=400, detail="invalid custom field id")
+    return out
+
+
+def _entity_table_validate_custom_field_payload(payload: Any) -> Dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="JSON body must be an object")
+
+    page_slug = str(payload.get("page_slug") or "").strip()
+    if not page_slug:
+        raise HTTPException(status_code=400, detail="page_slug is required")
+
+    if "table_index" not in payload:
+        raise HTTPException(status_code=400, detail="table_index is required")
+    try:
+        table_index = int(payload.get("table_index"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="table_index must be an integer")
+
+    target_entity = payload.get("target_entity")
+    if not isinstance(target_entity, dict):
+        raise HTTPException(status_code=400, detail="target_entity must be an object")
+    target_entity_clean = dict(target_entity)
+    target_entity_key = str(target_entity_clean.get("entity_key") or "").strip()
+    if not target_entity_key:
+        raise HTTPException(status_code=400, detail="target_entity.entity_key is required")
+    target_entity_clean["entity_key"] = target_entity_key
+
+    custom_field = payload.get("custom_field")
+    if not isinstance(custom_field, dict):
+        raise HTTPException(status_code=400, detail="custom_field must be an object")
+
+    name = str(custom_field.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="custom_field.name is required")
+
+    code = str(custom_field.get("code") or "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="custom_field.code is required")
+    if not _CUSTOM_FIELD_CODE_RE.fullmatch(code):
+        raise HTTPException(
+            status_code=400,
+            detail="custom_field.code must match ^custom_[a-z0-9_]+$",
+        )
+
+    field_type = str(custom_field.get("type") or "").strip().lower()
+    if field_type not in ("single", "card"):
+        raise HTTPException(status_code=400, detail="custom_field.type must be 'single' or 'card'")
+
+    description = custom_field.get("description")
+    if description is None:
+        description = ""
+    else:
+        description = str(description)
+
+    editor = custom_field.get("editor")
+    if editor is None:
+        editor = ""
+    else:
+        editor = str(editor)
+
+    source_entities = payload.get("source_entities")
+    if source_entities is None:
+        source_entities = []
+    if not isinstance(source_entities, list):
+        raise HTTPException(status_code=400, detail="source_entities must be an array")
+
+    return {
+        "page_slug": page_slug,
+        "table_index": table_index,
+        "target_entity": target_entity_clean,
+        "source_entities": source_entities,
+        "custom_field": {
+            "name": name,
+            "code": code,
+            "description": description,
+            "type": field_type,
+            "editor": editor,
+        },
+    }
+
+
+def _entity_table_custom_field_row_to_api(row: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": _entity_table_custom_field_db_id_to_api(row.get("id")),
+        "name": row.get("name") or "",
+        "code": row.get("code") or "",
+        "description": row.get("description") or "",
+        "type": row.get("field_type") or "",
+        "editor": row.get("editor") or "",
+        "target_entity": row.get("target_entity") if isinstance(row.get("target_entity"), dict) else {},
+    }
 
 
 @app.get("/api/entity-table/config")
@@ -3893,6 +4040,151 @@ async def save_entity_table_config(request: Request):
 
         conn.commit()
         return _entity_table_build_response(slug, cfg)
+    except HTTPException:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=repr(e))
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+@app.post("/api/entity-table/custom-fields")
+async def create_entity_table_custom_field(request: Request):
+    if _entity_table_is_guest(request):
+        raise HTTPException(status_code=403, detail="Guest is not allowed to create custom fields")
+
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    data = _entity_table_validate_custom_field_payload(payload)
+    actor = _entity_table_actor_from_request(request)
+
+    conn = pg_conn()
+    try:
+        conn.autocommit = False
+        _ensure_entity_table_custom_fields_schema(conn)
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                INSERT INTO entity_table_custom_fields(
+                    page_slug, table_index, target_entity, source_entities,
+                    name, code, description, field_type, editor,
+                    created_at, updated_at, created_by, updated_by
+                )
+                VALUES (%s, %s, %s::jsonb, %s::jsonb, %s, %s, %s, %s, %s, now(), now(), %s, %s)
+                RETURNING id, name, code, description, field_type, editor, target_entity
+            """, (
+                data["page_slug"],
+                data["table_index"],
+                json.dumps(data["target_entity"], ensure_ascii=False),
+                json.dumps(data["source_entities"], ensure_ascii=False),
+                data["custom_field"]["name"],
+                data["custom_field"]["code"],
+                data["custom_field"]["description"],
+                data["custom_field"]["type"],
+                data["custom_field"]["editor"],
+                actor,
+                actor,
+            ))
+            row = cur.fetchone() or {}
+        conn.commit()
+        return {"ok": True, "custom_field": _entity_table_custom_field_row_to_api(row)}
+    except psycopg2.errors.UniqueViolation:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=409,
+            detail="custom_field.code already exists for this page_slug and table_index",
+        )
+    except HTTPException:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=repr(e))
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+@app.get("/api/entity-table/custom-fields")
+def list_entity_table_custom_fields(
+    page_slug: str = Query(..., description="Unique page slug"),
+    table_index: int = Query(..., description="Table index inside page config"),
+):
+    slug = str(page_slug or "").strip()
+    if not slug:
+        raise HTTPException(status_code=400, detail="page_slug is required")
+
+    conn = pg_conn()
+    try:
+        _ensure_entity_table_custom_fields_schema(conn)
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, name, code, description, field_type, editor, target_entity
+                FROM entity_table_custom_fields
+                WHERE page_slug=%s AND table_index=%s
+                ORDER BY created_at ASC, id ASC
+            """, (slug, int(table_index)))
+            rows = cur.fetchall() or []
+        return {"ok": True, "items": [_entity_table_custom_field_row_to_api(r) for r in rows]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=repr(e))
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+@app.delete("/api/entity-table/custom-fields/{custom_field_id}")
+def delete_entity_table_custom_field(custom_field_id: str, request: Request):
+    if _entity_table_is_guest(request):
+        raise HTTPException(status_code=403, detail="Guest is not allowed to delete custom fields")
+
+    db_id = _entity_table_custom_field_parse_id(custom_field_id)
+    actor = _entity_table_actor_from_request(request)
+
+    conn = pg_conn()
+    try:
+        conn.autocommit = False
+        _ensure_entity_table_custom_fields_schema(conn)
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE entity_table_custom_fields
+                SET updated_at=now(), updated_by=%s
+                WHERE id=%s
+            """, (actor, db_id))
+            cur.execute("DELETE FROM entity_table_custom_fields WHERE id=%s", (db_id,))
+            deleted = cur.rowcount or 0
+        conn.commit()
+        if deleted <= 0:
+            raise HTTPException(status_code=404, detail="custom field not found")
+        return {"ok": True}
     except HTTPException:
         try:
             conn.rollback()
