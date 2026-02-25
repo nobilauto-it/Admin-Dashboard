@@ -3905,7 +3905,7 @@ def _entity_table_editor_lookup_key(v: Any) -> str:
     return str(v or "").strip().lower()
 
 
-def _entity_table_editor_split_ref_token(token: str) -> Tuple[str, str]:
+def _entity_table_editor_split_ref_token(token: str) -> Tuple[str, str, Optional[str]]:
     s = str(token or "").strip()
     if not s:
         raise HTTPException(status_code=400, detail="Empty field reference in editor")
@@ -3916,7 +3916,14 @@ def _entity_table_editor_split_ref_token(token: str) -> Tuple[str, str]:
     field_part = field_part.strip()
     if not entity_part or not field_part:
         raise HTTPException(status_code=400, detail=f"Invalid field reference '{s}', expected {{Entity.Field}}")
-    return entity_part, field_part
+    value_mode: Optional[str] = None
+    m = re.match(r"^(.*?):(raw|display)$", field_part, flags=re.IGNORECASE)
+    if m:
+        field_part = m.group(1).strip()
+        value_mode = m.group(2).strip().lower()
+        if not field_part:
+            raise HTTPException(status_code=400, detail=f"Invalid field reference '{s}'")
+    return entity_part, field_part, value_mode
 
 
 def _entity_table_editor_parse(expr_text: str) -> Any:
@@ -3988,8 +3995,8 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
             raise HTTPException(status_code=400, detail="Unclosed { in editor")
         token = s[start:i]
         i += 1  # skip }
-        entity_name, field_name = _entity_table_editor_split_ref_token(token)
-        return ("ref", entity_name, field_name)
+        entity_name, field_name, value_mode = _entity_table_editor_split_ref_token(token)
+        return ("ref", entity_name, field_name, value_mode)
 
     def parse_expr() -> Any:
         nonlocal i
@@ -4084,14 +4091,66 @@ def _entity_table_editor_field_candidates(field_name: str, row_meta: Dict[str, A
     return labels
 
 
-def _entity_table_editor_resolve_column(conn, entity_key: str, table_name: str, field_name: str) -> Tuple[str, Optional[str]]:
+def _entity_table_editor_infer_crm_target_from_settings(settings: Any) -> Optional[str]:
+    if isinstance(settings, str):
+        try:
+            settings = json.loads(settings)
+        except Exception:
+            settings = {}
+    if not isinstance(settings, dict):
+        return None
+    etid = settings.get("entityTypeId") or settings.get("entity_type_id")
+    if etid not in (None, ""):
+        try:
+            num = int(str(etid).strip())
+            if num == 2:
+                return "deal"
+            if num == 3:
+                return "contact"
+            if num == 4:
+                return "lead"
+            if num == 5:
+                return "company"
+            return f"sp:{num}"
+        except Exception:
+            pass
+    allowed: List[str] = []
+    for k, v in settings.items():
+        if str(v).strip().lower() not in ("y", "1", "true"):
+            continue
+        kk = str(k).strip().upper()
+        if kk == "DEAL":
+            allowed.append("deal")
+        elif kk == "CONTACT":
+            allowed.append("contact")
+        elif kk == "LEAD":
+            allowed.append("lead")
+        elif kk == "COMPANY":
+            allowed.append("company")
+        else:
+            m_dyn = re.match(r"DYNAMIC_(\d+)$", kk)
+            if m_dyn:
+                allowed.append(f"sp:{int(m_dyn.group(1))}")
+    allowed = list(dict.fromkeys(allowed))
+    if len(allowed) == 1:
+        return allowed[0]
+    return None
+
+
+def _entity_table_editor_resolve_column(conn, entity_key: str, table_name: str, field_name: str) -> Dict[str, Any]:
     field_lookup = _entity_table_editor_lookup_key(field_name)
     if _CUSTOM_FIELD_CODE_RE.fullmatch(str(field_name or "").strip()) and field_name in _table_columns_cached(conn, table_name):
-        return str(field_name).strip(), "text"
+        return {
+            "column": str(field_name).strip(),
+            "b24_type": "text",
+            "b24_field": str(field_name).strip(),
+            "b24_title": str(field_name).strip(),
+            "settings": None,
+        }
 
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("""
-            SELECT column_name, b24_field, b24_type, b24_title, b24_labels
+            SELECT column_name, b24_field, b24_type, b24_title, b24_labels, settings
             FROM b24_meta_fields
             WHERE entity_key=%s
         """, (entity_key,))
@@ -4103,12 +4162,24 @@ def _entity_table_editor_resolve_column(conn, entity_key: str, table_name: str, 
             continue
         for cand in _entity_table_editor_field_candidates(field_name, meta):
             if _entity_table_editor_lookup_key(cand) == field_lookup:
-                return col, (meta.get("b24_type") or None)
+                return {
+                    "column": col,
+                    "b24_type": meta.get("b24_type"),
+                    "b24_field": meta.get("b24_field"),
+                    "b24_title": meta.get("b24_title"),
+                    "settings": meta.get("settings"),
+                }
 
     # Fallback: direct physical column passthrough (useful for custom_* and raw technical names)
     for col in _table_columns_cached(conn, table_name):
         if _entity_table_editor_lookup_key(col) == field_lookup:
-            return col, None
+            return {
+                "column": col,
+                "b24_type": None,
+                "b24_field": col,
+                "b24_title": col,
+                "settings": None,
+            }
 
     raise HTTPException(status_code=400, detail=f"Unknown field '{field_name}' for entity '{entity_key}'")
 
@@ -4224,8 +4295,17 @@ def _entity_table_editor_eval_ast(conn, ast: Any, row: Dict[str, Any]) -> Any:
         entity_name = ast[1]
         field_name = ast[2]
         ent = _entity_table_editor_resolve_entity(row, entity_name)
-        col, b24_type = _entity_table_editor_resolve_column(conn, ent["storage_entity_key"], ent["storage_table"], field_name)
-        return ("field_ref", {"entity_key": ent["storage_entity_key"], "table": ent["storage_table"], "column": col, "b24_type": b24_type})
+        col_meta = _entity_table_editor_resolve_column(conn, ent["storage_entity_key"], ent["storage_table"], field_name)
+        return (
+            "field_ref",
+            {
+                "entity_key": ent["storage_entity_key"],
+                "table": ent["storage_table"],
+                "column": col_meta.get("column"),
+                "b24_type": col_meta.get("b24_type"),
+                "b24_field": col_meta.get("b24_field"),
+            },
+        )
     if kind != "call":
         raise HTTPException(status_code=400, detail=f"Unsupported editor node: {kind}")
 
@@ -4285,14 +4365,178 @@ def _entity_table_editor_ast_has_aggregate(ast: Any) -> bool:
     return False
 
 
+def _entity_table_editor_ref_display_kind_uses_display(ref: Dict[str, Any]) -> bool:
+    return bool(ref.get("display_kind"))
+
+
+def _entity_table_editor_load_user_names_by_ids(conn, ids: List[str]) -> Dict[str, str]:
+    ids_int: List[int] = []
+    for x in ids:
+        try:
+            v = int(str(x).strip())
+            if v > 0:
+                ids_int.append(v)
+        except Exception:
+            continue
+    ids_int = list(dict.fromkeys(ids_int))
+    if not ids_int:
+        return {}
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, name FROM b24_users WHERE id = ANY(%s)", (ids_int,))
+        rows = cur.fetchall() or []
+    return {str(r[0]): str(r[1]) for r in rows if r and len(r) >= 2 and r[1] is not None}
+
+
+def _entity_table_editor_load_stage_names(conn, stage_ids: List[str]) -> Dict[str, str]:
+    keys = [str(x).strip() for x in stage_ids if str(x).strip()]
+    keys = list(dict.fromkeys(keys))
+    if not keys:
+        return {}
+    with conn.cursor() as cur:
+        cur.execute("SELECT stage_id, name FROM b24_deal_stages WHERE stage_id = ANY(%s)", (keys,))
+        rows = cur.fetchall() or []
+    return {str(r[0]): str(r[1]) for r in rows if r and len(r) >= 2 and r[1] is not None}
+
+
+def _entity_table_editor_load_enum_titles(conn, entity_key: str, b24_field: str, values: List[str]) -> Dict[str, str]:
+    vals = [str(x).strip() for x in values if str(x).strip()]
+    vals = list(dict.fromkeys(vals))
+    if not vals or not b24_field:
+        return {}
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT value_id, value_title
+            FROM b24_field_enum
+            WHERE entity_key=%s AND b24_field=%s AND value_id = ANY(%s)
+        """, (entity_key, b24_field, vals))
+        rows = cur.fetchall() or []
+    return {str(r[0]): str(r[1]) for r in rows if r and len(r) >= 2 and r[1] is not None}
+
+
+def _entity_table_editor_load_entity_titles(conn, target_entity_key: str, values: List[str]) -> Dict[str, str]:
+    ids: List[int] = []
+    for x in values:
+        try:
+            v = int(str(x).strip())
+            if v > 0:
+                ids.append(v)
+        except Exception:
+            continue
+    ids = list(dict.fromkeys(ids))
+    if not ids:
+        return {}
+    table = table_name_for_entity(target_entity_key)
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute(f'SELECT id, title, name, raw FROM "{table}" WHERE id = ANY(%s)', (ids,))
+        rows = cur.fetchall() or []
+    out: Dict[str, str] = {}
+    for r in rows:
+        rid = r.get("id")
+        raw = r.get("raw") if isinstance(r.get("raw"), dict) else {}
+        title = r.get("title") or r.get("name") or raw.get("TITLE") or raw.get("NAME") or raw.get("title") or raw.get("name")
+        if rid is not None and title is not None:
+            out[str(rid)] = str(title)
+    return out
+
+
+def _entity_table_editor_build_display_map(conn, ref: Dict[str, Any], raw_values: List[Any]) -> Dict[str, str]:
+    vals = [str(v).strip() for v in raw_values if v is not None and str(v).strip() != ""]
+    vals = list(dict.fromkeys(vals))
+    if not vals:
+        return {}
+    kind = str(ref.get("display_kind") or "").strip().lower()
+    if kind == "user":
+        return _entity_table_editor_load_user_names_by_ids(conn, vals)
+    if kind == "stage":
+        return _entity_table_editor_load_stage_names(conn, vals)
+    if kind == "enum":
+        return _entity_table_editor_load_enum_titles(conn, str(ref.get("entity_key") or ""), str(ref.get("b24_field") or ""), vals)
+    if kind == "crm_link":
+        target_entity_key = str(ref.get("display_target_entity_key") or "").strip()
+        if target_entity_key:
+            return _entity_table_editor_load_entity_titles(conn, target_entity_key, vals)
+    return {}
+
+
+def _entity_table_editor_ref_value_mode(ref_mode: Optional[str], ref: Dict[str, Any]) -> str:
+    if ref_mode in ("raw", "display"):
+        return ref_mode
+    return "display" if _entity_table_editor_ref_display_kind_uses_display(ref) else "raw"
+
+
+def _entity_table_editor_row_value_from_ref(
+    conn,
+    ref: Dict[str, Any],
+    raw_value: Any,
+    ref_mode: Optional[str],
+    display_cache: Dict[Tuple[str, str, str], Dict[str, str]],
+) -> Any:
+    mode = _entity_table_editor_ref_value_mode(ref_mode, ref)
+    if mode == "raw":
+        return raw_value
+    kind = str(ref.get("display_kind") or "").strip().lower()
+    if not kind:
+        return raw_value
+    cache_key = (
+        str(ref.get("entity_key") or ""),
+        str(ref.get("column") or ""),
+        mode,
+    )
+    dmap = display_cache.get(cache_key)
+    if dmap is None:
+        with conn.cursor() as cur:
+            cur.execute(f'SELECT "{ref["column"]}" FROM "{ref["table"]}" WHERE id IS NOT NULL')
+            values = [r[0] for r in (cur.fetchall() or [])]
+        dmap = _entity_table_editor_build_display_map(conn, ref, values)
+        display_cache[cache_key] = dmap
+    key = "" if raw_value is None else str(raw_value).strip()
+    if not key:
+        return raw_value
+    return dmap.get(key, raw_value)
+
+
 def _entity_table_editor_prepare_ref(conn, cf_row: Dict[str, Any], entity_name: str, field_name: str) -> Dict[str, Any]:
     ent = _entity_table_editor_resolve_entity(cf_row, entity_name)
-    col, b24_type = _entity_table_editor_resolve_column(conn, ent["storage_entity_key"], ent["storage_table"], field_name)
+    col_meta = _entity_table_editor_resolve_column(conn, ent["storage_entity_key"], ent["storage_table"], field_name)
+    col = str(col_meta.get("column") or "").strip()
+    b24_type = col_meta.get("b24_type")
+    b24_field = str(col_meta.get("b24_field") or col or "").strip()
+    settings = col_meta.get("settings")
+    col_low = col.lower()
+    b24_field_low = b24_field.lower()
+    b24_type_low = str(b24_type or "").strip().lower()
+
+    display_kind: Optional[str] = None
+    display_target_entity_key: Optional[str] = None
+    if col_low in ("assigned_by_id", "created_by_id", "modified_by_id", "moved_by_id", "last_activity_by", "last_activity_by_id") or b24_field_low in (
+        "assigned_by_id", "created_by_id", "modified_by_id", "moved_by_id", "last_activity_by", "last_activity_by_id"
+    ):
+        display_kind = "user"
+    elif col_low == "stage_id" or b24_field_low == "stage_id":
+        display_kind = "stage"
+    elif b24_type_low in ("enumeration", "enum", "list", "status"):
+        display_kind = "enum"
+    elif b24_type_low in ("user", "crm_user", "employee"):
+        display_kind = "user"
+    elif b24_type_low in ("crm_contact", "contact"):
+        display_kind = "crm_link"; display_target_entity_key = "contact"
+    elif b24_type_low in ("crm_lead", "lead"):
+        display_kind = "crm_link"; display_target_entity_key = "lead"
+    elif b24_type_low in ("crm_company", "company"):
+        display_kind = "crm_link"; display_target_entity_key = "company"
+    elif b24_type_low in ("crm_entity", "crm"):
+        display_kind = "crm_link"
+        display_target_entity_key = _entity_table_editor_infer_crm_target_from_settings(settings)
+
     return {
         "entity_key": ent["storage_entity_key"],
         "table": ent["storage_table"],
         "column": col,
         "b24_type": b24_type,
+        "b24_field": b24_field,
+        "settings": settings,
+        "display_kind": display_kind,
+        "display_target_entity_key": display_target_entity_key,
         "entity_name": entity_name,
         "field_name": field_name,
     }
@@ -4305,6 +4549,7 @@ def _entity_table_editor_eval_ast_rowwise(
     target_storage_table: str,
     current_row: Dict[str, Any],
     ref_cache: Dict[Tuple[str, str], Dict[str, Any]],
+    display_cache: Dict[Tuple[str, str, str], Dict[str, str]],
 ) -> Any:
     if not isinstance(ast, tuple) or not ast:
         raise HTTPException(status_code=400, detail="Invalid editor AST")
@@ -4322,6 +4567,7 @@ def _entity_table_editor_eval_ast_rowwise(
     if kind == "ref":
         entity_name = str(ast[1] or "").strip()
         field_name = str(ast[2] or "").strip()
+        ref_mode = (str(ast[3]).strip().lower() if len(ast) > 3 and ast[3] else None)
         cache_key = (entity_name, field_name)
         ref = ref_cache.get(cache_key)
         if ref is None:
@@ -4332,7 +4578,13 @@ def _entity_table_editor_eval_ast_rowwise(
                 status_code=400,
                 detail=f"Row-wise editor currently supports only target entity fields. Unsupported ref: {{{entity_name}.{field_name}}}",
             )
-        return current_row.get(ref["column"])
+        return _entity_table_editor_row_value_from_ref(
+            conn,
+            ref,
+            current_row.get(ref["column"]),
+            ref_mode,
+            display_cache,
+        )
     if kind != "call":
         raise HTTPException(status_code=400, detail=f"Unsupported editor node: {kind}")
 
@@ -4344,7 +4596,7 @@ def _entity_table_editor_eval_ast_rowwise(
         raise HTTPException(status_code=400, detail=f"{fn} cannot be used in row-wise mode")
 
     eval_args = [
-        _entity_table_editor_eval_ast_rowwise(conn, a, cf_row, target_storage_table, current_row, ref_cache)
+        _entity_table_editor_eval_ast_rowwise(conn, a, cf_row, target_storage_table, current_row, ref_cache, display_cache)
         for a in raw_args
     ]
 
@@ -4430,6 +4682,7 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
         # Row-wise expressions: resolve direct {Entity.Field} references against current target row.
         cols_needed: set = {"id"}
         ref_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
+        display_cache: Dict[Tuple[str, str, str], Dict[str, str]] = {}
 
         def collect_refs(node: Any) -> None:
             if not isinstance(node, tuple) or not node:
@@ -4463,7 +4716,8 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
             rid = db_row.get("id")
             if rid is None:
                 continue
-            val = _entity_table_editor_eval_ast_rowwise(conn, ast, row, storage_table, db_row, ref_cache)
+            # `display_cache` is shared across rows for efficient ref display resolution.
+            val = _entity_table_editor_eval_ast_rowwise(conn, ast, row, storage_table, db_row, ref_cache, display_cache)
             updates.append((int(rid), _entity_table_editor_format_result_for_text(val)))
         updated_rows = _entity_table_write_custom_field_row_values(conn, storage_table, storage_column, updates)
         mode = "editor_eval"
