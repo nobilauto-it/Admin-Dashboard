@@ -996,31 +996,89 @@
                 return res.body;
             });
         }
+        function splitEditorTokenModeSuffix(tokenBody) {
+            var raw = String(tokenBody || '');
+            var m = raw.match(/^(.*?)(:(raw|display))$/i);
+            if (!m) return { core: raw, suffix: '' };
+            return { core: m[1] || '', suffix: m[2] || '' };
+        }
+        function buildLegacyNestedTokenReplacementMap(tableIndex) {
+            var st = tableStates[tableIndex];
+            if (!st || !Array.isArray(st.selectedEntities) || !st.selectedEntities.length) return Promise.resolve({});
+            return Promise.all((st.selectedEntities || []).map(function(ent) {
+                return loadFieldsForEntity(ent)
+                    .then(function(res) { return { ent: ent, res: res || { fields: [] } }; })
+                    .catch(function() { return { ent: ent, res: { fields: [] } }; });
+            })).then(function(items) {
+                var map = {};
+                items.forEach(function(item) {
+                    var ent = item.ent || {};
+                    var parentEntityKey = String(entityKey(ent) || '').trim();
+                    if (!parentEntityKey) return;
+                    var parentTitles = [
+                        String((ent && ent.title) || '').trim(),
+                        String(entityTitleForNested(ent) || '').trim()
+                    ].filter(Boolean);
+                    (item.res.fields || []).forEach(function(f) {
+                        if (!f || !Array.isArray(f.nested_fields) || !f.nested_fields.length) return;
+                        var nestedEntityKey = String(f.nested_entity_key || '').trim();
+                        var groupLabel = String((f.human_title || f.column_name || '')).trim();
+                        if (!nestedEntityKey || !groupLabel) return;
+                        (f.nested_fields || []).forEach(function(n) {
+                            var fieldLabel = String((n && (n.human_title || n.column_name) || '')).trim();
+                            var fieldCode = String((n && (n.field_code || n.b24_field || n.column_name) || '')).trim();
+                            if (!fieldLabel || !fieldCode) return;
+                            parentTitles.forEach(function(parentTitle) {
+                                map[parentTitle + '.' + groupLabel + '.' + fieldLabel] = parentEntityKey + '|' + nestedEntityKey + '|' + fieldCode;
+                            });
+                        });
+                    });
+                });
+                return map;
+            });
+        }
+        function normalizeCustomFieldEditorForBackend(tableIndex, editorText) {
+            var editor = String(editorText || '');
+            if (!editor || editor.indexOf('{') < 0) return Promise.resolve(editor);
+            return buildLegacyNestedTokenReplacementMap(tableIndex).then(function(replMap) {
+                if (!replMap || !Object.keys(replMap).length) return editor;
+                return editor.replace(/\{([^}]+)\}/g, function(full, tokenBody) {
+                    var parts = splitEditorTokenModeSuffix(tokenBody);
+                    var core = String(parts.core || '').trim();
+                    if (!core || core.indexOf('|') >= 0) return full;
+                    var next = replMap[core];
+                    if (!next) return full;
+                    return '{' + next + (parts.suffix || '') + '}';
+                });
+            });
+        }
         function previewCustomFieldEditorViaApi(tableIndex, editorText) {
             var st = tableStates[tableIndex];
             if (!st) return Promise.reject(new Error('Нет активной таблицы'));
             if (!Array.isArray(st.selectedEntities) || !st.selectedEntities.length) return Promise.reject(new Error('Сначала выберите сущность таблицы'));
             var targetEntity = customFieldApiEntityPayload(st.selectedEntities[0]);
             if (!targetEntity || !targetEntity.entity_key) return Promise.reject(new Error('Не удалось определить target entity'));
-            var payload = {
-                page_slug: getPageSlug(),
-                table_index: tableIndex,
-                target_entity: targetEntity,
-                source_entities: (st.selectedEntities || []).map(customFieldApiEntityPayload).filter(Boolean),
-                editor: String(editorText || '')
-            };
-            return fetch(API.customFieldsPreview, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).then(function(r) {
-                return r.json().catch(function() { return { ok: false, error: 'Invalid response' }; })
-                    .then(function(body) { return { ok: r.ok, body: body, status: r.status }; });
-            }).then(function(res) {
-                if (!res.ok || !res.body || res.body.ok === false) {
-                    throw new Error((res.body && (res.body.detail || res.body.error)) || ('Preview failed: ' + res.status));
-                }
-                return res.body;
+            return normalizeCustomFieldEditorForBackend(tableIndex, editorText).then(function(normalizedEditor) {
+                var payload = {
+                    page_slug: getPageSlug(),
+                    table_index: tableIndex,
+                    target_entity: targetEntity,
+                    source_entities: (st.selectedEntities || []).map(customFieldApiEntityPayload).filter(Boolean),
+                    editor: String(normalizedEditor || '')
+                };
+                return fetch(API.customFieldsPreview, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).then(function(r) {
+                    return r.json().catch(function() { return { ok: false, error: 'Invalid response' }; })
+                        .then(function(body) { return { ok: r.ok, body: body, status: r.status }; });
+                }).then(function(res) {
+                    if (!res.ok || !res.body || res.body.ok === false) {
+                        throw new Error((res.body && (res.body.detail || res.body.error)) || ('Preview failed: ' + res.status));
+                    }
+                    return res.body;
+                });
             });
         }
 
@@ -1106,7 +1164,15 @@
                 source_entities: (st.selectedEntities || []).map(customFieldApiEntityPayload).filter(Boolean)
             };
             if (customFieldSaveBtn) customFieldSaveBtn.disabled = true;
-            (isEditMode ? updateCustomFieldViaApi(customFieldEditingId, requestPayload, 'PATCH') : createCustomFieldViaApi(currentTableIndex, requestPayload))
+            normalizeCustomFieldEditorForBackend(currentTableIndex, (requestPayload && requestPayload.custom_field && requestPayload.custom_field.editor) || '')
+                .then(function(normalizedEditor) {
+                    if (requestPayload && requestPayload.custom_field) {
+                        requestPayload.custom_field.editor = String(normalizedEditor || '');
+                    }
+                    return (isEditMode
+                        ? updateCustomFieldViaApi(customFieldEditingId, requestPayload, 'PATCH')
+                        : createCustomFieldViaApi(currentTableIndex, requestPayload));
+                })
                 .then(function(created) {
                     if (!created) return loadCustomFieldsForTable(currentTableIndex);
                     ensureCustomFieldsArray(st);
