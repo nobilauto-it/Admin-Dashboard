@@ -685,6 +685,7 @@
                 guestFilterInitialized: false,
                 filterFields: [{ label: 'Название', key: '', type: 'text' }],
                 customFields: [],
+                customFieldTokenMap: {},
                 startNewRow: false
             };
         }
@@ -788,6 +789,38 @@
             if (!st) return [];
             if (!Array.isArray(st.customFields)) st.customFields = [];
             return st.customFields;
+        }
+        function ensureCustomFieldTokenMap(st) {
+            if (!st) return {};
+            if (!st.customFieldTokenMap || typeof st.customFieldTokenMap !== 'object') st.customFieldTokenMap = {};
+            return st.customFieldTokenMap;
+        }
+        function resolveColumnKeyForEditorTokenInsert(st, title, prefixKey, rowEntityKey, nestedType) {
+            if (!st || !Array.isArray(st.allColumns)) return '';
+            var normTitle = normalizeSearchText(title || '');
+            var normPrefix = normalizeSearchText(prefixKey || '');
+            var normRowEk = String(rowEntityKey || '').trim();
+            var cols = st.allColumns || [];
+            var exact = cols.find(function(col) {
+                return col && normalizeSearchText(col.label || '') === normTitle
+                    && (!normPrefix || normalizeSearchText(col.entityTitle || '') === normPrefix);
+            });
+            if (exact && exact.key) return exact.key;
+            if (!nestedType && normRowEk) {
+                var mainMatch = cols.find(function(col) {
+                    return col && String(col.entityKey || '') === normRowEk
+                        && normalizeSearchText(col.label || '') === normTitle;
+                });
+                if (mainMatch && mainMatch.key) return mainMatch.key;
+            }
+            if (nestedType && normPrefix) {
+                var nestedMatch = cols.find(function(col) {
+                    return col && normalizeSearchText(col.label || '') === normTitle
+                        && normalizeSearchText(col.entityTitle || '') === normPrefix;
+                });
+                if (nestedMatch && nestedMatch.key) return nestedMatch.key;
+            }
+            return '';
         }
 
         function customFieldApiEntityPayload(ent) {
@@ -3059,7 +3092,16 @@
                             }
                         }
                         if (!title) return '';
-                        return '{' + (prefixKey ? (prefixKey + '.') : '') + title + '}';
+                        var tokenBody = (prefixKey ? (prefixKey + '.') : '') + title;
+                        var token = '{' + tokenBody + '}';
+                        var st = tableStates[currentTableIndex];
+                        if (st) {
+                            var colKey = resolveColumnKeyForEditorTokenInsert(st, title, prefixKey, ek, nestedType);
+                            if (colKey) {
+                                ensureCustomFieldTokenMap(st)[tokenBody] = colKey;
+                            }
+                        }
+                        return token;
                     })
                     .filter(Boolean);
                 if (!tokens.length) {
@@ -3085,6 +3127,15 @@
         function resolveCustomEditorTokenValue(tokenBody, st, row) {
             var raw = String(tokenBody || '').trim();
             if (!raw || !st || !row) return '';
+            var mappedKey = (st.customFieldTokenMap && st.customFieldTokenMap[raw]) ? String(st.customFieldTokenMap[raw]) : '';
+            if (mappedKey && Object.prototype.hasOwnProperty.call(row, mappedKey)) {
+                var mappedVal = row[mappedKey];
+                if (mappedVal == null) return '';
+                if (typeof mappedVal === 'object') {
+                    try { return JSON.stringify(mappedVal); } catch (e) { return String(mappedVal); }
+                }
+                return String(mappedVal);
+            }
             var lastDot = raw.lastIndexOf('.');
             var prefix = lastDot > 0 ? raw.slice(0, lastDot).trim() : '';
             var fieldLabel = lastDot > 0 ? raw.slice(lastDot + 1).trim() : raw;
@@ -3116,6 +3167,11 @@
         function resolveCustomEditorTokenColumn(tokenBody, st) {
             var raw = String(tokenBody || '').trim();
             if (!raw || !st) return null;
+            var mappedKey = (st.customFieldTokenMap && st.customFieldTokenMap[raw]) ? String(st.customFieldTokenMap[raw]) : '';
+            if (mappedKey) {
+                var mappedCol = (Array.isArray(st.allColumns) ? st.allColumns : []).find(function(c) { return c && c.key === mappedKey; });
+                if (mappedCol) return mappedCol;
+            }
             var lastDot = raw.lastIndexOf('.');
             var prefix = lastDot > 0 ? raw.slice(0, lastDot).trim() : '';
             var fieldLabel = lastDot > 0 ? raw.slice(lastDot + 1).trim() : raw;
