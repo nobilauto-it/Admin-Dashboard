@@ -1388,20 +1388,42 @@
             var st = tableStates[currentTableIndex];
             if (!st) return;
             if (!Array.isArray(st.selectedEntities) || !st.selectedEntities.length) {
-                alert('Сначала выберите сущность таблицы');
+                alert('Select table entity first');
                 return;
             }
             ensureCustomFieldsArray(st);
             var name = customFieldNameInput ? String(customFieldNameInput.value || '').trim() : '';
-            if (!name) { alert('Введите название поля'); return; }
+            if (!name) { alert('Enter field name'); return; }
             var code = normalizeCustomFieldCodeInputValue(customFieldCodeInput ? customFieldCodeInput.value : '', name);
             if (customFieldCodeInput) customFieldCodeInput.value = code;
             var targetEntity = customFieldApiEntityPayload(st.selectedEntities[0]);
             if (!targetEntity || !targetEntity.entity_key) {
-                alert('Не удалось определить сущность для создания поля');
+                alert('Failed to resolve target entity');
                 return;
             }
             var isEditMode = !!customFieldEditingId;
+            var createdFieldCode = code;
+            function isTimeoutLikeCustomFieldSaveError(err) {
+                var msg = String((err && err.message) || '').toLowerCase();
+                return msg.indexOf('timeout') >= 0
+                    || msg.indexOf('read timed out') >= 0
+                    || msg.indexOf('failed to fetch') >= 0
+                    || msg.indexOf('networkerror') >= 0;
+            }
+            function tryRecoverCreatedFieldAfterSaveError() {
+                return loadCustomFieldsForTable(currentTableIndex).then(function() {
+                    var list = ensureCustomFieldsArray(st);
+                    var recovered = list.find(function(x) {
+                        return x && String((x.code || '')).trim() === String(createdFieldCode || '').trim();
+                    }) || null;
+                    if (recovered) {
+                        setCustomFieldFormMode(recovered);
+                        renderCustomFieldsInFieldsTab(currentTableIndex);
+                        saveConfigToStorage();
+                    }
+                    return recovered;
+                });
+            }
             var requestPayload = isEditMode ? {
                 custom_field: {
                     name: name,
@@ -1412,7 +1434,8 @@
             } : {
                 page_slug: getPageSlug(),
                 table_index: currentTableIndex,
-                recalculate_now: true,
+                // Save quickly; run long recalc explicitly.
+                recalculate_now: false,
                 target_entity: targetEntity,
                 custom_field: {
                     name: name,
@@ -1448,19 +1471,34 @@
                     else st.customFields.push(created);
                     renderCustomFieldsInFieldsTab(currentTableIndex);
                     saveConfigToStorage();
+                    setCustomFieldFormMode(created);
                     if (isEditMode) {
-                        setCustomFieldFormMode(created);
-                        alert('Поле обновлено. Нажмите "Пересчитать", чтобы применить новый editor к данным.');
+                        alert('Custom field updated. Click "Recalculate" to apply editor changes to data.');
+                    } else {
+                        alert('Custom field saved. Click "Recalculate" to fill values.');
                     }
                 })
                 .catch(function(err) {
-                    alert((err && err.message) ? err.message : (isEditMode ? 'Не удалось обновить кастомное поле' : 'Не удалось создать кастомное поле'));
+                    if (!isEditMode && isTimeoutLikeCustomFieldSaveError(err)) {
+                        tryRecoverCreatedFieldAfterSaveError()
+                            .then(function(recovered) {
+                                if (recovered) {
+                                    alert('Custom field was likely saved, but response timed out. The field is present. Click "Recalculate".');
+                                    return;
+                                }
+                                alert((err && err.message) ? err.message : 'Failed to create custom field');
+                            })
+                            .catch(function() {
+                                alert((err && err.message) ? err.message : 'Failed to create custom field');
+                            });
+                        return;
+                    }
+                    alert((err && err.message) ? err.message : (isEditMode ? 'Failed to update custom field' : 'Failed to create custom field'));
                 })
                 .finally(function() {
                     if (customFieldSaveBtn) customFieldSaveBtn.disabled = false;
                 });
         }
-
         function renderCustomFieldDeleteList() {
             if (!customFieldDeleteList) return;
             var st = tableStates[currentTableIndex];
