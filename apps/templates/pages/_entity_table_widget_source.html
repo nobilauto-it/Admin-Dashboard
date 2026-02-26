@@ -4154,23 +4154,9 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
 
         function renderCustomFieldPreviewSampleRowHint(rowId) {
             if (!customFieldPreviewSampleRowHint) return;
-            var rid = (rowId == null) ? '' : String(rowId).trim();
-            if (!rid) {
-                customFieldPreviewSampleRowHint.innerHTML = '';
-                customFieldPreviewSampleRowHint.removeAttribute('style');
-                customFieldPreviewSampleRowHint.classList.add('d-none');
-                return;
-            }
-            customFieldPreviewSampleRowHint.innerHTML = ''
-                + '<span>sample_row_id: <code>' + rid.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></span>'
-                + ' <button type=\"button\" class=\"btn btn-link btn-sm p-0 align-baseline\" id=\"customFieldPreviewShowSampleRowBtn\">Show row</button>';
-            customFieldPreviewSampleRowHint.setAttribute('style',
-                'position:fixed;top:16px;right:16px;z-index:2000;max-width:min(560px,calc(100vw - 32px));' +
-                'background:#fff;border:1px solid #17a2b8;border-radius:10px;padding:10px 12px;' +
-                'box-shadow:0 8px 24px rgba(0,0,0,.15);');
-            customFieldPreviewSampleRowHint.classList.remove('d-none');
-            var btn = document.getElementById('customFieldPreviewShowSampleRowBtn');
-            if (btn) btn.onclick = function() { applyGridSearchForSampleRowId(rid); };
+            customFieldPreviewSampleRowHint.innerHTML = '';
+            customFieldPreviewSampleRowHint.removeAttribute('style');
+            customFieldPreviewSampleRowHint.classList.add('d-none');
         }
 
         function renderCustomEditorPreview() {
