@@ -1,6 +1,7 @@
 import base64
 import json
 import re
+import threading
 import traceback
 import unicodedata
 from pathlib import Path
@@ -759,6 +760,28 @@ def entity_table_custom_fields_recalculate_proxy(item_id):
         if x_guest:
             headers['x-guest'] = x_guest
         payload = request.get_json(silent=True) or {}
+        async_mode = bool(payload.pop("async", True))
+        if async_mode:
+            app = current_app._get_current_object()
+
+            def _run_recalculate_async():
+                try:
+                    requests.post(upstream_url, json=payload, headers=headers, timeout=300)
+                except Exception as e:
+                    try:
+                        with app.app_context():
+                            current_app.logger.exception("Entity table custom-fields recalculate async proxy: %s", e)
+                    except Exception:
+                        pass
+
+            t = threading.Thread(target=_run_recalculate_async, daemon=True)
+            t.start()
+            return make_response(jsonify({
+                "ok": True,
+                "started_async": True,
+                "custom_field_id": item_id
+            }), 202)
+
         resp = requests.post(upstream_url, json=payload, headers=headers, timeout=300)
         try:
             return make_response(jsonify(resp.json()), resp.status_code)
