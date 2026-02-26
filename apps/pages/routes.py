@@ -689,7 +689,7 @@ def entity_table_custom_fields_preview_proxy():
         if x_guest:
             headers['x-guest'] = x_guest
         payload = request.get_json(silent=True) or {}
-        resp = requests.post(upstream_url, json=payload, headers=headers, timeout=30)
+        resp = requests.post(upstream_url, json=payload, headers=headers, timeout=120)
         try:
             return make_response(jsonify(resp.json()), resp.status_code)
         except Exception:
@@ -723,14 +723,14 @@ def entity_table_custom_fields_proxy(item_id=None):
         elif request.method == 'POST':
             payload = request.get_json(silent=True) or {}
             headers['Content-Type'] = 'application/json'
-            resp = requests.post(upstream_url, json=payload, headers=headers, timeout=30)
+            resp = requests.post(upstream_url, json=payload, headers=headers, timeout=180)
         elif request.method in ('PUT', 'PATCH'):
             payload = request.get_json(silent=True) or {}
             headers['Content-Type'] = 'application/json'
             if request.method == 'PUT':
-                resp = requests.put(upstream_url, json=payload, headers=headers, timeout=30)
+                resp = requests.put(upstream_url, json=payload, headers=headers, timeout=180)
             else:
-                resp = requests.patch(upstream_url, json=payload, headers=headers, timeout=30)
+                resp = requests.patch(upstream_url, json=payload, headers=headers, timeout=180)
         else:  # DELETE
             resp = requests.delete(upstream_url, headers=headers, timeout=30)
 
@@ -759,7 +759,7 @@ def entity_table_custom_fields_recalculate_proxy(item_id):
         if x_guest:
             headers['x-guest'] = x_guest
         payload = request.get_json(silent=True) or {}
-        resp = requests.post(upstream_url, json=payload, headers=headers, timeout=30)
+        resp = requests.post(upstream_url, json=payload, headers=headers, timeout=300)
         try:
             return make_response(jsonify(resp.json()), resp.status_code)
         except Exception:
