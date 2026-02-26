@@ -1670,6 +1670,7 @@
                 });
                 setTimeout(function() { setCustomFieldRecalcLoading(false); }, 32000);
             }
+            setCustomFieldRecalcLoading(true, 'Пересчет запускается...');
             Promise.resolve()
                 .then(function() {
                     var rawEditor = String((item && item.editor) || '');
