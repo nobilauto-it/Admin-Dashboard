@@ -414,6 +414,7 @@
                                 <div class="small text-primary mt-1 d-none" id="customFieldEditModeHint"></div>
                                 <div class="small text-secondary mt-1 d-none" id="customFieldEditorReadableHint"></div>
                                 <div class="small text-muted mt-2" id="customFieldPreviewResult"></div>
+                                <div class="small text-info mt-1 d-none" id="customFieldRecalcLoadingHint"></div>
                             </div>
                         </div>
                     </div>
@@ -802,6 +803,7 @@
         const customFieldEditorReadableHint = document.getElementById('customFieldEditorReadableHint');
         const customFieldPreviewBtn = document.getElementById('customFieldPreviewBtn');
         const customFieldPreviewResult = document.getElementById('customFieldPreviewResult');
+        const customFieldRecalcLoadingHint = document.getElementById('customFieldRecalcLoadingHint');
         const customFieldEditModalEl = document.getElementById('customFieldEditModal');
         const customFieldEditList = document.getElementById('customFieldEditList');
         const customFieldEditConfirmBtn = document.getElementById('customFieldEditConfirmBtn');
@@ -992,7 +994,7 @@
             return fetch(API.customFields + '/' + encodeURIComponent(String(id)) + '/recalculate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload || { async: false })
+                body: JSON.stringify(payload || { async: true })
             }).then(function(r) {
                 return r.json().catch(function() { return { ok: false, error: 'Invalid response' }; })
                     .then(function(body) { return { ok: r.ok, body: body, status: r.status }; });
@@ -1649,12 +1651,24 @@
                 ? customFieldApiEntityPayload(st.selectedEntities[0])
                 : null;
             if (customFieldRecalcConfirmBtn) customFieldRecalcConfirmBtn.disabled = true;
+            function setCustomFieldRecalcLoading(active, text) {
+                if (!customFieldRecalcLoadingHint) return;
+                if (!active) {
+                    customFieldRecalcLoadingHint.innerHTML = '';
+                    customFieldRecalcLoadingHint.classList.add('d-none');
+                    return;
+                }
+                var msg = String(text || 'Recalculation in progress...');
+                customFieldRecalcLoadingHint.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span><span>' + msg.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
+                customFieldRecalcLoadingHint.classList.remove('d-none');
+            }
             function scheduleGridRefreshAfterAsyncRecalc(tableIndex) {
                 [3000, 8000, 15000, 30000].forEach(function(delay) {
                     setTimeout(function() {
                         try { loadData(tableIndex); } catch (e) {}
                     }, delay);
                 });
+                setTimeout(function() { setCustomFieldRecalcLoading(false); }, 32000);
             }
             Promise.resolve()
                 .then(function() {
@@ -1663,7 +1677,7 @@
                         .then(function(normalizedEditor) {
                             return buildNestedSourceEntityHintsForEditor(currentTableIndex, rawEditor, String(normalizedEditor || ''))
                                 .then(function(nestedHints) {
-                                    var recalcPayload = { async: false };
+                                    var recalcPayload = { async: true };
                                     if (targetEntity && targetEntity.entity_key) recalcPayload.target_entity = targetEntity;
                                     var baseSource = (st.selectedEntities || []).map(customFieldApiEntityPayload).filter(Boolean);
                                     if (Array.isArray(nestedHints) && nestedHints.length) baseSource = baseSource.concat(nestedHints);
@@ -1678,10 +1692,11 @@
                 .then(function(res) {
                     if (customFieldRecalcModal) customFieldRecalcModal.hide();
                     if (res && res.started_async) {
-                        alert('Recalculation started in background. Grid will refresh automatically for the next 30 seconds.');
+                        setCustomFieldRecalcLoading(true, 'Пересчет запущен. Данные подгружаются, подождите...');
                         scheduleGridRefreshAfterAsyncRecalc(currentTableIndex);
                         return;
                     }
+                    setCustomFieldRecalcLoading(false);
                     loadData(currentTableIndex);
                     var upd = res && res.recalculate_result && res.recalculate_result.updated_rows != null ? res.recalculate_result.updated_rows : null;
                     var modeDetail = res && res.recalculate_result && res.recalculate_result.mode_detail ? String(res.recalculate_result.mode_detail) : '';
@@ -1690,7 +1705,8 @@
                     }
                 })
                 .catch(function(err) {
-                    alert((err && err.message) ? err.message : 'Не удалось пересчитать кастомное поле');
+                                        setCustomFieldRecalcLoading(false);
+alert((err && err.message) ? err.message : 'Не удалось пересчитать кастомное поле');
                 })
                 .finally(function() {
                     if (customFieldRecalcConfirmBtn) customFieldRecalcConfirmBtn.disabled = false;
