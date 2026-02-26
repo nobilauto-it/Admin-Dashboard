@@ -4605,7 +4605,8 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             loadData(tableIndex);
         }
 
-        var FIRST_BATCH_SIZE = 2000;
+        // TEMP for demos: load a larger first batch so mixed-mode grids include more rows with linked entities.
+        var FIRST_BATCH_SIZE = 10000;
         function resolveSmartEntityByNestedType(typeToken, smartEntities) {
             var token = String(typeToken || '');
             if (!token) return null;
