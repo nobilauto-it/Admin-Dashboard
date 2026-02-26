@@ -6027,6 +6027,17 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
         mode = "editor_eval"
         mode_detail = "row_wise"
         value_preview = updates[0][1] if updates else None
+        # Align recalculate preview snippet with /preview sampling logic for mixed/nested row-wise formulas.
+        try:
+            preview_row = dict(row)
+            preview_row["storage_table"] = storage_table
+            preview_row["storage_column"] = storage_column
+            preview_row["storage_pg_type"] = row.get("storage_pg_type") or "TEXT"
+            preview_info = _entity_table_preview_custom_field_editor(conn, preview_row)
+            if isinstance(preview_info, dict):
+                value_preview = preview_info.get("sample_value", value_preview)
+        except Exception:
+            pass
 
     return {
         "updated_rows": updated_rows,
@@ -6740,7 +6751,7 @@ def list_entity_table_custom_fields(
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
                 SELECT id, name, code, description, field_type, editor, target_entity,
-                       storage_table, storage_column, storage_pg_type
+                       source_entities, storage_table, storage_column, storage_pg_type
                 FROM entity_table_custom_fields
                 WHERE page_slug=%s AND table_index=%s
                 ORDER BY created_at ASC, id ASC
@@ -6936,6 +6947,21 @@ async def recalculate_entity_table_custom_field(custom_field_id: str, request: R
             row = cur.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="custom field not found")
+
+        # Optional runtime overrides from request body (frontend may pass current context/editor).
+        if "target_entity" in payload:
+            if not isinstance(payload.get("target_entity"), dict):
+                return _entity_table_error_response(400, "Custom field recalculate failed", "target_entity must be an object")
+            row["target_entity"] = dict(payload.get("target_entity") or {})
+        if "source_entities" in payload:
+            srcs = payload.get("source_entities")
+            if srcs is None:
+                srcs = []
+            if not isinstance(srcs, list):
+                return _entity_table_error_response(400, "Custom field recalculate failed", "source_entities must be an array")
+            row["source_entities"] = list(srcs)
+        if "editor" in payload:
+            row["editor"] = "" if payload.get("editor") is None else str(payload.get("editor"))
 
         if debug_stub_fill:
             result = _entity_table_recalculate_custom_field_stub(conn, row)
