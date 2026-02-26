@@ -1001,7 +1001,7 @@
             return fetch(API.customFields + '/' + encodeURIComponent(String(id)) + '/recalculate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload || { async: true })
+                body: JSON.stringify(payload || { async: false })
             }).then(function(r) {
                 return r.json().catch(function() { return { ok: false, error: 'Invalid response' }; })
                     .then(function(body) { return { ok: r.ok, body: body, status: r.status }; });
@@ -1703,7 +1703,7 @@
                         .then(function(normalizedEditor) {
                             return buildNestedSourceEntityHintsForEditor(currentTableIndex, rawEditor, String(normalizedEditor || ''))
                                 .then(function(nestedHints) {
-                                    var recalcPayload = { async: true };
+                                    var recalcPayload = { async: false };
                                     recalcPayload.page_slug = getPageSlug();
                                     recalcPayload.table_index = currentTableIndex;
                                     recalcPayload.editor = String(normalizedEditor || rawEditor || '');
