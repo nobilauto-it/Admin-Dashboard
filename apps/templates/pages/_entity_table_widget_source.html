@@ -1425,12 +1425,16 @@
                 });
             }
             var requestPayload = isEditMode ? {
+                page_slug: getPageSlug(),
+                table_index: currentTableIndex,
+                target_entity: targetEntity,
                 custom_field: {
                     name: name,
                     description: customFieldDescriptionInput ? String(customFieldDescriptionInput.value || '').trim() : '',
                     type: (customFieldTypeSelect && customFieldTypeSelect.value === 'card') ? 'card' : 'single',
                     editor: customFieldPayloadTextarea ? String(customFieldPayloadTextarea.value || '') : ''
-                }
+                },
+                source_entities: (st.selectedEntities || []).map(customFieldApiEntityPayload).filter(Boolean)
             } : {
                 page_slug: getPageSlug(),
                 table_index: currentTableIndex,
