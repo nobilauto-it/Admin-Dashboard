@@ -4612,15 +4612,25 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             else if (token.indexOf('entity::') === 0) raw = token.slice('entity::'.length);
             else return null;
             var rawNorm = normalizeSearchText(raw.replace(/_/g, ' '));
+            var rawIdMatch = String(raw).match(/(\d+)/);
+            var rawId = rawIdMatch ? String(rawIdMatch[1]) : '';
             return (smartEntities || []).find(function(e) {
                 var eKey = String((e && e.entity_key) || '');
                 var eTitle = String((e && e.title) || eKey);
                 var eType = String((e && e.type) || '').toLowerCase();
                 var isSmart = (eType === 'smart_process' || eType === 'entity' || /^smart_process_/i.test(eKey));
                 if (!isSmart) return false;
+                var eId = '';
+                var m1 = eKey.match(/^smart_process_(\d+)$/i);
+                var m2 = eKey.match(/^sp:(\d+)$/i);
+                var m3 = eKey.match(/^entity_(\d+)$/i);
+                if (m1) eId = m1[1];
+                else if (m2) eId = m2[1];
+                else if (m3) eId = m3[1];
                 return normalizeSearchText(eKey) === normalizeSearchText(raw)
                     || normalizeSearchText(eKey) === rawNorm
-                    || normalizeSearchText(eTitle) === rawNorm;
+                    || normalizeSearchText(eTitle) === rawNorm
+                    || (!!rawId && !!eId && rawId === eId);
             }) || null;
         }
 
