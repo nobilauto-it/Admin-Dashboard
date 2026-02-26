@@ -5442,7 +5442,14 @@ def _entity_table_editor_resolve_rowwise_ref_raw_value(
                 first_link_field = join_col
             if bool(step.get("reverse")):
                 current_row_id = _entity_table_editor_extract_single_link_id(row_obj.get("id"))
+                if isinstance(debug_trace, dict):
+                    debug_trace["resolved_link_field"] = join_col
+                    debug_trace["resolved_target_table"] = to_table
+                    debug_trace["resolved_target_id"] = None
                 if not current_row_id:
+                    if isinstance(debug_trace, dict):
+                        debug_trace["debug_status"] = "no_current_row_id_for_reverse_step"
+                        debug_trace["resolved_value_raw"] = None
                     return None
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                     cur.execute(
@@ -5452,16 +5459,35 @@ def _entity_table_editor_resolve_rowwise_ref_raw_value(
                     row_obj = cur.fetchone() or {}
                 row_table = to_table
                 if not row_obj:
+                    if isinstance(debug_trace, dict):
+                        debug_trace["resolved_target_id"] = None
+                        debug_trace["debug_status"] = "reverse_join_row_not_found"
+                        debug_trace["resolved_value_raw"] = None
                     return None
+                if isinstance(debug_trace, dict):
+                    debug_trace["resolved_target_id"] = row_obj.get("id")
             else:
                 join_raw_id = row_obj.get(join_col)
                 join_id_int = _entity_table_editor_extract_single_link_id(join_raw_id)
+                if isinstance(debug_trace, dict) and first_link_field:
+                    debug_trace["resolved_link_field"] = first_link_field
+                    debug_trace["resolved_target_table"] = to_table
                 if not join_id_int:
+                    if isinstance(debug_trace, dict):
+                        debug_trace["resolved_target_id"] = None
+                        debug_trace["debug_status"] = "forward_join_id_empty"
+                        debug_trace["resolved_value_raw"] = None
                     return None
                 row_obj = _entity_table_editor_fetch_foreign_row_cached(conn, to_table, join_id_int, foreign_row_cache)
                 row_table = to_table
                 if not row_obj:
+                    if isinstance(debug_trace, dict):
+                        debug_trace["resolved_target_id"] = int(join_id_int)
+                        debug_trace["debug_status"] = "forward_join_row_not_found"
+                        debug_trace["resolved_value_raw"] = None
                     return None
+                if isinstance(debug_trace, dict):
+                    debug_trace["resolved_target_id"] = int(join_id_int)
         if not _entity_table_editor_tables_equivalent_for_entity(
             str(ref.get("entity_key") or ""),
             row_table,
@@ -5474,6 +5500,7 @@ def _entity_table_editor_resolve_rowwise_ref_raw_value(
             debug_trace["resolved_target_table"] = row_table
             debug_trace["resolved_target_id"] = row_obj.get("id") if isinstance(row_obj, dict) else None
             debug_trace["resolved_value_raw"] = raw_v
+            debug_trace["debug_status"] = "ok"
         return raw_v
 
     # Backward-compatible single-hop implicit resolver.
@@ -5489,6 +5516,12 @@ def _entity_table_editor_resolve_rowwise_ref_raw_value(
         raise HTTPException(status_code=400, detail=f"{token_full} is not available for row_wise join yet")
     join_id_int = _entity_table_editor_extract_single_link_id(current_row.get(join_col))
     if not join_id_int:
+        if isinstance(debug_trace, dict):
+            debug_trace["resolved_link_field"] = join_col
+            debug_trace["resolved_target_table"] = str(ref.get("table") or "")
+            debug_trace["resolved_target_id"] = None
+            debug_trace["resolved_value_raw"] = None
+            debug_trace["debug_status"] = "legacy_join_id_empty"
         return None
     foreign_db_row = _entity_table_editor_fetch_foreign_row_cached(conn, str(ref["table"]), int(join_id_int), foreign_row_cache)
     raw_v = foreign_db_row.get(ref["column"])
@@ -5497,6 +5530,7 @@ def _entity_table_editor_resolve_rowwise_ref_raw_value(
         debug_trace["resolved_target_table"] = str(ref.get("table") or "")
         debug_trace["resolved_target_id"] = int(join_id_int)
         debug_trace["resolved_value_raw"] = raw_v
+        debug_trace["debug_status"] = "ok"
     return raw_v
 
 
@@ -6304,7 +6338,7 @@ def _entity_table_preview_custom_field_editor(conn, row: Dict[str, Any]) -> Dict
         return (foreign_nonempty, local_nonempty, int(db_row.get("id") or 0))
 
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-        cur.execute(f'SELECT {cols_sql} FROM "{storage_table}" WHERE id IS NOT NULL ORDER BY id DESC LIMIT 20')
+        cur.execute(f'SELECT {cols_sql} FROM "{storage_table}" WHERE id IS NOT NULL ORDER BY id DESC LIMIT 200')
         sample_rows = cur.fetchall() or []
     if not sample_rows:
         return {
