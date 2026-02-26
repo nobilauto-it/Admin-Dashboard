@@ -5417,19 +5417,29 @@ def _entity_table_editor_resolve_rowwise_ref_raw_value(
     current_row: Dict[str, Any],
     foreign_row_cache: Dict[Tuple[str, int], Dict[str, Any]],
     token_full: str,
+    debug_trace: Optional[Dict[str, Any]] = None,
 ) -> Any:
     if str(ref.get("table") or "") == str(target_storage_table):
-        return current_row.get(ref["column"])
+        raw_local = current_row.get(ref["column"])
+        if isinstance(debug_trace, dict):
+            debug_trace["resolved_link_field"] = None
+            debug_trace["resolved_target_table"] = str(target_storage_table)
+            debug_trace["resolved_target_id"] = current_row.get("id")
+            debug_trace["resolved_value_raw"] = raw_local
+        return raw_local
 
     steps = ref.get("rowwise_join_steps")
     if isinstance(steps, list) and steps:
         row_obj: Dict[str, Any] = current_row
         row_table = str(target_storage_table)
+        first_link_field: Optional[str] = None
         for step in steps:
             join_col = str(step.get("join_column") or "").strip()
             to_table = str(step.get("to_table") or "").strip()
             if not join_col or not to_table:
                 raise HTTPException(status_code=400, detail=f"{token_full} is not available for row_wise join yet")
+            if first_link_field is None:
+                first_link_field = join_col
             if bool(step.get("reverse")):
                 current_row_id = _entity_table_editor_extract_single_link_id(row_obj.get("id"))
                 if not current_row_id:
@@ -5458,7 +5468,13 @@ def _entity_table_editor_resolve_rowwise_ref_raw_value(
             str(ref.get("table") or ""),
         ):
             raise HTTPException(status_code=400, detail=f"{token_full} is not available for row_wise join yet")
-        return row_obj.get(ref["column"])
+        raw_v = row_obj.get(ref["column"])
+        if isinstance(debug_trace, dict):
+            debug_trace["resolved_link_field"] = first_link_field
+            debug_trace["resolved_target_table"] = row_table
+            debug_trace["resolved_target_id"] = row_obj.get("id") if isinstance(row_obj, dict) else None
+            debug_trace["resolved_value_raw"] = raw_v
+        return raw_v
 
     # Backward-compatible single-hop implicit resolver.
     join = ref.get("join_from_target")
@@ -5475,7 +5491,13 @@ def _entity_table_editor_resolve_rowwise_ref_raw_value(
     if not join_id_int:
         return None
     foreign_db_row = _entity_table_editor_fetch_foreign_row_cached(conn, str(ref["table"]), int(join_id_int), foreign_row_cache)
-    return foreign_db_row.get(ref["column"])
+    raw_v = foreign_db_row.get(ref["column"])
+    if isinstance(debug_trace, dict):
+        debug_trace["resolved_link_field"] = join_col
+        debug_trace["resolved_target_table"] = str(ref.get("table") or "")
+        debug_trace["resolved_target_id"] = int(join_id_int)
+        debug_trace["resolved_value_raw"] = raw_v
+    return raw_v
 
 
 def _entity_table_editor_prepare_ref(conn, cf_row: Dict[str, Any], entity_name: str, field_name: str) -> Dict[str, Any]:
@@ -6298,11 +6320,40 @@ def _entity_table_preview_custom_field_editor(conn, row: Dict[str, Any]) -> Dict
     sample_val = _entity_table_editor_eval_ast_rowwise(
         conn, ast, row, target_storage_entity_key, storage_table, sample_row, ref_cache, display_cache, foreign_row_cache
     )
+    debug_tokens: List[Dict[str, Any]] = []
+    for cache_key, ref in list(ref_cache.items()):
+        if not (isinstance(cache_key, tuple) and len(cache_key) >= 1 and str(cache_key[0]).startswith("TECH:")):
+            continue
+        if not isinstance(ref, dict):
+            continue
+        trace: Dict[str, Any] = {}
+        token_full = str(ref.get("token_full") or "{...}")
+        try:
+            raw_v = _entity_table_editor_resolve_rowwise_ref_raw_value(
+                conn, ref, storage_table, sample_row, foreign_row_cache, token_full, debug_trace=trace
+            )
+            resolved_v = _entity_table_editor_row_value_from_ref(conn, ref, raw_v, None, display_cache)
+        except Exception as e:
+            trace["debug_error"] = str(e)
+            raw_v = None
+            resolved_v = None
+        debug_tokens.append({
+            "token": token_full,
+            "resolved_link_field": trace.get("resolved_link_field"),
+            "resolved_target_entity": str(ref.get("entity_key") or ""),
+            "resolved_target_table": trace.get("resolved_target_table") or str(ref.get("table") or ""),
+            "resolved_target_id": trace.get("resolved_target_id"),
+            "resolved_field_code": str(ref.get("field_name") or ""),
+            "resolved_value": resolved_v,
+            "resolved_value_raw": trace.get("resolved_value_raw", raw_v),
+            "debug_error": trace.get("debug_error"),
+        })
     return {
         "mode": "editor_eval",
         "mode_detail": "row_wise",
         "sample_value": _entity_table_editor_format_result_for_text(sample_val),
         "sample_row_id": sample_row.get("id"),
+        "debug_tokens": debug_tokens,
     }
 
 
