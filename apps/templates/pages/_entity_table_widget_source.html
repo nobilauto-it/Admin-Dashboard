@@ -414,6 +414,7 @@
                                 <div class="small text-primary mt-1 d-none" id="customFieldEditModeHint"></div>
                                 <div class="small text-secondary mt-1 d-none" id="customFieldEditorReadableHint"></div>
                                 <div class="small text-muted mt-2" id="customFieldPreviewResult"></div>
+                                <div class="small text-info mt-1 d-none" id="customFieldPreviewSampleRowHint"></div>
                                 <div class="small text-info mt-1 d-none" id="customFieldRecalcLoadingHint"></div>
                             </div>
                         </div>
@@ -803,6 +804,7 @@
         const customFieldEditorReadableHint = document.getElementById('customFieldEditorReadableHint');
         const customFieldPreviewBtn = document.getElementById('customFieldPreviewBtn');
         const customFieldPreviewResult = document.getElementById('customFieldPreviewResult');
+        const customFieldPreviewSampleRowHint = document.getElementById('customFieldPreviewSampleRowHint');
         const customFieldRecalcLoadingHint = document.getElementById('customFieldRecalcLoadingHint');
         const customFieldEditModalEl = document.getElementById('customFieldEditModal');
         const customFieldEditList = document.getElementById('customFieldEditList');
@@ -818,6 +820,9 @@
         const customFieldDeleteModal = customFieldDeleteModalEl ? new bootstrap.Modal(customFieldDeleteModalEl) : null;
         const customFieldRecalcOpenBtnDefaultText = customFieldRecalcOpenBtn ? String(customFieldRecalcOpenBtn.textContent || 'Recalculate') : 'Recalculate';
         const customFieldRecalcConfirmBtnDefaultText = customFieldRecalcConfirmBtn ? String(customFieldRecalcConfirmBtn.textContent || 'Recalculate') : 'Recalculate';
+        var lastCustomFieldPreviewSampleRowId = null;
+        // TEMP presentation mode: show only rows where nested custom-field part (e.g. "АВТО: ...") is present.
+        var TEMP_PRESENTATION_ONLY_ROWS_WITH_LINKED_SMART = false;
         const toggleCustomFieldsInFieldsTabBtn = document.getElementById('toggleCustomFieldsInFieldsTabBtn');
         const customFieldsSectionInFieldsTab = document.getElementById('customFieldsSectionInFieldsTab');
         const customFieldsListInFieldsTab = document.getElementById('customFieldsListInFieldsTab');
@@ -4131,8 +4136,46 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             }
         }
 
+        function applyGridSearchForSampleRowId(rowId) {
+            var rid = (rowId == null) ? '' : String(rowId).trim();
+            if (!rid) return;
+            var els = getSectionEls(currentTableIndex);
+            var searchInput = els && els.section ? els.section.querySelector('.searchFilterInputInSection') : null;
+            if (!searchInput) {
+                alert('Sample row id: ' + rid);
+                return;
+            }
+            searchInput.value = rid;
+            ['input', 'change', 'keyup'].forEach(function(evtName) {
+                try { searchInput.dispatchEvent(new Event(evtName, { bubbles: true })); } catch (e) {}
+            });
+            try { searchInput.focus(); } catch (e) {}
+        }
+
+        function renderCustomFieldPreviewSampleRowHint(rowId) {
+            if (!customFieldPreviewSampleRowHint) return;
+            var rid = (rowId == null) ? '' : String(rowId).trim();
+            if (!rid) {
+                customFieldPreviewSampleRowHint.innerHTML = '';
+                customFieldPreviewSampleRowHint.removeAttribute('style');
+                customFieldPreviewSampleRowHint.classList.add('d-none');
+                return;
+            }
+            customFieldPreviewSampleRowHint.innerHTML = ''
+                + '<span>sample_row_id: <code>' + rid.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></span>'
+                + ' <button type=\"button\" class=\"btn btn-link btn-sm p-0 align-baseline\" id=\"customFieldPreviewShowSampleRowBtn\">Show row</button>';
+            customFieldPreviewSampleRowHint.setAttribute('style',
+                'position:fixed;top:16px;right:16px;z-index:2000;max-width:min(560px,calc(100vw - 32px));' +
+                'background:#fff;border:1px solid #17a2b8;border-radius:10px;padding:10px 12px;' +
+                'box-shadow:0 8px 24px rgba(0,0,0,.15);');
+            customFieldPreviewSampleRowHint.classList.remove('d-none');
+            var btn = document.getElementById('customFieldPreviewShowSampleRowBtn');
+            if (btn) btn.onclick = function() { applyGridSearchForSampleRowId(rid); };
+        }
+
         function renderCustomEditorPreview() {
             if (!customFieldPreviewResult) return;
+            renderCustomFieldPreviewSampleRowHint(null);
             customFieldPreviewResult.classList.remove('text-danger', 'text-success');
             customFieldPreviewResult.classList.add('text-muted');
             customFieldPreviewResult.textContent = 'Проверка...';
@@ -4141,11 +4184,16 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     var pr = (body && body.preview_result) ? body.preview_result : {};
                     var val = (pr.sample_value != null) ? pr.sample_value : '';
                     var modeDetail = pr.mode_detail ? String(pr.mode_detail) : '';
+                    var sampleRowId = (pr.sample_row_id != null) ? pr.sample_row_id : null;
+                    lastCustomFieldPreviewSampleRowId = sampleRowId;
                     customFieldPreviewResult.classList.remove('text-muted', 'text-danger');
                     customFieldPreviewResult.classList.add('text-success');
                     customFieldPreviewResult.textContent = 'Результат: ' + ((val == null || val === '') ? 'Пусто' : String(val)) + (modeDetail ? (' (' + modeDetail + ')') : '');
+                    renderCustomFieldPreviewSampleRowHint(sampleRowId);
                 })
                 .catch(function(e) {
+                    lastCustomFieldPreviewSampleRowId = null;
+                    renderCustomFieldPreviewSampleRowHint(null);
                     customFieldPreviewResult.classList.remove('text-muted', 'text-success');
                     customFieldPreviewResult.classList.add('text-danger');
                     customFieldPreviewResult.textContent = e && e.message ? e.message : String(e);
@@ -5416,6 +5464,30 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             return bestKey;
         }
 
+        function tempPresentationKeepOnlyRowsWithLinkedSmart(rows) {
+            if (!TEMP_PRESENTATION_ONLY_ROWS_WITH_LINKED_SMART) return rows || [];
+            if (!Array.isArray(rows) || !rows.length) return rows || [];
+            return rows.filter(function(row) {
+                if (!row || typeof row !== 'object') return false;
+                var keys = Object.keys(row);
+                for (var i = 0; i < keys.length; i++) {
+                    var k = keys[i];
+                    if (!k || k.indexOf('custom_') !== 0) continue;
+                    var raw = row[k];
+                    if (raw == null) continue;
+                    var s = String(raw);
+                    if (!s.trim()) continue;
+                    var low = s.toLowerCase();
+                    var idx = low.indexOf('авто:');
+                    if (idx < 0) idx = low.indexOf('auto:');
+                    if (idx < 0) continue;
+                    var tail = s.slice(idx + 5).trim();
+                    if (tail) return true;
+                }
+                return false;
+            });
+        }
+
         function renderGrid(tableIndex) {
             var st = tableStates[tableIndex];
             if (!st) return;
@@ -5431,6 +5503,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             var searchInput = els.section ? els.section.querySelector('.searchFilterInputInSection') : null;
             var searchQuery = (searchInput && searchInput.value) ? String(searchInput.value).trim().toLowerCase() : '';
             var filteredRows = applyConfiguredFieldFilters(st.fullData, st);
+            filteredRows = tempPresentationKeepOnlyRowsWithLinkedSmart(filteredRows);
             if (searchQuery) {
                 var searchKeys = (st && st.allColumns && Array.isArray(st.allColumns))
                     ? st.allColumns.map(function(c) { return c && c.key ? c.key : ''; }).filter(Boolean)
