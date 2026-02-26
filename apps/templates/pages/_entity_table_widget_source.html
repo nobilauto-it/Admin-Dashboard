@@ -1657,6 +1657,13 @@
                 if (!active) {
                     hintEl.innerHTML = '';
                     if (customFieldRecalcLoadingHint) customFieldRecalcLoadingHint.classList.add('d-none');
+                    if (customFieldRecalcOpenBtn) {
+                        customFieldRecalcOpenBtn.disabled = false;
+                        customFieldRecalcOpenBtn.textContent = 'РџРµСЂРµСЃС‡РёС‚Р°С‚СЊ';
+                    }
+                    if (customFieldRecalcConfirmBtn) {
+                        customFieldRecalcConfirmBtn.textContent = 'РџРµСЂРµСЃС‡РёС‚Р°С‚СЊ';
+                    }
                     return;
                 }
                 var msg = String(text || 'Recalculation in progress...');
@@ -1665,6 +1672,13 @@
                     + '<span style=\"color:#17a2b8;\">' + msg.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>'
                     + '<style>@keyframes cfSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>';
                 if (customFieldRecalcLoadingHint) customFieldRecalcLoadingHint.classList.remove('d-none');
+                if (customFieldRecalcOpenBtn) {
+                    customFieldRecalcOpenBtn.disabled = true;
+                    customFieldRecalcOpenBtn.textContent = 'РџРµСЂРµСЃС‡РµС‚...';
+                }
+                if (customFieldRecalcConfirmBtn) {
+                    customFieldRecalcConfirmBtn.textContent = 'РџРµСЂРµСЃС‡РµС‚...';
+                }
             }
             function scheduleGridRefreshAfterAsyncRecalc(tableIndex) {
                 [3000, 8000, 15000, 30000, 45000, 60000, 90000, 120000].forEach(function(delay) {
@@ -1683,6 +1697,9 @@
                             return buildNestedSourceEntityHintsForEditor(currentTableIndex, rawEditor, String(normalizedEditor || ''))
                                 .then(function(nestedHints) {
                                     var recalcPayload = { async: true };
+                                    recalcPayload.page_slug = getPageSlug();
+                                    recalcPayload.table_index = currentTableIndex;
+                                    recalcPayload.editor = String(normalizedEditor || rawEditor || '');
                                     if (targetEntity && targetEntity.entity_key) recalcPayload.target_entity = targetEntity;
                                     var baseSource = (st.selectedEntities || []).map(customFieldApiEntityPayload).filter(Boolean);
                                     if (Array.isArray(nestedHints) && nestedHints.length) baseSource = baseSource.concat(nestedHints);

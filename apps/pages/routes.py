@@ -467,7 +467,7 @@ def entity_table_processes_deals():
     """Прокси: список сущностей для формы выбора (контакты, лиды, сделки, смарт-процессы)."""
     url = f"{_crm_base_url()}/api/processes-deals/"
     try:
-        data = _proxy_get(url)
+        data = _proxy_get(url, timeout=120)
         return jsonify(data)
     except Exception as e:
         current_app.logger.error(f"Entity table processes-deals: {e}")
