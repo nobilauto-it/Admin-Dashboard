@@ -4283,8 +4283,10 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     (res.fields || []).forEach(function(f) {
                         if (f.nested_fields && f.nested_fields.length) {
                             var t = nestedTypeKey(f.field_type);
+                            var nestedEntityKey = String(f.nested_entity_key || '').trim();
                             var slug = (f.human_title || f.column_name || String(f.id || '')).replace(/\s/g, '_').replace(/[^a-zA-Z0-9_-]/g, '_') || t;
-                            var groupKey = t + '::' + slug;
+                            var groupIdentity = nestedEntityKey || slug;
+                            var groupKey = t + '::' + groupIdentity;
                             if (!nestedByGroup[groupKey]) nestedByGroup[groupKey] = { label: f.human_title || f.column_name || nestedTypeLabel(t), fields: [] };
                             f.nested_fields.forEach(function(n) {
                                 nestedByGroup[groupKey].fields.push({ human_title: n.human_title, column_name: n.column_name, id: n.id });
