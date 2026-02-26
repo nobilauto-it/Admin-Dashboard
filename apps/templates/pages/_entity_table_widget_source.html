@@ -992,7 +992,7 @@
             return fetch(API.customFields + '/' + encodeURIComponent(String(id)) + '/recalculate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload || { async: true })
+                body: JSON.stringify(payload || { async: false })
             }).then(function(r) {
                 return r.json().catch(function() { return { ok: false, error: 'Invalid response' }; })
                     .then(function(body) { return { ok: r.ok, body: body, status: r.status }; });
@@ -1649,6 +1649,13 @@
                 ? customFieldApiEntityPayload(st.selectedEntities[0])
                 : null;
             if (customFieldRecalcConfirmBtn) customFieldRecalcConfirmBtn.disabled = true;
+            function scheduleGridRefreshAfterAsyncRecalc(tableIndex) {
+                [3000, 8000, 15000, 30000].forEach(function(delay) {
+                    setTimeout(function() {
+                        try { loadData(tableIndex); } catch (e) {}
+                    }, delay);
+                });
+            }
             Promise.resolve()
                 .then(function() {
                     var rawEditor = String((item && item.editor) || '');
@@ -1656,7 +1663,7 @@
                         .then(function(normalizedEditor) {
                             return buildNestedSourceEntityHintsForEditor(currentTableIndex, rawEditor, String(normalizedEditor || ''))
                                 .then(function(nestedHints) {
-                                    var recalcPayload = { async: true };
+                                    var recalcPayload = { async: false };
                                     if (targetEntity && targetEntity.entity_key) recalcPayload.target_entity = targetEntity;
                                     var baseSource = (st.selectedEntities || []).map(customFieldApiEntityPayload).filter(Boolean);
                                     if (Array.isArray(nestedHints) && nestedHints.length) baseSource = baseSource.concat(nestedHints);
@@ -1671,8 +1678,8 @@
                 .then(function(res) {
                     if (customFieldRecalcModal) customFieldRecalcModal.hide();
                     if (res && res.started_async) {
-                        alert('Recalculation started in background. Refresh data in a few moments.');
-                        setTimeout(function() { try { loadData(currentTableIndex); } catch (e) {} }, 3000);
+                        alert('Recalculation started in background. Grid will refresh automatically for the next 30 seconds.');
+                        scheduleGridRefreshAfterAsyncRecalc(currentTableIndex);
                         return;
                     }
                     loadData(currentTableIndex);
