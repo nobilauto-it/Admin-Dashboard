@@ -4606,12 +4606,18 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
         var FIRST_BATCH_SIZE = 2000;
         function resolveSmartEntityByNestedType(typeToken, smartEntities) {
             var token = String(typeToken || '');
-            if (!token || token.indexOf('smart_process::') !== 0) return null;
-            var raw = token.slice('smart_process::'.length);
+            if (!token) return null;
+            var raw = '';
+            if (token.indexOf('smart_process::') === 0) raw = token.slice('smart_process::'.length);
+            else if (token.indexOf('entity::') === 0) raw = token.slice('entity::'.length);
+            else return null;
             var rawNorm = normalizeSearchText(raw.replace(/_/g, ' '));
             return (smartEntities || []).find(function(e) {
                 var eKey = String((e && e.entity_key) || '');
                 var eTitle = String((e && e.title) || eKey);
+                var eType = String((e && e.type) || '').toLowerCase();
+                var isSmart = (eType === 'smart_process' || eType === 'entity' || /^smart_process_/i.test(eKey));
+                if (!isSmart) return false;
                 return normalizeSearchText(eKey) === normalizeSearchText(raw)
                     || normalizeSearchText(eKey) === rawNorm
                     || normalizeSearchText(eTitle) === rawNorm;
@@ -4621,7 +4627,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
         function resolveNestedMappedEntity(typeToken, knownEntities) {
             var typBase = String(typeToken || '').split('::')[0].toLowerCase();
             if (!typBase) return null;
-            if (typBase === 'smart_process') return resolveSmartEntityByNestedType(typeToken, knownEntities || []);
+            if (typBase === 'smart_process' || typBase === 'entity') return resolveSmartEntityByNestedType(typeToken, knownEntities || []);
             if (typBase === 'contact' || typBase === 'lead' || typBase === 'company') {
                 return (knownEntities || []).find(function(e) {
                     return !!e && (
