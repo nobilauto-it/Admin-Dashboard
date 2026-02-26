@@ -988,11 +988,11 @@
                 return true;
             });
         }
-        function recalculateCustomFieldViaApi(id) {
+        function recalculateCustomFieldViaApi(id, payload) {
             return fetch(API.customFields + '/' + encodeURIComponent(String(id)) + '/recalculate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ async: true })
+                body: JSON.stringify(payload || { async: true })
             }).then(function(r) {
                 return r.json().catch(function() { return { ok: false, error: 'Invalid response' }; })
                     .then(function(body) { return { ok: r.ok, body: body, status: r.status }; });
@@ -1645,8 +1645,29 @@
                 alert('У поля нет id для пересчета');
                 return;
             }
+            var targetEntity = (Array.isArray(st.selectedEntities) && st.selectedEntities.length)
+                ? customFieldApiEntityPayload(st.selectedEntities[0])
+                : null;
             if (customFieldRecalcConfirmBtn) customFieldRecalcConfirmBtn.disabled = true;
-            recalculateCustomFieldViaApi(item.id)
+            Promise.resolve()
+                .then(function() {
+                    var rawEditor = String((item && item.editor) || '');
+                    return normalizeCustomFieldEditorForBackend(currentTableIndex, rawEditor)
+                        .then(function(normalizedEditor) {
+                            return buildNestedSourceEntityHintsForEditor(currentTableIndex, rawEditor, String(normalizedEditor || ''))
+                                .then(function(nestedHints) {
+                                    var recalcPayload = { async: true };
+                                    if (targetEntity && targetEntity.entity_key) recalcPayload.target_entity = targetEntity;
+                                    var baseSource = (st.selectedEntities || []).map(customFieldApiEntityPayload).filter(Boolean);
+                                    if (Array.isArray(nestedHints) && nestedHints.length) baseSource = baseSource.concat(nestedHints);
+                                    if (baseSource.length) recalcPayload.source_entities = baseSource;
+                                    return recalcPayload;
+                                });
+                        });
+                })
+                .then(function(recalcPayload) {
+                    return recalculateCustomFieldViaApi(item.id, recalcPayload);
+                })
                 .then(function(res) {
                     if (customFieldRecalcModal) customFieldRecalcModal.hide();
                     if (res && res.started_async) {
