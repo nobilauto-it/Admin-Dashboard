@@ -1652,15 +1652,19 @@
                 : null;
             if (customFieldRecalcConfirmBtn) customFieldRecalcConfirmBtn.disabled = true;
             function setCustomFieldRecalcLoading(active, text) {
-                if (!customFieldRecalcLoadingHint) return;
+                var hintEl = customFieldRecalcLoadingHint || customFieldPreviewResult;
+                if (!hintEl) return;
                 if (!active) {
-                    customFieldRecalcLoadingHint.innerHTML = '';
-                    customFieldRecalcLoadingHint.classList.add('d-none');
+                    hintEl.innerHTML = '';
+                    if (customFieldRecalcLoadingHint) customFieldRecalcLoadingHint.classList.add('d-none');
                     return;
                 }
                 var msg = String(text || 'Recalculation in progress...');
-                customFieldRecalcLoadingHint.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span><span>' + msg.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
-                customFieldRecalcLoadingHint.classList.remove('d-none');
+                hintEl.innerHTML = ''
+                    + '<span style=\"display:inline-block;width:12px;height:12px;border:2px solid #17a2b8;border-top-color:transparent;border-radius:50%;animation:cfSpin .8s linear infinite;vertical-align:-1px;margin-right:6px;\"></span>'
+                    + '<span style=\"color:#17a2b8;\">' + msg.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>'
+                    + '<style>@keyframes cfSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>';
+                if (customFieldRecalcLoadingHint) customFieldRecalcLoadingHint.classList.remove('d-none');
             }
             function scheduleGridRefreshAfterAsyncRecalc(tableIndex) {
                 [3000, 8000, 15000, 30000].forEach(function(delay) {
