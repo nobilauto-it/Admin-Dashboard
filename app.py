@@ -6130,6 +6130,24 @@ def _entity_table_validate_custom_field_update_payload(payload: Any) -> Dict[str
 
     updates: Dict[str, Any] = {}
 
+    if "target_entity" in payload:
+        target_entity = payload.get("target_entity")
+        if not isinstance(target_entity, dict):
+            raise HTTPException(status_code=400, detail="target_entity must be an object")
+        te = dict(target_entity)
+        if not str(te.get("entity_key") or "").strip():
+            raise HTTPException(status_code=400, detail="target_entity.entity_key is required")
+        te["entity_key"] = str(te.get("entity_key") or "").strip()
+        updates["target_entity"] = te
+
+    if "source_entities" in payload:
+        source_entities = payload.get("source_entities")
+        if source_entities is None:
+            source_entities = []
+        if not isinstance(source_entities, list):
+            raise HTTPException(status_code=400, detail="source_entities must be an array")
+        updates["source_entities"] = list(source_entities)
+
     if "name" in custom_field:
         name = str(custom_field.get("name") or "").strip()
         if not name:
@@ -6400,6 +6418,7 @@ def _entity_table_custom_field_row_to_api(row: Dict[str, Any]) -> Dict[str, Any]
         "type": row.get("field_type") or "",
         "editor": row.get("editor") or "",
         "target_entity": row.get("target_entity") if isinstance(row.get("target_entity"), dict) else {},
+        "source_entities": row.get("source_entities") if isinstance(row.get("source_entities"), list) else [],
     }
     storage_table = row.get("storage_table")
     storage_column = row.get("storage_column")
@@ -6823,7 +6842,7 @@ async def update_entity_table_custom_field(custom_field_id: str, request: Reques
         _ensure_entity_table_custom_fields_schema(conn)
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                SELECT id, name, code, description, field_type, editor, target_entity,
+                SELECT id, name, code, description, field_type, editor, target_entity, source_entities,
                        storage_table, storage_column, storage_pg_type
                 FROM entity_table_custom_fields
                 WHERE id=%s
@@ -6839,6 +6858,12 @@ async def update_entity_table_custom_field(custom_field_id: str, request: Reques
 
             set_parts: List[str] = []
             params: List[Any] = []
+            if "target_entity" in updates:
+                set_parts.append("target_entity=%s")
+                params.append(Json(updates.pop("target_entity")))
+            if "source_entities" in updates:
+                set_parts.append("source_entities=%s")
+                params.append(Json(updates.pop("source_entities")))
             allowed_cols = ("name", "description", "field_type", "editor")
             for col in allowed_cols:
                 if col in updates:
@@ -6856,7 +6881,7 @@ async def update_entity_table_custom_field(custom_field_id: str, request: Reques
                 UPDATE entity_table_custom_fields
                 SET {", ".join(set_parts)}
                 WHERE id=%s
-                RETURNING id, name, code, description, field_type, editor, target_entity,
+                RETURNING id, name, code, description, field_type, editor, target_entity, source_entities,
                           storage_table, storage_column, storage_pg_type
             """, tuple(params))
             row = cur.fetchone()
