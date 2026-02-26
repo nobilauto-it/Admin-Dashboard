@@ -5905,6 +5905,7 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
         "storage_table": storage_table,
     }
     target_storage_entity_key = str(target_resolved.get("storage_entity_key") or "")
+    materialization_debug: Optional[Dict[str, Any]] = None
     if _entity_table_editor_ast_has_aggregate(ast):
         value = _entity_table_editor_eval_ast(conn, ast, row)
         if isinstance(value, tuple) and value and value[0] == "field_ref":
@@ -6036,10 +6037,27 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
             preview_info = _entity_table_preview_custom_field_editor(conn, preview_row)
             if isinstance(preview_info, dict):
                 value_preview = preview_info.get("sample_value", value_preview)
+                sample_row_id = preview_info.get("sample_row_id")
+                stored_sample_value = None
+                if sample_row_id not in (None, ""):
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            f'SELECT "{storage_column}" FROM "{storage_table}" WHERE id=%s LIMIT 1',
+                            (int(sample_row_id),)
+                        )
+                        rr = cur.fetchone()
+                        stored_sample_value = rr[0] if rr else None
+                materialization_debug = {
+                    "preview_sample_row_id": sample_row_id,
+                    "preview_sample_value": preview_info.get("sample_value"),
+                    "stored_sample_value": stored_sample_value,
+                    "updates_total": len(updates),
+                    "updates_nonempty": sum(1 for _, v in updates if v not in (None, "")),
+                }
         except Exception:
             pass
 
-    return {
+    out = {
         "updated_rows": updated_rows,
         "mode": mode,
         "mode_detail": mode_detail,
@@ -6051,7 +6069,9 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
         "value_preview": value_preview,
         "custom_field_id": _entity_table_custom_field_db_id_to_api(row.get("id")),
     }
-
+    if materialization_debug is not None:
+        out["materialization_debug"] = materialization_debug
+    return out
 
 def _entity_table_validate_custom_field_payload(payload: Any) -> Dict[str, Any]:
     if not isinstance(payload, dict):
