@@ -4848,7 +4848,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     }
                     Object.keys(sel.nestedFields).forEach(function(typ) {
                         var typBase = String(typ || '').split('::')[0].toLowerCase();
-                        if (typBase !== 'smart_process' && typBase !== 'contact' && typBase !== 'lead' && typBase !== 'company') return;
+                        if (typBase !== 'contact' && typBase !== 'lead' && typBase !== 'company') return;
                         var mappedSmart = null;
                         if (typBase === 'smart_process') {
                             mappedSmart = resolveSmartEntityByNestedType(typ, entitiesForLoad);
