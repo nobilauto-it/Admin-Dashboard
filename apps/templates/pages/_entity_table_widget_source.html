@@ -816,6 +816,8 @@
         const customFieldEditModal = customFieldEditModalEl ? new bootstrap.Modal(customFieldEditModalEl) : null;
         const customFieldRecalcModal = customFieldRecalcModalEl ? new bootstrap.Modal(customFieldRecalcModalEl) : null;
         const customFieldDeleteModal = customFieldDeleteModalEl ? new bootstrap.Modal(customFieldDeleteModalEl) : null;
+        const customFieldRecalcOpenBtnDefaultText = customFieldRecalcOpenBtn ? String(customFieldRecalcOpenBtn.textContent || 'Recalculate') : 'Recalculate';
+        const customFieldRecalcConfirmBtnDefaultText = customFieldRecalcConfirmBtn ? String(customFieldRecalcConfirmBtn.textContent || 'Recalculate') : 'Recalculate';
         const toggleCustomFieldsInFieldsTabBtn = document.getElementById('toggleCustomFieldsInFieldsTabBtn');
         const customFieldsSectionInFieldsTab = document.getElementById('customFieldsSectionInFieldsTab');
         const customFieldsListInFieldsTab = document.getElementById('customFieldsListInFieldsTab');
@@ -1659,10 +1661,10 @@
                     if (customFieldRecalcLoadingHint) customFieldRecalcLoadingHint.classList.add('d-none');
                     if (customFieldRecalcOpenBtn) {
                         customFieldRecalcOpenBtn.disabled = false;
-                        customFieldRecalcOpenBtn.textContent = 'РџРµСЂРµСЃС‡РёС‚Р°С‚СЊ';
+                        customFieldRecalcOpenBtn.textContent = customFieldRecalcOpenBtnDefaultText;
                     }
                     if (customFieldRecalcConfirmBtn) {
-                        customFieldRecalcConfirmBtn.textContent = 'РџРµСЂРµСЃС‡РёС‚Р°С‚СЊ';
+                        customFieldRecalcConfirmBtn.textContent = customFieldRecalcConfirmBtnDefaultText;
                     }
                     return;
                 }
@@ -1674,10 +1676,10 @@
                 if (customFieldRecalcLoadingHint) customFieldRecalcLoadingHint.classList.remove('d-none');
                 if (customFieldRecalcOpenBtn) {
                     customFieldRecalcOpenBtn.disabled = true;
-                    customFieldRecalcOpenBtn.textContent = 'РџРµСЂРµСЃС‡РµС‚...';
+                    customFieldRecalcOpenBtn.textContent = 'Recalc...';
                 }
                 if (customFieldRecalcConfirmBtn) {
-                    customFieldRecalcConfirmBtn.textContent = 'РџРµСЂРµСЃС‡РµС‚...';
+                    customFieldRecalcConfirmBtn.textContent = 'Recalc...';
                 }
             }
             function scheduleGridRefreshAfterAsyncRecalc(tableIndex) {
@@ -1688,7 +1690,7 @@
                 });
                 setTimeout(function() { setCustomFieldRecalcLoading(false); }, 122000);
             }
-            setCustomFieldRecalcLoading(true, 'Пересчет запускается...');
+            setCustomFieldRecalcLoading(true, 'Starting recalculation...');
             Promise.resolve()
                 .then(function() {
                     var rawEditor = String((item && item.editor) || '');
@@ -1714,7 +1716,7 @@
                 .then(function(res) {
                     if (customFieldRecalcModal) customFieldRecalcModal.hide();
                     if (res && res.started_async) {
-                        setCustomFieldRecalcLoading(true, 'Пересчет запущен. Данные подгружаются (может занять до 1-2 минут)...');
+                        setCustomFieldRecalcLoading(true, 'Starting recalculation...');
                         scheduleGridRefreshAfterAsyncRecalc(currentTableIndex);
                         return;
                     }
