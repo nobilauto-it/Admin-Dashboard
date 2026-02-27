@@ -4326,6 +4326,7 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
         return parse_compare()
 
     def parse_and() -> Any:
+        nonlocal i
         left = parse_not()
         while True:
             pos_before = i
@@ -4338,6 +4339,7 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
         return left
 
     def parse_or() -> Any:
+        nonlocal i
         left = parse_and()
         while True:
             pos_before = i
@@ -7434,12 +7436,22 @@ async def preview_entity_table_custom_field(request: Request):
                 conn.rollback()
         except Exception:
             pass
+        tb = ""
         try:
             print(f"ERROR: preview_entity_table_custom_field: {e}", file=sys.stderr, flush=True)
             traceback.print_exc()
+            tb = traceback.format_exc()
         except Exception:
             pass
-        return _entity_table_error_response(500, "Editor preview failed", "Internal error while evaluating preview")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "ok": False,
+                "error": "Editor preview failed",
+                "detail": f"Internal error while evaluating preview: {e}",
+                "debug_detail": tb,
+            },
+        )
     finally:
         try:
             if conn:
