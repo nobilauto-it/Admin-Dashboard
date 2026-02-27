@@ -5833,6 +5833,40 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             });
         }
 
+        function applyCustomFieldNamesToColumns(st) {
+            if (!st || !Array.isArray(st.allColumns) || !st.allColumns.length) return;
+            var byEntityAndCode = {};
+            var byCode = {};
+            (st.customFields || []).forEach(function(cf) {
+                if (!cf) return;
+                var code = String(cf.code || '').trim();
+                var name = String(cf.name || '').trim();
+                var targetKey = String((((cf.target_entity || {}).entity_key) || '')).trim();
+                if (!code || !name) return;
+                byCode[code] = name;
+                if (targetKey) byEntityAndCode[targetKey + '::' + code] = name;
+            });
+            if (!Object.keys(byCode).length && !Object.keys(byEntityAndCode).length) return;
+            st.allColumns.forEach(function(col) {
+                if (!col || !col.key) return;
+                var idx = String(col.key).indexOf('::');
+                if (idx <= 0) return;
+                var entityKey = String(col.key).slice(0, idx);
+                var code = String(col.key).slice(idx + 2);
+                var mapped = byEntityAndCode[entityKey + '::' + code] || byCode[code];
+                if (!mapped) return;
+                var label = String(col.label || '').trim();
+                if (!label || label === code) {
+                    col.label = mapped;
+                    return;
+                }
+                var withSuffix = code + ' (';
+                if (label.indexOf(withSuffix) === 0) {
+                    col.label = mapped + label.slice(code.length);
+                }
+            });
+        }
+
         function renderGrid(tableIndex) {
             var st = tableStates[tableIndex];
             if (!st) return;
@@ -5843,6 +5877,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     if (st.allColumns.length === 0) rebuildAllColumnsFromData(tableIndex);
                 }
             }
+            applyCustomFieldNamesToColumns(st);
             var els = getSectionEls(tableIndex);
             if (!els.gridHead || !els.gridBody) return;
             var searchInput = els.section ? els.section.querySelector('.searchFilterInputInSection') : null;
