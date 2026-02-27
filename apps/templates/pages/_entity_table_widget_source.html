@@ -4662,7 +4662,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     Object.keys(nested).forEach(function(typ) {
                         var typBase = String(typ || '').split('::')[0].toLowerCase();
                         var ent = null;
-                        if (typBase === 'smart_process') {
+                        if (typBase === 'smart_process' || typBase === 'entity') {
                             ent = resolveSmartEntityByNestedType(typ, knownEntities);
                         } else if (typBase === 'contact' || typBase === 'lead' || typBase === 'company') {
                             ent = (knownEntities || []).find(function(e) {
@@ -4826,9 +4826,13 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             return m ? m[0] : '';
         }
 
-        function buildReverseDealIdMap(rows, entityKeyValue) {
+        function buildReverseDealIdMap(rows, entityKeyValue, extraAliases) {
             var map = {};
             var candidates = ['parentid2', 'parent_id_2', 'parentid', 'parent_id', 'deal_id', 'parent_id_1114'];
+            (extraAliases || []).forEach(function(a) {
+                var s = String(a || '').trim();
+                if (s && candidates.indexOf(s) < 0) candidates.push(s);
+            });
             (rows || []).forEach(function(row) {
                 var dealId = '';
                 for (var i = 0; i < candidates.length; i++) {
@@ -4913,7 +4917,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 if (sel && sel.nestedFields && typeof sel.nestedFields === 'object') {
                     Object.keys(sel.nestedFields).forEach(function(typ) {
                         var typBase = String(typ || '').split('::')[0].toLowerCase();
-                        if (typBase === 'smart_process' || typBase === 'contact' || typBase === 'lead' || typBase === 'company') return;
+                        if (typBase === 'smart_process' || typBase === 'entity' || typBase === 'contact' || typBase === 'lead' || typBase === 'company') return;
                         (sel.nestedFields[typ] || []).forEach(function(t) {
                             if (t && displayTitles.indexOf(t) < 0) displayTitles.push(t);
                         });
@@ -4970,7 +4974,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                         var typBase = String(typ || '').split('::')[0].toLowerCase();
                         if (typBase !== 'contact' && typBase !== 'lead' && typBase !== 'company') return;
                         var mappedSmart = null;
-                        if (typBase === 'smart_process') {
+                        if (typBase === 'smart_process' || typBase === 'entity') {
                             mappedSmart = resolveSmartEntityByNestedType(typ, entitiesForLoad);
                         } else {
                             mappedSmart = (entitiesForLoad || []).find(function(e) {
@@ -5165,7 +5169,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                                 map[k] = row;
                             });
                             idMapsByEntityKey[eKey] = map;
-                            reverseDealMapsByEntityKey[eKey] = buildReverseDealIdMap(s.rows || [], eKey);
+                            reverseDealMapsByEntityKey[eKey] = buildReverseDealIdMap(s.rows || [], eKey, dealJoinHintsByTargetKey[eKey] || []);
                         });
                         (dealState.rows || []).forEach(function(dealRow, rIdx) {
                             var mergedRow = {};
