@@ -3394,6 +3394,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
         }
 
         function saveConfig(opts) {
+            if (isGuestUser()) return Promise.resolve();
             opts = opts || {};
             var slug = getPageSlug();
             var tables = [];
