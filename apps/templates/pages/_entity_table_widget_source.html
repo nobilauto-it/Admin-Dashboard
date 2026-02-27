@@ -4098,11 +4098,27 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             if (editorHelpTitle && editorHelpTitle.indexOf('DAYS_BETWEEN') < 0) {
                 var dateHelp = "<div><b>Date functions:</b> NOW(), DAYS_BETWEEN(from, to)</div>"
                     + "<div><b>Date example:</b> DAYS_BETWEEN({deal_20||BEGINDATE}, {deal_20||CLOSEDATE})</div>"
-                    + "<div><b>Real case:</b> MAX(0, DAYS_BETWEEN({deal_20||BEGINDATE}, NOW()))</div>";
+                    + "<div><b>Date shift:</b> DATE_ADD({deal_20||BEGINDATE}, 7), DATE_SUB({deal_20||CLOSEDATE}, 3), ADD_DAYS({deal_20||BEGINDATE}, 14)</div>"
+                    + "<div><b>Conditions:</b> IF(cond, a, b), AND(...), OR(...), NOT(...)</div>"
+                    + "<div><b>Compare ops:</b> =, !=, &gt;, &lt;, &gt;=, &lt;=</div>"
+                    + "<div><b>Real case:</b> IF(AND(DAYS_BETWEEN({deal_20||BEGINDATE}, NOW()) &gt; 7, NUMBER(IFNULL({deal_20||OPPORTUNITY},0)) &gt;= 1000), &quot;Overdue VIP&quot;, &quot;OK&quot;)</div>";
                 if (editorHelpTitle.indexOf('</div></div>') >= 0) {
                     editorHelpTitle = editorHelpTitle.replace('</div></div>', dateHelp + '</div></div>');
                 } else {
                     editorHelpTitle += dateHelp;
+                }
+                customFieldEditorHelpBtn.setAttribute('title', editorHelpTitle);
+                customFieldEditorHelpBtn.setAttribute('data-bs-title', editorHelpTitle);
+                customFieldEditorHelpBtn.setAttribute('data-bs-original-title', editorHelpTitle);
+            }
+            if (editorHelpTitle && editorHelpTitle.indexOf('IF(cond, a, b)') < 0) {
+                var logicHelp = "<div><b>Conditions:</b> IF(cond, a, b), AND(...), OR(...), NOT(...)</div>"
+                    + "<div><b>Compare ops:</b> =, !=, &gt;, &lt;, &gt;=, &lt;=</div>"
+                    + "<div><b>Date shift:</b> DATE_ADD({deal_20||BEGINDATE}, 7), DATE_SUB({deal_20||CLOSEDATE}, 3), ADD_DAYS({deal_20||BEGINDATE}, 14)</div>";
+                if (editorHelpTitle.indexOf('</div></div>') >= 0) {
+                    editorHelpTitle = editorHelpTitle.replace('</div></div>', logicHelp + '</div></div>');
+                } else {
+                    editorHelpTitle += logicHelp;
                 }
                 customFieldEditorHelpBtn.setAttribute('title', editorHelpTitle);
                 customFieldEditorHelpBtn.setAttribute('data-bs-title', editorHelpTitle);
@@ -4257,6 +4273,27 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 }
                 return null;
             }
+            function toBoolValue(v) {
+                var sv = scalar(v);
+                if (sv == null) return false;
+                if (typeof sv === 'boolean') return sv;
+                if (typeof sv === 'number') return isFinite(sv) && sv !== 0;
+                var s = String(sv).trim();
+                if (!s) return false;
+                if (s.toLowerCase() === 'false') return false;
+                var n = parseFloat(s.replace(',', '.'));
+                if (!isNaN(n) && isFinite(n)) return n !== 0;
+                return true;
+            }
+            function shiftDateByDays(v, daysDelta) {
+                var d = toDateValue(v);
+                if (!d) return '';
+                var days = parseInt(toPreviewNumber(daysDelta), 10);
+                if (isNaN(days)) days = 0;
+                var shifted = new Date(d.getTime());
+                shifted.setDate(shifted.getDate() + days);
+                return shifted.toISOString();
+            }
             var argNames = values.map(function(_, i) { return '__t' + i; });
             var FNS = {
                 COUNT: function(v) {
@@ -4315,6 +4352,34 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     if (!d1 || !d2) return 0;
                     var days = (d2.getTime() - d1.getTime()) / 86400000;
                     return days >= 0 ? Math.floor(days) : Math.ceil(days);
+                },
+                DATE_ADD: function(dateVal, daysVal) {
+                    return shiftDateByDays(dateVal, daysVal);
+                },
+                DATE_SUB: function(dateVal, daysVal) {
+                    return shiftDateByDays(dateVal, -toPreviewNumber(daysVal));
+                },
+                ADD_DAYS: function(dateVal, daysVal) {
+                    return shiftDateByDays(dateVal, daysVal);
+                },
+                IF: function(cond, yesVal, noVal) {
+                    return toBoolValue(cond) ? yesVal : noVal;
+                },
+                AND: function() {
+                    if (!arguments.length) return false;
+                    for (var i = 0; i < arguments.length; i++) {
+                        if (!toBoolValue(arguments[i])) return false;
+                    }
+                    return true;
+                },
+                OR: function() {
+                    for (var i = 0; i < arguments.length; i++) {
+                        if (toBoolValue(arguments[i])) return true;
+                    }
+                    return false;
+                },
+                NOT: function(v) {
+                    return !toBoolValue(v);
                 }
             };
             var fnNames = Object.keys(FNS);
