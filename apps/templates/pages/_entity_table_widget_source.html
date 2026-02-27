@@ -3229,7 +3229,8 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     if (!data || !data.ok) { if (isDashboardSlug()) showDashboardLoadError(); else tryApplyStored(); return; }
                     lastRemoteConfigSignature = getRemoteConfigSignature(data);
                     if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
-                        var isDashboard = !!(data.read_only || isDashboardSlug());
+                        var isDashboard = !!isDashboardSlug();
+                        var guestMode = isGuestUser();
                         tableStates = data.tables.map(function(t, idx) {
                             var norm = normalizeEntitiesAndFields(t.entities || [], t.fields || []);
                             var orderFromServer = (t.column_order && Array.isArray(t.column_order)) ? t.column_order : null;
@@ -3269,7 +3270,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                         });
                         applyTableModes(data.table_modes);
                         tableStates.forEach(function(st, i) {
-                            if (!isDashboard && (!st.columnWidths || !Object.keys(st.columnWidths).length)) st.columnWidths = loadColumnWidths(i);
+                            if (!isDashboard && !guestMode && (!st.columnWidths || !Object.keys(st.columnWidths).length)) st.columnWidths = loadColumnWidths(i);
                             updateUI(i);
                             loadFieldsThenData(i, false);
                         });
@@ -3285,6 +3286,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     }
                     if (data.entities && Array.isArray(data.entities) && data.entities.length > 0) {
                         var norm = normalizeEntitiesAndFields(data.entities, data.fields || []);
+                        var widthsFromServer = (data.column_widths && typeof data.column_widths === 'object') ? data.column_widths : {};
                         tableStates = [{
                             selectedEntities: norm.entities,
                             selectedFields: norm.fields,
@@ -3295,7 +3297,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                             allColumns: [],
                             currentPage: 1,
                             pageSize: normalizePageSize((data.page_size != null) ? data.page_size : localPageSizes['0']),
-                            columnWidths: loadColumnWidths(0),
+                            columnWidths: (Object.keys(widthsFromServer).length ? widthsFromServer : (isGuestUser() ? {} : loadColumnWidths(0))),
                             sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
                             sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
                             showTime: (data.show_time === true),
