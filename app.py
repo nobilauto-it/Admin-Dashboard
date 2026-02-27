@@ -6139,6 +6139,13 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
                     if join_col:
                         cols_needed.add(join_col)
                 return
+            if node[0] == "unary":
+                collect_refs(node[2])
+                return
+            if node[0] == "binary":
+                collect_refs(node[2])
+                collect_refs(node[3])
+                return
             if node[0] == "call":
                 for a in (node[2] or []):
                     collect_refs(a)
@@ -6534,6 +6541,13 @@ def _entity_table_preview_custom_field_editor(conn, row: Dict[str, Any]) -> Dict
                     raise HTTPException(status_code=400, detail=f"{{{entity_name}.{field_name}}} is not available for row_wise join yet")
                 if join_col:
                     cols_needed.add(join_col)
+            return
+        if node[0] == "unary":
+            collect_refs(node[2])
+            return
+        if node[0] == "binary":
+            collect_refs(node[2])
+            collect_refs(node[3])
             return
         if node[0] == "call":
             for a in (node[2] or []):
