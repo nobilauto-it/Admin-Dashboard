@@ -4187,6 +4187,20 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             function scalar(v) {
                 return (v && typeof v === 'object' && v.__customEditorTokenValue) ? v.current : v;
             }
+            function toDateValue(v) {
+                var sv = scalar(v);
+                if (sv == null || sv === '') return null;
+                if (sv instanceof Date) return isNaN(sv.getTime()) ? null : sv;
+                var raw = String(sv).trim();
+                if (!raw) return null;
+                var d = new Date(raw);
+                if (!isNaN(d.getTime())) return d;
+                if (raw.indexOf(' ') > 0 && raw.indexOf('T') < 0) {
+                    d = new Date(raw.replace(' ', 'T'));
+                    if (!isNaN(d.getTime())) return d;
+                }
+                return null;
+            }
             var argNames = values.map(function(_, i) { return '__t' + i; });
             var FNS = {
                 COUNT: function(v) {
@@ -4235,6 +4249,16 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     var prec = parseInt(p, 10); if (isNaN(prec)) prec = 0;
                     var m = Math.pow(10, prec);
                     return Math.round(n * m) / m;
+                },
+                NOW: function() {
+                    return new Date().toISOString();
+                },
+                DAYS_BETWEEN: function(fromVal, toVal) {
+                    var d1 = toDateValue(fromVal);
+                    var d2 = toDateValue(toVal);
+                    if (!d1 || !d2) return 0;
+                    var days = (d2.getTime() - d1.getTime()) / 86400000;
+                    return days >= 0 ? Math.floor(days) : Math.ceil(days);
                 }
             };
             var fnNames = Object.keys(FNS);
