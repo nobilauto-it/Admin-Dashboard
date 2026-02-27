@@ -3589,6 +3589,11 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
 
         modalEntitySave.addEventListener('click', function() {
             var st = tableStates[currentTableIndex];
+            var isPendingNew = false;
+            if (!st && pendingNewTableDraft && pendingNewTableInsertIndex === currentTableIndex) {
+                st = pendingNewTableDraft;
+                isPendingNew = true;
+            }
             if (!st) return;
             var nameInput = document.getElementById('tableNameInput');
             var descInput = document.getElementById('tableDescriptionInput');
@@ -3598,22 +3603,45 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             st.tableTitle = title;
             st.tableDescription = desc;
             // Не сохраняем конфиг на сервер в первом модальном — только после выбора полей во втором
-            saveConfigToStorage();
-            updateTableTitleBlock(currentTableIndex);
-
             var radio = modalEntityBody.querySelector('input[type="radio"]:checked');
             if (radio) {
                 var entity = JSON.parse(radio.getAttribute('data-entity') || '{}');
                 if (entity.type && !st.selectedEntities.some(function(e) { return entityKey(e) === entityKey(entity); })) {
                     st.selectedEntities.push(entity);
                     st.selectedFields.push({ entityKey: entityKey(entity), human_titles: [], activeNestedTypes: [], nestedFields: {} });
-                    updateUI(currentTableIndex);
-                    saveConfigToStorage();
-                    loadFieldsThenData(currentTableIndex);
                 }
             }
+            if (isPendingNew) {
+                if (!st.selectedEntities.length) {
+                    alert('Сначала выберите сущность таблицы.');
+                    return;
+                }
+                var insertIdx = pendingNewTableInsertIndex;
+                if (insertIdx == null || isNaN(insertIdx)) insertIdx = tableStates.length;
+                if (insertIdx < 0) insertIdx = 0;
+                if (insertIdx > tableStates.length) insertIdx = tableStates.length;
+                tableStates.splice(insertIdx, 0, st);
+                currentTableIndex = insertIdx;
+                pendingNewTableDraft = null;
+                pendingNewTableInsertIndex = null;
+                ensureSections();
+            }
+            updateUI(currentTableIndex);
+            saveConfigToStorage();
+            updateTableTitleBlock(currentTableIndex);
+            loadFieldsThenData(currentTableIndex);
             modalEntity.hide();
         });
+
+        var modalEntityElForDraftCleanup = document.getElementById('modalEntity');
+        if (modalEntityElForDraftCleanup) {
+            modalEntityElForDraftCleanup.addEventListener('hidden.bs.modal', function() {
+                if (pendingNewTableDraft) {
+                    pendingNewTableDraft = null;
+                    pendingNewTableInsertIndex = null;
+                }
+            });
+        }
 
         function loadFieldsForEntity(ent, callback) {
             const key = entityKey(ent);
@@ -6248,19 +6276,8 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                             cell.addEventListener('click', function() {
                                 var index = parseInt(this.getAttribute('data-insert-index'), 10);
                                 modal.hide();
-                                tableStates.splice(index, 0, defaultTableState());
-                                ensureSections();
-                                for (var i = 0; i < tableStates.length; i++) {
-                                    var s = tableStates[i];
-                                    if (s.fullData && s.fullData.length > 0) {
-                                        if (!s.allColumns || s.allColumns.length === 0) {
-                                            rebuildAllColumnsFromSelectedFields(i);
-                                            if (s.allColumns.length === 0) rebuildAllColumnsFromData(i);
-                                        }
-                                    }
-                                    renderGrid(i);
-                                }
-                                updateUI(index);
+                                pendingNewTableInsertIndex = index;
+                                pendingNewTableDraft = defaultTableState();
                                 currentTableIndex = index;
                                 var nameInput = document.getElementById('tableNameInput');
                                 var descInput = document.getElementById('tableDescriptionInput');
