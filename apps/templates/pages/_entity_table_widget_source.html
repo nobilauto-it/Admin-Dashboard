@@ -1882,6 +1882,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
         }
 
         var pendingSectionWidthSync = {};
+        var COLUMN_RESIZE_MIN_WIDTH_PX = 24;
         function scheduleSectionWidthSync(tableIndex) {
             if (tableIndex == null) return;
             var idx = String(tableIndex);
@@ -5915,7 +5916,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                         var startX = e.clientX;
                         var startWidth = th.getBoundingClientRect().width || th.offsetWidth || 0;
                         var didResize = false;
-                        var dynamicMinWidth = Math.max(24, Math.floor(startWidth * 0.1));
+                        var dynamicMinWidth = COLUMN_RESIZE_MIN_WIDTH_PX;
                         th._suppressSortClickUntil = Date.now() + RESIZE_SORT_CLICK_SUPPRESS_MS;
                         var prevDraggable = th.draggable;
                         th.draggable = false;
@@ -5983,7 +5984,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     var startWidth = th.offsetWidth;
                     var columnIndex = parseInt(th.getAttribute('data-column-index'), 10);
                     var didResize = false;
-                    var dynamicMinWidth = Math.max(24, Math.floor(startWidth * 0.1));
+                    var dynamicMinWidth = COLUMN_RESIZE_MIN_WIDTH_PX;
                     th._suppressSortClickUntil = Date.now() + RESIZE_SORT_CLICK_SUPPRESS_MS;
                     var prevDraggable = th.draggable;
                     th.draggable = false;
@@ -6038,7 +6039,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             var gridHead = els.gridHead;
             if (!gridHead || gridHead._dragDropBound) return;
             gridHead._dragDropBound = true;
-            var columnDropTargetIndex = null;
+            var columnDropInsertIndex = null;
 
             gridHead.addEventListener('dragstart', function(e) {
                 if (e.target.closest('.entity-table-col-resize')) { e.preventDefault(); return; }
@@ -6048,13 +6049,13 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 e.dataTransfer.setData('text/plain', th.getAttribute('data-column-index'));
                 e.dataTransfer.setData('text/html', th.innerHTML);
                 th.classList.add('dragging');
-                columnDropTargetIndex = null;
+                columnDropInsertIndex = null;
             });
             gridHead.addEventListener('dragend', function(e) {
                 gridHead.querySelectorAll('th').forEach(function(el) {
                     el.classList.remove('dragging', 'drag-over');
                 });
-                columnDropTargetIndex = null;
+                columnDropInsertIndex = null;
             });
             gridHead.addEventListener('dragover', function(e) {
                 e.preventDefault();
@@ -6063,47 +6064,62 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 if (th) th = th.closest('th');
                 if (!th || !th.classList.contains('entity-table-th-draggable')) {
                     gridHead.querySelectorAll('th').forEach(function(el) { el.classList.remove('drag-over'); });
-                    columnDropTargetIndex = null;
+                    var allTh = gridHead.querySelectorAll('th.entity-table-th-draggable');
+                    columnDropInsertIndex = allTh.length;
                     return;
                 }
                 var toIdx = parseInt(th.getAttribute('data-column-index'), 10);
-                if (!isNaN(toIdx)) columnDropTargetIndex = toIdx;
+                if (!isNaN(toIdx)) {
+                    var rect = th.getBoundingClientRect();
+                    var insertAfter = e.clientX > (rect.left + rect.width / 2);
+                    columnDropInsertIndex = toIdx + (insertAfter ? 1 : 0);
+                }
                 gridHead.querySelectorAll('th').forEach(function(el) { el.classList.remove('drag-over'); });
                 th.classList.add('drag-over');
             });
             gridHead.addEventListener('dragleave', function(e) {
                 if (!gridHead.contains(e.relatedTarget)) {
                     gridHead.querySelectorAll('th').forEach(function(el) { el.classList.remove('drag-over'); });
-                    columnDropTargetIndex = null;
+                    columnDropInsertIndex = null;
                 }
             });
             gridHead.addEventListener('drop', function(e) {
                 e.preventDefault();
                 gridHead.querySelectorAll('th').forEach(function(el) { el.classList.remove('drag-over'); });
-                var toIdx = columnDropTargetIndex;
-                if (toIdx == null || isNaN(toIdx)) {
+                var insertIdx = columnDropInsertIndex;
+                if (insertIdx == null || isNaN(insertIdx)) {
                     var th = document.elementFromPoint(e.clientX, e.clientY);
                     if (th) th = th.closest('th');
                     if (th && th.classList.contains('entity-table-th-draggable')) {
-                        toIdx = parseInt(th.getAttribute('data-column-index'), 10);
+                        var fallbackIdx = parseInt(th.getAttribute('data-column-index'), 10);
+                        if (!isNaN(fallbackIdx)) {
+                            var rect = th.getBoundingClientRect();
+                            var insertAfter = e.clientX > (rect.left + rect.width / 2);
+                            insertIdx = fallbackIdx + (insertAfter ? 1 : 0);
+                        }
                     }
                 }
-                if (toIdx == null || isNaN(toIdx)) return;
+                if (insertIdx == null || isNaN(insertIdx)) return;
                 var fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                if (isNaN(fromIdx) || fromIdx === toIdx) return;
+                if (isNaN(fromIdx)) return;
                 var st = tableStates[tableIndex];
                 if (!st) return;
                 var cols = st.allColumns;
-                var a = cols[fromIdx];
-                var b = cols[toIdx];
-                cols[fromIdx] = b;
-                cols[toIdx] = a;
+                if (!Array.isArray(cols) || fromIdx < 0 || fromIdx >= cols.length) return;
+                if (insertIdx < 0) insertIdx = 0;
+                if (insertIdx > cols.length) insertIdx = cols.length;
+                var moved = cols[fromIdx];
+                cols.splice(fromIdx, 1);
+                if (insertIdx > fromIdx) insertIdx--;
+                if (insertIdx < 0) insertIdx = 0;
+                if (insertIdx > cols.length) insertIdx = cols.length;
+                cols.splice(insertIdx, 0, moved);
                 st.columnOrderFromServer = cols.map(function(c) { return c.key; });
                 saveColumnOrder();
                 saveConfigToStorage();
                 saveConfig();
                 renderGrid(tableIndex);
-                columnDropTargetIndex = null;
+                columnDropInsertIndex = null;
             });
         }
 
