@@ -1881,6 +1881,31 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             section.style.width = target + 'px';
         }
 
+        var pendingSectionWidthSync = {};
+        function scheduleSectionWidthSync(tableIndex) {
+            if (tableIndex == null) return;
+            var idx = String(tableIndex);
+            if (pendingSectionWidthSync[idx]) return;
+            pendingSectionWidthSync[idx] = true;
+            function run() {
+                pendingSectionWidthSync[idx] = false;
+                syncSectionWidthToContent(tableIndex);
+            }
+            if (window.requestAnimationFrame) {
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        run();
+                    });
+                });
+            } else {
+                setTimeout(run, 0);
+            }
+            setTimeout(function() {
+                if (!pendingSectionWidthSync[idx]) return;
+                run();
+            }, 120);
+        }
+
         let entityRadioName = 0;
 
         /** Делегирование: при клике по кнопке/чекбоксу вложенности показывать/скрывать рубрику и поля в реальном времени. */
@@ -5822,6 +5847,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 els.paginationNav.appendChild(ul);
             }
             syncSectionWidthToContent(tableIndex);
+            scheduleSectionWidthSync(tableIndex);
             updateTableTitleBlock(tableIndex);
 
             els.gridHead.querySelectorAll('th[data-column-key]').forEach(function(th) {
@@ -6080,6 +6106,12 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 columnDropTargetIndex = null;
             });
         }
+
+        window.addEventListener('resize', function() {
+            for (var i = 0; i < tableStates.length; i++) {
+                if (tableStates[i] && tableStates[i].type !== 'card') scheduleSectionWidthSync(i);
+            }
+        });
 
         (function setupAddTableGrid() {
             var modalEl = document.getElementById('modalInsertTableGrid');
