@@ -6032,6 +6032,15 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
     target_storage_entity_key = str(target_resolved.get("storage_entity_key") or "")
     materialization_debug: Optional[Dict[str, Any]] = None
     recalc_debug_rows: List[Dict[str, Any]] = []
+    include_resolver_debug_rows = bool(row.get("_include_resolver_debug_rows", True))
+    try:
+        resolver_debug_limit = int(row.get("_resolver_debug_limit", 10) or 10)
+    except Exception:
+        resolver_debug_limit = 10
+    if resolver_debug_limit < 1:
+        resolver_debug_limit = 1
+    if resolver_debug_limit > 200:
+        resolver_debug_limit = 200
     if _entity_table_editor_ast_has_aggregate(ast):
         value = _entity_table_editor_eval_ast(conn, ast, row)
         if isinstance(value, tuple) and value and value[0] == "field_ref":
@@ -6141,15 +6150,12 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
             cur.execute(f'SELECT {cols_sql} FROM "{storage_table}" WHERE id IS NOT NULL')
             rows = cur.fetchall() or []
 
-        # Debug target: technical OPPORTUNITY token resolution in recalculate path.
-        opportunity_refs: List[Dict[str, Any]] = []
+        # Debug refs: capture resolved values for all row-wise refs/tokens.
+        debug_refs: List[Dict[str, Any]] = []
         for ref in list(ref_cache.values()):
             if not isinstance(ref, dict):
                 continue
-            token_full = str(ref.get("token_full") or "").strip()
-            token_norm = token_full.replace(" ", "").lower()
-            if re.match(r"^\{deal(?:_\d+)?\|\|opportunity(?::(?:raw|display))?\}$", token_norm):
-                opportunity_refs.append(ref)
+            debug_refs.append(ref)
 
         updates: List[Tuple[int, Optional[str]]] = []
         for db_row in rows:
@@ -6157,10 +6163,10 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
             if rid is None:
                 continue
             row_debug_tokens: List[Dict[str, Any]] = []
-            if opportunity_refs and len(recalc_debug_rows) < 50:
-                for ref in opportunity_refs:
+            if include_resolver_debug_rows and debug_refs and len(recalc_debug_rows) < resolver_debug_limit:
+                for ref in debug_refs:
                     trace: Dict[str, Any] = {}
-                    token_full = str(ref.get("token_full") or "{deal_25||OPPORTUNITY}")
+                    token_full = str(ref.get("token_full") or "{...}")
                     try:
                         raw_v = _entity_table_editor_resolve_rowwise_ref_raw_value(
                             conn,
@@ -6194,7 +6200,7 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
             )
             computed_text = _entity_table_editor_format_result_for_text(val)
             updates.append((int(rid), computed_text))
-            if row_debug_tokens and len(recalc_debug_rows) < 50:
+            if include_resolver_debug_rows and len(recalc_debug_rows) < resolver_debug_limit:
                 recalc_debug_rows.append({
                     "deal_id": int(rid),
                     "tokens": row_debug_tokens,
@@ -6247,7 +6253,7 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
     }
     if materialization_debug is not None:
         out["materialization_debug"] = materialization_debug
-    if recalc_debug_rows:
+    if include_resolver_debug_rows:
         out["resolver_debug_rows"] = recalc_debug_rows
     return out
 
@@ -7129,6 +7135,13 @@ async def recalculate_entity_table_custom_field(custom_field_id: str, request: R
     if not isinstance(payload, dict):
         payload = {}
     debug_stub_fill = bool(payload.get("debug_stub_fill"))
+    resolver_debug_limit = payload.get("resolver_debug_limit")
+    if resolver_debug_limit is None:
+        resolver_debug_limit = payload.get("debug_limit")
+    try:
+        resolver_debug_limit = int(resolver_debug_limit) if resolver_debug_limit is not None else 10
+    except Exception:
+        resolver_debug_limit = 10
 
     conn = pg_conn()
     try:
@@ -7160,6 +7173,8 @@ async def recalculate_entity_table_custom_field(custom_field_id: str, request: R
             row["source_entities"] = list(srcs)
         if "editor" in payload:
             row["editor"] = "" if payload.get("editor") is None else str(payload.get("editor"))
+        row["_include_resolver_debug_rows"] = True
+        row["_resolver_debug_limit"] = resolver_debug_limit
 
         if debug_stub_fill:
             result = _entity_table_recalculate_custom_field_stub(conn, row)
