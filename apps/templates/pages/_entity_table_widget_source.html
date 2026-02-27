@@ -2070,9 +2070,36 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
 
         var STORAGE_KEY_PREFIX = 'entity_table_config_';
         var COLUMN_ORDER_KEY_PREFIX = 'entity_table_column_order_';
+        var PAGE_SIZE_KEY_PREFIX = 'entity_table_page_size_';
 
         function getColumnOrderStorageKey() {
             return COLUMN_ORDER_KEY_PREFIX + getPageSlug();
+        }
+
+        function getPageSizeStorageKey() {
+            return PAGE_SIZE_KEY_PREFIX + getPageSlug();
+        }
+
+        function loadPageSizesFromStorage() {
+            if (!canUseLocalTableStorage()) return {};
+            try {
+                var raw = localStorage.getItem(getPageSizeStorageKey());
+                if (!raw) return {};
+                var obj = JSON.parse(raw);
+                return (obj && typeof obj === 'object') ? obj : {};
+            } catch (e) { return {}; }
+        }
+
+        function savePageSizesToStorage() {
+            if (!canUseLocalTableStorage()) return;
+            try {
+                var obj = {};
+                tableStates.forEach(function(st, i) {
+                    if (!st || st.type === 'card') return;
+                    obj[String(i)] = normalizePageSize(st.pageSize);
+                });
+                localStorage.setItem(getPageSizeStorageKey(), JSON.stringify(obj));
+            } catch (e) {}
         }
 
         function saveColumnOrder() {
@@ -2337,8 +2364,9 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
 
         function applyConfig(data, openModalIfNoFields) {
             if (openModalIfNoFields === undefined) openModalIfNoFields = true;
+            var localPageSizes = loadPageSizesFromStorage();
             if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
-                tableStates = data.tables.map(function(t) {
+                tableStates = data.tables.map(function(t, idx) {
                     if (t.type === 'card' && window.EntityCard && typeof window.EntityCard.parseCardStateFromSaved === 'function') {
                         return window.EntityCard.parseCardStateFromSaved(t);
                     }
@@ -2369,7 +2397,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                         fullData: [],
                         allColumns: [],
                         currentPage: 1,
-                        pageSize: normalizePageSize(t.page_size),
+                        pageSize: normalizePageSize((t.page_size != null) ? t.page_size : localPageSizes[String(idx)]),
                         columnOrderFromServer: orderFromServer,
                         columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : {},
                         sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
@@ -2410,7 +2438,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     fullData: [],
                     allColumns: [],
                     currentPage: 1,
-                    pageSize: normalizePageSize(data.page_size),
+                    pageSize: normalizePageSize((data.page_size != null) ? data.page_size : localPageSizes['0']),
                     columnOrderFromServer: orderFromServer,
                     columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : loadColumnWidths(0),
                     sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
@@ -3130,6 +3158,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     tableStates[idx].pageSize = parseInt(this.value, 10) || 25;
                     tableStates[idx].currentPage = 1;
                     renderGrid(idx);
+                    savePageSizesToStorage();
                     saveConfigToStorage();
                     saveConfig();
                 };
@@ -3188,6 +3217,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
         function loadConfig() {
             var slug = getPageSlug();
             if (!isDashboardSlug() && canUseLocalTableStorage()) { try { localStorage.removeItem(STORAGE_KEY_PREFIX + slug); } catch (e) {} }
+            var localPageSizes = loadPageSizesFromStorage();
             fetch(API.config + '?page_slug=' + encodeURIComponent(slug))
                 .then(function(r) {
                     if (!r.ok) return Promise.reject(new Error(r.status));
@@ -3198,7 +3228,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     lastRemoteConfigSignature = getRemoteConfigSignature(data);
                     if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
                         var isDashboard = !!(data.read_only || isDashboardSlug());
-                        tableStates = data.tables.map(function(t) {
+                        tableStates = data.tables.map(function(t, idx) {
                             var norm = normalizeEntitiesAndFields(t.entities || [], t.fields || []);
                             var orderFromServer = (t.column_order && Array.isArray(t.column_order)) ? t.column_order : null;
                             var widthsFromServer = (t.column_widths && typeof t.column_widths === 'object') ? t.column_widths : {};
@@ -3211,7 +3241,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                                 fullData: [],
                                 allColumns: [],
                                 currentPage: 1,
-                                pageSize: normalizePageSize(t.page_size),
+                                pageSize: normalizePageSize((t.page_size != null) ? t.page_size : localPageSizes[String(idx)]),
                                 columnOrderFromServer: orderFromServer,
                                 columnWidths: isDashboard ? {} : (Object.keys(widthsFromServer).length ? widthsFromServer : {}),
                                 sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
@@ -3262,7 +3292,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                             fullData: [],
                             allColumns: [],
                             currentPage: 1,
-                            pageSize: normalizePageSize(data.page_size),
+                            pageSize: normalizePageSize((data.page_size != null) ? data.page_size : localPageSizes['0']),
                             columnWidths: loadColumnWidths(0),
                             sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
                             sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
@@ -3429,6 +3459,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
 
         function saveConfigBeforeUnload() {
             if (!tableStates.some(isConfiguredSectionState)) return;
+            savePageSizesToStorage();
             saveConfigToStorage();
             saveConfig({ keepalive: true });
         }
