@@ -4055,6 +4055,20 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             });
         }
 
+        if (customFieldEditorHelpBtn) {
+            var editorHelpTitle = customFieldEditorHelpBtn.getAttribute('title') || '';
+            if (editorHelpTitle && editorHelpTitle.indexOf('DAYS_BETWEEN') < 0) {
+                var dateHelp = "<div><b>Date functions:</b> NOW(), DAYS_BETWEEN(from, to)</div>"
+                    + "<div><b>Date example:</b> DAYS_BETWEEN({deal_20||BEGINDATE}, {deal_20||CLOSEDATE})</div>"
+                    + "<div><b>Real case:</b> MAX(0, DAYS_BETWEEN({deal_20||BEGINDATE}, NOW()))</div>";
+                if (editorHelpTitle.indexOf('</div></div>') >= 0) {
+                    editorHelpTitle = editorHelpTitle.replace('</div></div>', dateHelp + '</div></div>');
+                } else {
+                    editorHelpTitle += dateHelp;
+                }
+                customFieldEditorHelpBtn.setAttribute('title', editorHelpTitle);
+            }
+        }
         if (customFieldEditorHelpBtn && window.bootstrap && bootstrap.Tooltip) {
             bootstrap.Tooltip.getOrCreateInstance(customFieldEditorHelpBtn);
         }
