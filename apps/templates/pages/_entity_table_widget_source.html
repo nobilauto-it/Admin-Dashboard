@@ -4056,7 +4056,11 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
         }
 
         if (customFieldEditorHelpBtn) {
-            var editorHelpTitle = customFieldEditorHelpBtn.getAttribute('title') || '';
+            var editorHelpTitle =
+                customFieldEditorHelpBtn.getAttribute('data-bs-title')
+                || customFieldEditorHelpBtn.getAttribute('data-bs-original-title')
+                || customFieldEditorHelpBtn.getAttribute('title')
+                || '';
             if (editorHelpTitle && editorHelpTitle.indexOf('DAYS_BETWEEN') < 0) {
                 var dateHelp = "<div><b>Date functions:</b> NOW(), DAYS_BETWEEN(from, to)</div>"
                     + "<div><b>Date example:</b> DAYS_BETWEEN({deal_20||BEGINDATE}, {deal_20||CLOSEDATE})</div>"
@@ -4067,10 +4071,14 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     editorHelpTitle += dateHelp;
                 }
                 customFieldEditorHelpBtn.setAttribute('title', editorHelpTitle);
+                customFieldEditorHelpBtn.setAttribute('data-bs-title', editorHelpTitle);
+                customFieldEditorHelpBtn.setAttribute('data-bs-original-title', editorHelpTitle);
             }
         }
         if (customFieldEditorHelpBtn && window.bootstrap && bootstrap.Tooltip) {
-            bootstrap.Tooltip.getOrCreateInstance(customFieldEditorHelpBtn);
+            var existingTooltip = bootstrap.Tooltip.getInstance(customFieldEditorHelpBtn);
+            if (existingTooltip && typeof existingTooltip.dispose === 'function') existingTooltip.dispose();
+            bootstrap.Tooltip.getOrCreateInstance(customFieldEditorHelpBtn, { html: true });
         }
         if (customFieldPayloadTextarea) {
             customFieldPayloadTextarea.addEventListener('input', function() {
