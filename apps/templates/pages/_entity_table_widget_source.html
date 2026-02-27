@@ -4101,6 +4101,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     + "<div><b>Date shift:</b> DATE_ADD({deal_20||BEGINDATE}, 7), DATE_SUB({deal_20||CLOSEDATE}, 3), ADD_DAYS({deal_20||BEGINDATE}, 14)</div>"
                     + "<div><b>Conditions:</b> IF(cond, a, b), AND(...), OR(...), NOT(...)</div>"
                     + "<div><b>Compare ops:</b> =, !=, &gt;, &lt;, &gt;=, &lt;=</div>"
+                    + "<div><b>Gradient in grid:</b> CONCAT(&quot;[[GRADIENT|0|10000|#e2fbe8|#22c55e]]&quot;, ROUND(NUMBER(IFNULL({deal_20||OPPORTUNITY},0)),0))</div>"
                     + "<div><b>Real case:</b> IF(AND(DAYS_BETWEEN({deal_20||BEGINDATE}, NOW()) &gt; 7, NUMBER(IFNULL({deal_20||OPPORTUNITY},0)) &gt;= 1000), &quot;Overdue VIP&quot;, &quot;OK&quot;)</div>";
                 if (editorHelpTitle.indexOf('</div></div>') >= 0) {
                     editorHelpTitle = editorHelpTitle.replace('</div></div>', dateHelp + '</div></div>');
@@ -4114,7 +4115,8 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             if (editorHelpTitle && editorHelpTitle.indexOf('IF(cond, a, b)') < 0) {
                 var logicHelp = "<div><b>Conditions:</b> IF(cond, a, b), AND(...), OR(...), NOT(...)</div>"
                     + "<div><b>Compare ops:</b> =, !=, &gt;, &lt;, &gt;=, &lt;=</div>"
-                    + "<div><b>Date shift:</b> DATE_ADD({deal_20||BEGINDATE}, 7), DATE_SUB({deal_20||CLOSEDATE}, 3), ADD_DAYS({deal_20||BEGINDATE}, 14)</div>";
+                    + "<div><b>Date shift:</b> DATE_ADD({deal_20||BEGINDATE}, 7), DATE_SUB({deal_20||CLOSEDATE}, 3), ADD_DAYS({deal_20||BEGINDATE}, 14)</div>"
+                    + "<div><b>Gradient in grid:</b> CONCAT(&quot;[[GRADIENT|0|10000|#e2fbe8|#22c55e]]&quot;, ROUND(NUMBER(IFNULL({deal_20||OPPORTUNITY},0)),0))</div>";
                 if (editorHelpTitle.indexOf('</div></div>') >= 0) {
                     editorHelpTitle = editorHelpTitle.replace('</div></div>', logicHelp + '</div></div>');
                 } else {
@@ -5893,6 +5895,41 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             return s.toLowerCase();
         }
 
+        function parseGridGradientDirective(rawValue) {
+            if (rawValue == null) return null;
+            var s = String(rawValue);
+            var m = s.match(/^\[\[GRADIENT\|([^\]]+)\]\](.*)$/i);
+            if (!m) return null;
+            var payload = String(m[1] || '');
+            var displayText = String(m[2] || '');
+            var parts = payload.split('|');
+            if (parts.length < 4) return null;
+            var minVal = parseFloat(String(parts[0]).replace(',', '.'));
+            var maxVal = parseFloat(String(parts[1]).replace(',', '.'));
+            var fromColor = String(parts[2] || '').trim();
+            var toColor = String(parts[3] || '').trim();
+            var explicitValue = parts.length >= 5 ? parseFloat(String(parts[4]).replace(',', '.')) : NaN;
+            var isHexColor = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+            if (!isFinite(minVal) || !isFinite(maxVal) || maxVal === minVal) return null;
+            if (!isHexColor.test(fromColor) || !isHexColor.test(toColor)) return null;
+            var valueNum = explicitValue;
+            if (!isFinite(valueNum)) {
+                var inferred = parseFloat(displayText.replace(/\s/g, '').replace(',', '.'));
+                valueNum = isFinite(inferred) ? inferred : minVal;
+            }
+            var ratio = (valueNum - minVal) / (maxVal - minVal);
+            if (!isFinite(ratio)) ratio = 0;
+            if (ratio < 0) ratio = 0;
+            if (ratio > 1) ratio = 1;
+            var percent = Math.round(ratio * 10000) / 100;
+            return {
+                display: displayText,
+                percent: percent,
+                fromColor: fromColor,
+                toColor: toColor
+            };
+        }
+
         function sortRowsByColumn(rows, sortKey, sortDir) {
             if (!rows || !rows.length || !sortKey || (sortDir !== 'asc' && sortDir !== 'desc')) return rows || [];
             var factor = sortDir === 'asc' ? 1 : -1;
@@ -6057,6 +6094,8 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     var val = row[c.key];
                     if (val !== null && typeof val === 'object') val = JSON.stringify(val);
                     var str = val != null ? String(val).trim() : '';
+                    var grad = parseGridGradientDirective(str);
+                    if (grad) str = String(grad.display || '').trim();
                     var dtFmt = formatDateTimeDisplay(str, isTimeVisibleForColumn(st, c.key));
                     var displayStr = dtFmt || str;
                     var cellHtml = '';
@@ -6068,7 +6107,12 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                         cellHtml = displayStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                     }
                     var isNum = typeof row[c.key] === 'number' || (str && /^-?\d+([.,]\d+)?([eE][+-]?\d+)?%?$/.test(str.replace(/\s/g, '')));
-                    return '<td' + (isNum ? ' class="entity-table-cell-numeric"' : '') + '>' + cellHtml + '</td>';
+                    var tdClass = isNum ? ' class="entity-table-cell-numeric"' : '';
+                    var tdStyle = '';
+                    if (grad) {
+                        tdStyle = ' style="background-image:linear-gradient(90deg,' + grad.fromColor + ' 0%,' + grad.toColor + ' ' + grad.percent + '%,transparent ' + grad.percent + '%,transparent 100%);"';
+                    }
+                    return '<td' + tdClass + tdStyle + '>' + cellHtml + '</td>';
                 }).join('') + '</tr>';
             }).join('');
             if (els.paginationInfo) els.paginationInfo.textContent = 'Показано ' + (totalRows ? (start + 1) : 0) + ' — ' + (start + slice.length) + ' из ' + totalRows + ' записей';
