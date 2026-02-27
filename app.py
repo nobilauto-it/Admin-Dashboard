@@ -5102,6 +5102,50 @@ def _entity_table_editor_parse_number(v: Any) -> Optional[float]:
         return None
 
 
+def _entity_table_editor_parse_datetime(v: Any) -> Optional[datetime]:
+    if v is None:
+        return None
+    if isinstance(v, datetime):
+        dt = v
+    else:
+        s = str(v).strip()
+        if not s:
+            return None
+        s_iso = s.replace("Z", "+00:00")
+        dt = None
+        # ISO-like variants first
+        try:
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}$", s_iso):
+                dt = datetime.fromisoformat(s_iso + "T00:00:00")
+            else:
+                dt = datetime.fromisoformat(s_iso)
+        except Exception:
+            dt = None
+        if dt is None:
+            # Common CRM format without timezone
+            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+                try:
+                    dt = datetime.strptime(s, fmt)
+                    break
+                except Exception:
+                    continue
+        if dt is None:
+            raise HTTPException(status_code=400, detail=f"Invalid date value in editor: {s}")
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt
+
+
+def _entity_table_editor_days_between(date_from: Any, date_to: Any) -> Optional[int]:
+    d1 = _entity_table_editor_parse_datetime(date_from)
+    d2 = _entity_table_editor_parse_datetime(date_to)
+    if d1 is None or d2 is None:
+        return None
+    return int((d2 - d1).days)
+
+
 def _entity_table_editor_fetch_column_values(conn, table_name: str, column_name: str) -> List[Any]:
     with conn.cursor() as cur:
         cur.execute(f'SELECT "{column_name}" FROM "{table_name}" WHERE id IS NOT NULL')
@@ -5247,7 +5291,9 @@ def _entity_table_editor_eval_ast(conn, ast: Any, row: Dict[str, Any]) -> Any:
     raw_args = list(ast[2] or [])
     eval_args = [_entity_table_editor_eval_ast(conn, a, row) for a in raw_args]
 
-    if fn in ("COUNT", "SUM", "AVG", "MIN", "MAX"):
+    if fn in ("COUNT", "SUM", "AVG"):
+        return _entity_table_editor_eval_aggregate(conn, fn, eval_args, row)
+    if fn in ("MIN", "MAX") and len(eval_args) == 1 and isinstance(eval_args[0], tuple) and eval_args[0] and eval_args[0][0] == "field_ref":
         return _entity_table_editor_eval_aggregate(conn, fn, eval_args, row)
 
     if fn == "CONCAT":
@@ -5285,6 +5331,25 @@ def _entity_table_editor_eval_ast(conn, ast: Any, row: Dict[str, Any]) -> Any:
             raise HTTPException(status_code=400, detail="NUMBER expects exactly one argument")
         return _entity_table_editor_parse_number(eval_args[0])
 
+    if fn == "NOW":
+        if len(eval_args) != 0:
+            raise HTTPException(status_code=400, detail="NOW expects no arguments")
+        return datetime.now(timezone.utc)
+
+    if fn == "DAYS_BETWEEN":
+        if len(eval_args) != 2:
+            raise HTTPException(status_code=400, detail="DAYS_BETWEEN expects exactly two arguments")
+        return _entity_table_editor_days_between(eval_args[0], eval_args[1])
+
+    if fn in ("MAX", "MIN"):
+        if len(eval_args) < 1:
+            raise HTTPException(status_code=400, detail=f"{fn} expects at least one argument")
+        nums = [_entity_table_editor_parse_number(v) for v in eval_args]
+        nums = [x for x in nums if x is not None]
+        if not nums:
+            return None
+        return max(nums) if fn == "MAX" else min(nums)
+
     raise HTTPException(status_code=400, detail=f"Unsupported function in editor: {fn}")
 
 
@@ -5297,8 +5362,14 @@ def _entity_table_editor_ast_has_aggregate(ast: Any) -> bool:
         return _entity_table_editor_ast_has_aggregate(ast[2]) or _entity_table_editor_ast_has_aggregate(ast[3])
     if ast[0] == "call":
         fn = str(ast[1] or "").upper()
-        if fn in ("COUNT", "SUM", "AVG", "MIN", "MAX"):
+        if fn in ("COUNT", "SUM", "AVG"):
             return True
+        if fn in ("MIN", "MAX"):
+            args = list(ast[2] or [])
+            if len(args) == 1:
+                arg0 = args[0]
+                if isinstance(arg0, tuple) and arg0 and arg0[0] in ("ref", "tech_ref"):
+                    return True
         return any(_entity_table_editor_ast_has_aggregate(a) for a in (ast[2] or []))
     return False
 
@@ -5945,7 +6016,7 @@ def _entity_table_editor_eval_ast_rowwise(
     raw_args = list(ast[2] or [])
 
     # Aggregates are handled by aggregate mode only.
-    if fn in ("COUNT", "SUM", "AVG", "MIN", "MAX"):
+    if fn in ("COUNT", "SUM", "AVG"):
         raise HTTPException(status_code=400, detail=f"{fn} cannot be used in row-wise mode")
 
     eval_args = [
@@ -5984,6 +6055,25 @@ def _entity_table_editor_eval_ast_rowwise(
         if len(eval_args) != 1:
             raise HTTPException(status_code=400, detail="NUMBER expects exactly one argument")
         return _entity_table_editor_parse_number(eval_args[0])
+
+    if fn == "NOW":
+        if len(eval_args) != 0:
+            raise HTTPException(status_code=400, detail="NOW expects no arguments")
+        return datetime.now(timezone.utc)
+
+    if fn == "DAYS_BETWEEN":
+        if len(eval_args) != 2:
+            raise HTTPException(status_code=400, detail="DAYS_BETWEEN expects exactly two arguments")
+        return _entity_table_editor_days_between(eval_args[0], eval_args[1])
+
+    if fn in ("MAX", "MIN"):
+        if len(eval_args) < 1:
+            raise HTTPException(status_code=400, detail=f"{fn} expects at least one argument")
+        nums = [_entity_table_editor_parse_number(v) for v in eval_args]
+        nums = [x for x in nums if x is not None]
+        if not nums:
+            return None
+        return max(nums) if fn == "MAX" else min(nums)
 
     raise HTTPException(status_code=400, detail=f"Unsupported function in editor: {fn}")
 
