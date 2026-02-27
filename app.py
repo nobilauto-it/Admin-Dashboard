@@ -7,7 +7,7 @@ import time
 import urllib.parse
 from fastapi import Request
 from zoneinfo import ZoneInfo
-from datetime import datetime, timezone, time as dt_time
+from datetime import datetime, timezone, timedelta, time as dt_time
 from typing import Any, Dict, List, Optional, Tuple
 from starlette.requests import Request
 from urllib.parse import parse_qs
@@ -4114,10 +4114,45 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
     i = 0
     n = len(s)
 
+    def parse_error(msg: str, pos: Optional[int] = None) -> None:
+        p = i if pos is None else int(pos)
+        raise HTTPException(status_code=400, detail=f"{msg} at position {p}")
+
     def skip_ws() -> None:
         nonlocal i
         while i < n and s[i].isspace():
             i += 1
+
+    def is_ident_char(ch: str) -> bool:
+        return ch.isalnum() or ch == "_"
+
+    def match_keyword(word: str) -> bool:
+        nonlocal i
+        skip_ws()
+        start = i
+        end = start + len(word)
+        if end > n:
+            return False
+        if s[start:end].upper() != word.upper():
+            return False
+        if end < n and is_ident_char(s[end]):
+            return False
+        i = end
+        return True
+
+    def match_compare_op() -> Optional[str]:
+        nonlocal i
+        skip_ws()
+        if i + 1 < n:
+            two = s[i:i+2]
+            if two in (">=", "<=", "!="):
+                i += 2
+                return two
+        if i < n and s[i] in ("=", ">", "<"):
+            op = s[i]
+            i += 1
+            return op
+        return None
 
     def parse_string() -> Any:
         nonlocal i
@@ -4135,7 +4170,7 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
                 return ("string", "".join(out))
             out.append(ch)
             i += 1
-        raise HTTPException(status_code=400, detail="Unclosed string in editor")
+        parse_error("Unclosed string in editor")
 
     def parse_number() -> Any:
         nonlocal i
@@ -4151,39 +4186,43 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
                 return ("number", float(txt))
             return ("number", int(txt))
         except Exception:
-            raise HTTPException(status_code=400, detail=f"Invalid number in editor: {txt}")
+            parse_error(f"Invalid number in editor: {txt}", start)
 
     def parse_ident() -> str:
         nonlocal i
         start = i
-        while i < n and (s[i].isalnum() or s[i] == "_"):
+        while i < n and is_ident_char(s[i]):
             i += 1
         ident = s[start:i]
         if not ident:
-            raise HTTPException(status_code=400, detail=f"Unexpected token in editor at position {i}")
+            parse_error("Unexpected token in editor")
         return ident
 
     def parse_ref() -> Any:
         nonlocal i
+        pos = i
         i += 1  # skip {
         start = i
         while i < n and s[i] != "}":
             i += 1
         if i >= n:
-            raise HTTPException(status_code=400, detail="Unclosed { in editor")
+            parse_error("Unclosed { in editor", pos)
         token = s[start:i]
         i += 1  # skip }
-        if "|" in token and "." not in token:
-            p_key, n_key, field_code, value_mode = _entity_table_editor_split_tech_ref_token(token)
-            return ("tech_ref", p_key, n_key, field_code, value_mode)
-        entity_name, field_name, value_mode = _entity_table_editor_split_ref_token(token)
-        return ("ref", entity_name, field_name, value_mode)
+        try:
+            if "|" in token and "." not in token:
+                p_key, n_key, field_code, value_mode = _entity_table_editor_split_tech_ref_token(token)
+                return ("tech_ref", p_key, n_key, field_code, value_mode)
+            entity_name, field_name, value_mode = _entity_table_editor_split_ref_token(token)
+            return ("ref", entity_name, field_name, value_mode)
+        except HTTPException as ex:
+            parse_error(str(ex.detail), pos)
 
     def parse_primary() -> Any:
         nonlocal i
         skip_ws()
         if i >= n:
-            raise HTTPException(status_code=400, detail="Unexpected end of editor")
+            parse_error("Unexpected end of editor")
         ch = s[i]
         if ch in ("'", '"'):
             return parse_string()
@@ -4196,7 +4235,7 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
             expr = parse_expr()
             skip_ws()
             if i >= n or s[i] != ")":
-                raise HTTPException(status_code=400, detail="Unclosed parenthesis in editor")
+                parse_error("Unclosed parenthesis in editor")
             i += 1
             return expr
         if ch.isalpha() or ch == "_":
@@ -4213,17 +4252,21 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
                     args.append(parse_expr())
                     skip_ws()
                     if i >= n:
-                        raise HTTPException(status_code=400, detail="Unclosed function call in editor")
+                        parse_error("Unclosed function call in editor")
                     if s[i] == ",":
                         i += 1
                         continue
                     if s[i] == ")":
                         i += 1
                         break
-                    raise HTTPException(status_code=400, detail=f"Unexpected token '{s[i]}' in function args")
+                    parse_error(f"Unexpected token '{s[i]}' in function args")
                 return ("call", ident.upper(), args)
+            if ident.upper() == "TRUE":
+                return ("number", 1)
+            if ident.upper() == "FALSE":
+                return ("number", 0)
             return ("ident", ident)
-        raise HTTPException(status_code=400, detail=f"Unsupported token '{ch}' in editor")
+        parse_error(f"Unsupported token '{ch}' in editor")
 
     def parse_unary() -> Any:
         nonlocal i
@@ -4265,13 +4308,54 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
             break
         return left
 
+    def parse_compare() -> Any:
+        nonlocal i
+        left = parse_add_sub()
+        while True:
+            op = match_compare_op()
+            if not op:
+                break
+            right = parse_add_sub()
+            left = ("binary", op, left, right)
+        return left
+
+    def parse_not() -> Any:
+        if match_keyword("NOT"):
+            inner = parse_not()
+            return ("unary", "NOT", inner)
+        return parse_compare()
+
+    def parse_and() -> Any:
+        left = parse_not()
+        while True:
+            pos_before = i
+            if match_keyword("AND"):
+                right = parse_not()
+                left = ("binary", "AND", left, right)
+                continue
+            i = pos_before
+            break
+        return left
+
+    def parse_or() -> Any:
+        left = parse_and()
+        while True:
+            pos_before = i
+            if match_keyword("OR"):
+                right = parse_and()
+                left = ("binary", "OR", left, right)
+                continue
+            i = pos_before
+            break
+        return left
+
     def parse_expr() -> Any:
-        return parse_add_sub()
+        return parse_or()
 
     ast = parse_expr()
     skip_ws()
     if i != n:
-        raise HTTPException(status_code=400, detail=f"Unexpected trailing editor text: {s[i:]}")
+        parse_error(f"Unexpected trailing editor text: {s[i:]}")
     return ast
 
 
@@ -5146,6 +5230,79 @@ def _entity_table_editor_days_between(date_from: Any, date_to: Any) -> Optional[
     return int((d2 - d1).days)
 
 
+def _entity_table_editor_date_shift(date_value: Any, days_value: Any, direction: int = 1) -> Optional[datetime]:
+    base_dt = _entity_table_editor_parse_datetime(date_value)
+    if base_dt is None:
+        return None
+    days_num = _entity_table_editor_parse_number(days_value)
+    if days_num is None:
+        return None
+    days_int = int(days_num)
+    return base_dt + timedelta(days=(direction * days_int))
+
+
+def _entity_table_editor_try_parse_datetime(v: Any) -> Optional[datetime]:
+    try:
+        return _entity_table_editor_parse_datetime(v)
+    except Exception:
+        return None
+
+
+def _entity_table_editor_is_truthy(v: Any) -> bool:
+    if v is None:
+        return False
+    if isinstance(v, bool):
+        return bool(v)
+    if isinstance(v, (int, float)):
+        try:
+            if isinstance(v, float) and v != v:
+                return False
+        except Exception:
+            pass
+        return float(v) != 0.0
+    if isinstance(v, str):
+        return v != ""
+    return True
+
+
+def _entity_table_editor_compare_values(left: Any, right: Any, op: str) -> bool:
+    op = str(op or "").strip()
+    lnum = _entity_table_editor_parse_number(left)
+    rnum = _entity_table_editor_parse_number(right)
+    ldt = _entity_table_editor_try_parse_datetime(left)
+    rdt = _entity_table_editor_try_parse_datetime(right)
+
+    if op in ("=", "==", "!="):
+        if left is None and right is None:
+            eq = True
+        elif lnum is not None and rnum is not None:
+            eq = (lnum == rnum)
+        elif ldt is not None and rdt is not None:
+            eq = (ldt == rdt)
+        else:
+            eq = ("" if left is None else str(left)) == ("" if right is None else str(right))
+        return (not eq) if op == "!=" else eq
+
+    if left is None or right is None:
+        return False
+    if lnum is not None and rnum is not None:
+        a, b = lnum, rnum
+    elif ldt is not None and rdt is not None:
+        a, b = ldt, rdt
+    else:
+        a, b = str(left), str(right)
+
+    if op == ">":
+        return a > b
+    if op == "<":
+        return a < b
+    if op == ">=":
+        return a >= b
+    if op == "<=":
+        return a <= b
+    raise HTTPException(status_code=400, detail=f"Unsupported comparison operator in editor: {op}")
+
+
 def _entity_table_editor_fetch_column_values(conn, table_name: str, column_name: str) -> List[Any]:
     with conn.cursor() as cur:
         cur.execute(f'SELECT "{column_name}" FROM "{table_name}" WHERE id IS NOT NULL')
@@ -5220,6 +5377,8 @@ def _entity_table_editor_eval_ast(conn, ast: Any, row: Dict[str, Any]) -> Any:
     if kind == "unary":
         op = str(ast[1] or "")
         inner = _entity_table_editor_eval_ast(conn, ast[2], row)
+        if op.upper() == "NOT":
+            return (not _entity_table_editor_is_truthy(inner))
         if isinstance(inner, tuple) and inner and inner[0] == "field_ref":
             raise HTTPException(status_code=400, detail="Arithmetic with direct field reference is not supported without NUMBER()")
         num = _entity_table_editor_parse_number(inner)
@@ -5232,6 +5391,27 @@ def _entity_table_editor_eval_ast(conn, ast: Any, row: Dict[str, Any]) -> Any:
         raise HTTPException(status_code=400, detail=f"Unsupported unary operator in editor: {op}")
     if kind == "binary":
         op = str(ast[1] or "")
+        op_up = op.upper()
+        if op_up == "AND":
+            left_v = _entity_table_editor_eval_ast(conn, ast[2], row)
+            if not _entity_table_editor_is_truthy(left_v):
+                return False
+            right_v = _entity_table_editor_eval_ast(conn, ast[3], row)
+            return _entity_table_editor_is_truthy(right_v)
+        if op_up == "OR":
+            left_v = _entity_table_editor_eval_ast(conn, ast[2], row)
+            if _entity_table_editor_is_truthy(left_v):
+                return True
+            right_v = _entity_table_editor_eval_ast(conn, ast[3], row)
+            return _entity_table_editor_is_truthy(right_v)
+        if op in ("=", "==", "!=", ">", "<", ">=", "<="):
+            left_v = _entity_table_editor_eval_ast(conn, ast[2], row)
+            right_v = _entity_table_editor_eval_ast(conn, ast[3], row)
+            if isinstance(left_v, tuple) and left_v and left_v[0] == "field_ref":
+                raise HTTPException(status_code=400, detail="Comparison with direct field reference is not supported without scalar conversion")
+            if isinstance(right_v, tuple) and right_v and right_v[0] == "field_ref":
+                raise HTTPException(status_code=400, detail="Comparison with direct field reference is not supported without scalar conversion")
+            return _entity_table_editor_compare_values(left_v, right_v, op)
         left_v = _entity_table_editor_eval_ast(conn, ast[2], row)
         right_v = _entity_table_editor_eval_ast(conn, ast[3], row)
         if isinstance(left_v, tuple) and left_v and left_v[0] == "field_ref":
@@ -5289,6 +5469,36 @@ def _entity_table_editor_eval_ast(conn, ast: Any, row: Dict[str, Any]) -> Any:
 
     fn = str(ast[1] or "").upper()
     raw_args = list(ast[2] or [])
+
+    if fn == "IF":
+        if len(raw_args) != 3:
+            raise HTTPException(status_code=400, detail="IF expects exactly three arguments")
+        cond_v = _entity_table_editor_eval_ast(conn, raw_args[0], row)
+        if _entity_table_editor_is_truthy(cond_v):
+            return _entity_table_editor_eval_ast(conn, raw_args[1], row)
+        return _entity_table_editor_eval_ast(conn, raw_args[2], row)
+
+    if fn == "AND":
+        if len(raw_args) < 1:
+            raise HTTPException(status_code=400, detail="AND expects at least one argument")
+        for a in raw_args:
+            if not _entity_table_editor_is_truthy(_entity_table_editor_eval_ast(conn, a, row)):
+                return False
+        return True
+
+    if fn == "OR":
+        if len(raw_args) < 1:
+            raise HTTPException(status_code=400, detail="OR expects at least one argument")
+        for a in raw_args:
+            if _entity_table_editor_is_truthy(_entity_table_editor_eval_ast(conn, a, row)):
+                return True
+        return False
+
+    if fn == "NOT":
+        if len(raw_args) != 1:
+            raise HTTPException(status_code=400, detail="NOT expects exactly one argument")
+        return (not _entity_table_editor_is_truthy(_entity_table_editor_eval_ast(conn, raw_args[0], row)))
+
     eval_args = [_entity_table_editor_eval_ast(conn, a, row) for a in raw_args]
 
     if fn in ("COUNT", "SUM", "AVG"):
@@ -5340,6 +5550,16 @@ def _entity_table_editor_eval_ast(conn, ast: Any, row: Dict[str, Any]) -> Any:
         if len(eval_args) != 2:
             raise HTTPException(status_code=400, detail="DAYS_BETWEEN expects exactly two arguments")
         return _entity_table_editor_days_between(eval_args[0], eval_args[1])
+
+    if fn in ("DATE_ADD", "ADD_DAYS"):
+        if len(eval_args) != 2:
+            raise HTTPException(status_code=400, detail=f"{fn} expects exactly two arguments")
+        return _entity_table_editor_date_shift(eval_args[0], eval_args[1], direction=1)
+
+    if fn == "DATE_SUB":
+        if len(eval_args) != 2:
+            raise HTTPException(status_code=400, detail="DATE_SUB expects exactly two arguments")
+        return _entity_table_editor_date_shift(eval_args[0], eval_args[1], direction=-1)
 
     if fn in ("MAX", "MIN"):
         if len(eval_args) < 1:
@@ -5923,6 +6143,8 @@ def _entity_table_editor_eval_ast_rowwise(
         inner = _entity_table_editor_eval_ast_rowwise(
             conn, ast[2], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
         )
+        if op.upper() == "NOT":
+            return (not _entity_table_editor_is_truthy(inner))
         num = _entity_table_editor_parse_number(inner)
         if num is None:
             return None
@@ -5933,6 +6155,35 @@ def _entity_table_editor_eval_ast_rowwise(
         raise HTTPException(status_code=400, detail=f"Unsupported unary operator in editor: {op}")
     if kind == "binary":
         op = str(ast[1] or "")
+        op_up = op.upper()
+        if op_up == "AND":
+            left_v = _entity_table_editor_eval_ast_rowwise(
+                conn, ast[2], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+            )
+            if not _entity_table_editor_is_truthy(left_v):
+                return False
+            right_v = _entity_table_editor_eval_ast_rowwise(
+                conn, ast[3], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+            )
+            return _entity_table_editor_is_truthy(right_v)
+        if op_up == "OR":
+            left_v = _entity_table_editor_eval_ast_rowwise(
+                conn, ast[2], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+            )
+            if _entity_table_editor_is_truthy(left_v):
+                return True
+            right_v = _entity_table_editor_eval_ast_rowwise(
+                conn, ast[3], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+            )
+            return _entity_table_editor_is_truthy(right_v)
+        if op in ("=", "==", "!=", ">", "<", ">=", "<="):
+            left_v = _entity_table_editor_eval_ast_rowwise(
+                conn, ast[2], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+            )
+            right_v = _entity_table_editor_eval_ast_rowwise(
+                conn, ast[3], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+            )
+            return _entity_table_editor_compare_values(left_v, right_v, op)
         left_v = _entity_table_editor_eval_ast_rowwise(
             conn, ast[2], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
         )
@@ -6019,6 +6270,53 @@ def _entity_table_editor_eval_ast_rowwise(
     if fn in ("COUNT", "SUM", "AVG"):
         raise HTTPException(status_code=400, detail=f"{fn} cannot be used in row-wise mode")
 
+    if fn == "IF":
+        if len(raw_args) != 3:
+            raise HTTPException(status_code=400, detail="IF expects exactly three arguments")
+        cond_v = _entity_table_editor_eval_ast_rowwise(
+            conn, raw_args[0], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+        )
+        if _entity_table_editor_is_truthy(cond_v):
+            return _entity_table_editor_eval_ast_rowwise(
+                conn, raw_args[1], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+            )
+        return _entity_table_editor_eval_ast_rowwise(
+            conn, raw_args[2], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+        )
+
+    if fn == "AND":
+        if len(raw_args) < 1:
+            raise HTTPException(status_code=400, detail="AND expects at least one argument")
+        for a in raw_args:
+            if not _entity_table_editor_is_truthy(
+                _entity_table_editor_eval_ast_rowwise(
+                    conn, a, cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+                )
+            ):
+                return False
+        return True
+
+    if fn == "OR":
+        if len(raw_args) < 1:
+            raise HTTPException(status_code=400, detail="OR expects at least one argument")
+        for a in raw_args:
+            if _entity_table_editor_is_truthy(
+                _entity_table_editor_eval_ast_rowwise(
+                    conn, a, cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+                )
+            ):
+                return True
+        return False
+
+    if fn == "NOT":
+        if len(raw_args) != 1:
+            raise HTTPException(status_code=400, detail="NOT expects exactly one argument")
+        return (not _entity_table_editor_is_truthy(
+            _entity_table_editor_eval_ast_rowwise(
+                conn, raw_args[0], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+            )
+        ))
+
     eval_args = [
         _entity_table_editor_eval_ast_rowwise(
             conn, a, cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
@@ -6065,6 +6363,16 @@ def _entity_table_editor_eval_ast_rowwise(
         if len(eval_args) != 2:
             raise HTTPException(status_code=400, detail="DAYS_BETWEEN expects exactly two arguments")
         return _entity_table_editor_days_between(eval_args[0], eval_args[1])
+
+    if fn in ("DATE_ADD", "ADD_DAYS"):
+        if len(eval_args) != 2:
+            raise HTTPException(status_code=400, detail=f"{fn} expects exactly two arguments")
+        return _entity_table_editor_date_shift(eval_args[0], eval_args[1], direction=1)
+
+    if fn == "DATE_SUB":
+        if len(eval_args) != 2:
+            raise HTTPException(status_code=400, detail="DATE_SUB expects exactly two arguments")
+        return _entity_table_editor_date_shift(eval_args[0], eval_args[1], direction=-1)
 
     if fn in ("MAX", "MIN"):
         if len(eval_args) < 1:
