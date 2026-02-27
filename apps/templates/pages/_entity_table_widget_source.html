@@ -736,6 +736,12 @@
             };
         }
 
+        function normalizePageSize(value) {
+            var n = parseInt(value, 10);
+            if (!Number.isFinite(n) || n <= 0) return 25;
+            return n;
+        }
+
         /** Report card: title, main value (formula), secondary value (formula), icon. Same entities/fields/filters as tables. */
         var CARD_AGGREGATES = [
             { value: 'count', label: 'Количество записей' },
@@ -2303,6 +2309,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                         fields: getPersistedTableFields(st),
                         custom_fields: (st.customFields && Array.isArray(st.customFields)) ? st.customFields : [],
                         selected_custom_fields: ensureSelectedCustomFieldCodes(st).slice(),
+                        page_size: normalizePageSize(st.pageSize),
                         filter_fields: getPersistedTableFilterFields(st),
                         column_order: keys.length ? keys : null,
                         column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
@@ -2362,7 +2369,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                         fullData: [],
                         allColumns: [],
                         currentPage: 1,
-                        pageSize: 25,
+                        pageSize: normalizePageSize(t.page_size),
                         columnOrderFromServer: orderFromServer,
                         columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : {},
                         sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
@@ -2403,7 +2410,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     fullData: [],
                     allColumns: [],
                     currentPage: 1,
-                    pageSize: 25,
+                    pageSize: normalizePageSize(data.page_size),
                     columnOrderFromServer: orderFromServer,
                     columnWidths: Object.keys(widthsFromServer).length ? widthsFromServer : loadColumnWidths(0),
                     sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
@@ -3116,10 +3123,15 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             entityTablesContainer.querySelectorAll('.pageSizeInSection').forEach(function(sel) {
                 var section = sel.closest('.entity-table-section');
                 var idx = parseInt(section.getAttribute('data-table-index'), 10);
+                if (!isNaN(idx) && tableStates[idx]) {
+                    sel.value = String(normalizePageSize(tableStates[idx].pageSize));
+                }
                 sel.onchange = function() {
                     tableStates[idx].pageSize = parseInt(this.value, 10) || 25;
                     tableStates[idx].currentPage = 1;
                     renderGrid(idx);
+                    saveConfigToStorage();
+                    saveConfig();
                 };
             });
             entityTablesContainer.querySelectorAll('.searchFilterInputInSection').forEach(function(inp) {
@@ -3199,7 +3211,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                                 fullData: [],
                                 allColumns: [],
                                 currentPage: 1,
-                                pageSize: 25,
+                                pageSize: normalizePageSize(t.page_size),
                                 columnOrderFromServer: orderFromServer,
                                 columnWidths: isDashboard ? {} : (Object.keys(widthsFromServer).length ? widthsFromServer : {}),
                                 sortKey: (t.sort_key != null) ? String(t.sort_key) : '',
@@ -3250,7 +3262,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                             fullData: [],
                             allColumns: [],
                             currentPage: 1,
-                            pageSize: 25,
+                            pageSize: normalizePageSize(data.page_size),
                             columnWidths: loadColumnWidths(0),
                             sortKey: (data.sort_key != null) ? String(data.sort_key) : '',
                             sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
@@ -3384,6 +3396,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     fields: getPersistedTableFields(st),
                     custom_fields: (st.customFields && Array.isArray(st.customFields)) ? st.customFields : [],
                     selected_custom_fields: ensureSelectedCustomFieldCodes(st).slice(),
+                    page_size: normalizePageSize(st.pageSize),
                     filter_fields: getPersistedTableFilterFields(st),
                     column_order: keys.length ? keys : null,
                     column_widths: (st.columnWidths && Object.keys(st.columnWidths).length) ? st.columnWidths : null,
@@ -5281,7 +5294,12 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 }
                 showLoading(tableIndex, false);
                 st.currentPage = 1;
-                st.pageSize = parseInt(els.pageSizeSelect && els.pageSizeSelect.value ? els.pageSizeSelect.value : 25, 10) || 25;
+                if (els.pageSizeSelect) {
+                    els.pageSizeSelect.value = String(normalizePageSize(st.pageSize));
+                    st.pageSize = normalizePageSize(els.pageSizeSelect.value);
+                } else {
+                    st.pageSize = normalizePageSize(st.pageSize);
+                }
                 renderGrid(tableIndex);
                 refreshFilterModalIfOpen(tableIndex);
                 if (els.emptyBlock) els.emptyBlock.classList.add('d-none');
