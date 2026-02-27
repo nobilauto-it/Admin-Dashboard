@@ -1,4 +1,4 @@
-﻿{% extends 'layouts/vertical.html' %}
+{% extends 'layouts/vertical.html' %}
 
 {% block title %}{% if page_title is defined %}{{ page_title }}{% else %}__PAGE_TITLE__{% endif %}{% endblock %}
 
@@ -7,9 +7,9 @@
 <style>
     .entity-table-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; margin-bottom: 16px; }
     .entity-table-toolbar .btn-plus-content { width: 48px; height: 48px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; }
-    /* РЎРєСЂС‹С‚СЊ РєРЅРѕРїРєСѓ В«РїР»СЋСЃВ» (РґРѕР±Р°РІРёС‚СЊ СЃСѓС‰РЅРѕСЃС‚СЊ) РІРµР·РґРµ РІ Р±Р»РѕРєР°С… С‚Р°Р±Р»РёС† */
+    /* Скрыть кнопку «плюс» (добавить сущность) везде в блоках таблиц */
     .entity-table-toolbar .btnAddEntityInSection { display: none !important; }
-    /* Р—Р°РіР»СѓС€РєР°: СЃРєСЂС‹С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё СЂРµР¶РёРјРѕРІ (Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ / РџСЂРѕСЃРјРѕС‚СЂ / РЎРєСЂС‹С‚СЊ) вЂ” Р»РѕРіРёРєР° РІ РєРѕРґРµ СЃРѕС…СЂР°РЅРµРЅР° */
+    /* Заглушка: скрыть настройки режимов (Редактирование / Просмотр / Скрыть) — логика в коде сохранена */
     .component-modes-admin,
     .table-mode-admin { display: none !important; }
     .entity-table-section .searchFilterRowInSection .btnFieldsInSection,
@@ -20,7 +20,7 @@
     .entity-table-section .searchFilterRowInSection .searchFilterInputWrap { flex: 0 1 30%; min-width: 8rem; max-width: 560px; }
     .entity-table-loading { padding: 24px; text-align: center; color: #64748b; }
     .entity-table-grid-wrap { min-width: 0; overflow: auto;}
-    /* РўРµ Р¶Рµ СЃС‚РёР»Рё, С‡С‚Рѕ Сѓ С€Р°Р±Р»РѕРЅРЅС‹С… table.datatable.datatable-table (simple-datatables + _tables.scss) */
+    /* Те же стили, что у шаблонных table.datatable.datatable-table (simple-datatables + _tables.scss) */
     .entity-table-section .entity-table-grid-wrap .datatable-table,
     .entity-table-section .entity-table-grid-wrap table.datatable-table {
         width: max-content;
@@ -142,7 +142,7 @@
     }
     .entity-table-grid-wrap .entity-table-time-toggle i { font-size: 13px; line-height: 1; }
     .entity-table-grid-wrap th.entity-table-th-wrap { position: relative; padding-right: 16px; }
-    /* auto вЂ” С€РёСЂРёРЅР° РєРѕР»РѕРЅРѕРє РїРѕ СЃРѕРґРµСЂР¶РёРјРѕРјСѓ; РїСЂРё СЂСѓС‡РЅРѕРј СЂРµСЃР°Р№Р·Рµ СЃРѕС…СЂР°РЅСЏРµРј width РІ columnWidths */
+    /* auto — ширина колонок по содержимому; при ручном ресайзе сохраняем width в columnWidths */
     .entity-table-grid-wrap .datatable-table { table-layout: fixed !important; }
     .entity-table-grid-wrap th .entity-table-col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; touch-action: none; }
     .entity-table-section .entity-table-grid-wrap table caption.entity-table-caption { padding: 0.5rem 0; font-size: 0.875rem; color: var(--bs-secondary-color, #6c757d); caption-side: top; }
@@ -242,11 +242,11 @@
         <div class="col-12">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2" id="entityTableAdminToolbar">
                 <div class="d-flex align-items-center gap-2 component-modes-admin" id="componentModesAdmin" style="display: none !important;">
-                    <label class="small text-muted mb-0">Р РµР¶РёРј СЃС‚СЂР°РЅРёС†С‹:</label>
+                    <label class="small text-muted mb-0">Режим страницы:</label>
                     <select class="form-select form-select-sm" id="pageModeSelect" style="width: auto; min-width: 140px;">
-                        <option value="edit">Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ</option>
-                        <option value="read_only">РўРѕР»СЊРєРѕ РїСЂРѕСЃРјРѕС‚СЂ</option>
-                        <option value="hide">РЎРєСЂС‹С‚СЊ</option>
+                        <option value="edit">Редактирование</option>
+                        <option value="read_only">Только просмотр</option>
+                        <option value="hide">Скрыть</option>
                     </select>
                 </div>
             </div>
@@ -262,33 +262,33 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Р”РѕР±Р°РІР»РµРЅРёРµ С‚Р°Р±Р»РёС†С‹</h5>
+                <h5 class="modal-title">Добавление таблицы</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body modal-entity-list">
                 <div class="d-flex justify-content-end mb-3">
                     <div class="dropdown">
-                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">РЁР°Р±Р»РѕРЅС‹</button>
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Шаблоны</button>
                         <ul class="dropdown-menu dropdown-menu-end" id="templatesDropdown"></ul>
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" for="tableNameInput">РќР°Р·РІР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="tableNameInput" placeholder="РќР°Р·РІР°РЅРёРµ С‚Р°Р±Р»РёС†С‹" required>
+                    <label class="form-label" for="tableNameInput">Название таблицы <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="tableNameInput" placeholder="Название таблицы" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" for="tableDescriptionInput">РћРїРёСЃР°РЅРёРµ</label>
-                    <textarea class="form-control" id="tableDescriptionInput" rows="2" placeholder="РћРїРёСЃР°РЅРёРµ"></textarea>
+                    <label class="form-label" for="tableDescriptionInput">Описание</label>
+                    <textarea class="form-control" id="tableDescriptionInput" rows="2" placeholder="Описание"></textarea>
                 </div>
                 <div class="entity-select-hint col-auto ms-auto bg-primary-subtle p-2 border border-dashed border-primary rounded mb-3 d-flex align-items-center gap-2" role="alert">
                     <span class="entity-select-hint-icon rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center">i</span>
-                    <span class="text-dark">Р’С‹Р±РµСЂРёС‚Рµ <strong>РѕСЃРЅРѕРІРЅСѓСЋ СЃСѓС‰РЅРѕСЃС‚СЊ</strong> РґР»СЏ СЃРѕР·РґР°РЅРёСЏ С‚Р°Р±Р»РёС†С‹.</span>
+                    <span class="text-dark">Выберите <strong>основную сущность</strong> для создания таблицы.</span>
                 </div>
                 <div id="modalEntityBody" class="entity-list-two-cols"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Р—Р°РєСЂС‹С‚СЊ</button>
-                <button type="button" class="btn btn-primary" id="modalEntitySave">РЎРѕС…СЂР°РЅРёС‚СЊ</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-primary" id="modalEntitySave">Сохранить</button>
             </div>
         </div>
     </div>
@@ -298,19 +298,19 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">РќР°СЃС‚СЂРѕР№РєР° С‚Р°Р±Р»РёС†С‹</h5>
+                <h5 class="modal-title">Настройка таблицы</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <ul class="nav nav-tabs mb-3" role="tablist">
                     <li class="nav-item">
-                        <a class="nav-link active" data-bs-toggle="tab" href="#fieldsTabPane" role="tab">РџРѕР»СЏ РґР»СЏ С‚Р°Р±Р»РёС†С‹</a>
+                        <a class="nav-link active" data-bs-toggle="tab" href="#fieldsTabPane" role="tab">Поля для таблицы</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" href="#settingsTabPane" role="tab">РќР°СЃС‚СЂРѕР№РєРё С‚Р°Р±Р»РёС†С‹</a>
+                        <a class="nav-link" data-bs-toggle="tab" href="#settingsTabPane" role="tab">Настройки таблицы</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" href="#customFieldTabPane" role="tab">РљР°СЃС‚РѕРјРЅС‹Рµ РїРѕР»СЏ</a>
+                        <a class="nav-link" data-bs-toggle="tab" href="#customFieldTabPane" role="tab">Кастомные поля</a>
                     </li>
                 </ul>
                 <div class="tab-content">
@@ -319,11 +319,11 @@
                             <div id="nestedCheckboxesRow" class="d-flex flex-wrap gap-2 align-items-center"></div>
                             <div class="flex-grow-1" style="min-width: 150px; max-width: 250px;">
                                 <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control" id="fieldsSearchInput" placeholder="РџРѕРёСЃРє РїРѕР»РµР№" autocomplete="off">
+                                    <input type="text" class="form-control" id="fieldsSearchInput" placeholder="Поиск полей" autocomplete="off">
                                 </div>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-primary d-none mb-2" id="toggleCustomFieldsInFieldsTabBtn">РљР°СЃС‚РѕРјРЅС‹Рµ РїРѕР»СЏ</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary d-none mb-2" id="toggleCustomFieldsInFieldsTabBtn">Кастомные поля</button>
                         <div class="fields-modal-grid" id="fieldsList"></div>
                         <div class="mt-3 d-none" id="customFieldsSectionInFieldsTab">
                             <div id="customFieldsListInFieldsTab" class="fields-modal-grid"></div>
@@ -331,15 +331,15 @@
                     </div>
                     <div class="tab-pane" id="settingsTabPane" role="tabpanel">
                         <div class="mb-3">
-                            <label class="form-label text-muted small">РЎСѓС‰РЅРѕСЃС‚СЊ С‚Р°Р±Р»РёС†С‹</label>
-                            <p class="mb-0 small" id="settingsModalEntityLabel">вЂ”</p>
+                            <label class="form-label text-muted small">Сущность таблицы</label>
+                            <p class="mb-0 small" id="settingsModalEntityLabel">—</p>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="settingsModalTableDescription">РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹</label>
-                            <textarea class="form-control" id="settingsModalTableDescription" rows="2" placeholder="РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹"></textarea>
+                            <label class="form-label" for="settingsModalTableDescription">Описание таблицы</label>
+                            <textarea class="form-control" id="settingsModalTableDescription" rows="2" placeholder="Описание таблицы"></textarea>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="tableStyleSelect">РЎС‚РёР»СЊ С‚Р°Р±Р»РёС†С‹</label>
+                            <label class="form-label" for="tableStyleSelect">Стиль таблицы</label>
                             <select class="form-select" id="tableStyleSelect">
                                 <option value="default">Default</option>
                                 <option value="customers_details">Customers Details</option>
@@ -355,33 +355,33 @@
                             </select>
                         </div>
                         <div class="mt-4 pt-3 border-top">
-                            <button type="button" class="btn btn-outline-danger btn-sm" id="settingsModalDeleteTableBtn" title="РЈРґР°Р»РёС‚СЊ С‚Р°Р±Р»РёС†Сѓ" aria-label="РЈРґР°Р»РёС‚СЊ С‚Р°Р±Р»РёС†Сѓ">
-                                <i class="iconoir-trash"></i> РЈРґР°Р»РёС‚СЊ С‚Р°Р±Р»РёС†Сѓ
+                            <button type="button" class="btn btn-outline-danger btn-sm" id="settingsModalDeleteTableBtn" title="Удалить таблицу" aria-label="Удалить таблицу">
+                                <i class="iconoir-trash"></i> Удалить таблицу
                             </button>
                         </div>
                     </div>
                     <div class="tab-pane" id="customFieldTabPane" role="tabpanel">
                         <div class="row g-3">
                             <div class="col-12">
-                                <label class="form-label text-muted small">РЎСѓС‰РЅРѕСЃС‚СЊ С‚Р°Р±Р»РёС†С‹</label>
-                                <p class="mb-0 small" id="customFieldEntityLabel">вЂ”</p>
+                                <label class="form-label text-muted small">Сущность таблицы</label>
+                                <p class="mb-0 small" id="customFieldEntityLabel">—</p>
                             </div>
                             <div class="col-12">
-                                <label class="form-label" for="customFieldNameInput">РќР°Р·РІР°РЅРёРµ РїРѕР»СЏ</label>
-                                <input type="text" class="form-control" id="customFieldNameInput" placeholder="Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РїРѕР»СЏ">
+                                <label class="form-label" for="customFieldNameInput">Название поля</label>
+                                <input type="text" class="form-control" id="customFieldNameInput" placeholder="Введите название поля">
                             </div>
                             <div class="col-12 col-md-6">
-                                <label class="form-label" for="customFieldCodeInput">РљРѕРґ РїРѕР»Рµ</label>
-                                <input type="text" class="form-control" id="customFieldCodeInput" placeholder="РќР°РїСЂРёРјРµСЂ: custom_field_code">
+                                <label class="form-label" for="customFieldCodeInput">Код поле</label>
+                                <input type="text" class="form-control" id="customFieldCodeInput" placeholder="Например: custom_field_code">
                             </div>
                             <div class="col-12 col-md-6">
-                                <label class="form-label" for="customFieldDescriptionInput">РћРїРёСЃР°РЅРёРµ</label>
-                                <input type="text" class="form-control" id="customFieldDescriptionInput" placeholder="РљСЂР°С‚РєРѕРµ РѕРїРёСЃР°РЅРёРµ">
+                                <label class="form-label" for="customFieldDescriptionInput">Описание</label>
+                                <input type="text" class="form-control" id="customFieldDescriptionInput" placeholder="Краткое описание">
                             </div>
                             <div class="col-12 col-md-6">
-                                <label class="form-label" for="customFieldTypeSelect">РўРёРї</label>
+                                <label class="form-label" for="customFieldTypeSelect">Тип</label>
                                 <select class="form-select" id="customFieldTypeSelect">
-                                    <option value="single">РћР±С‰РµРµ Р·РЅР°С‡РµРЅРёРµ</option>
+                                    <option value="single">Общее значение</option>
                                     <option value="card">Card</option>
                                 </select>
                             </div>
@@ -396,20 +396,20 @@
                                             data-bs-toggle="tooltip"
                                             data-bs-placement="top"
                                             data-bs-html="true"
-                                            title="<div class='text-start'><div><b>РљР°Рє РїРѕР»СЊР·РѕРІР°С‚СЊСЃСЏ:</b></div><div>1) РќР°Р¶РјРёС‚Рµ <b>...</b> Рё РІСЃС‚Р°РІСЊС‚Рµ РїРѕР»СЏ</div><div>2) РќР°РїРёС€РёС‚Рµ С„РѕСЂРјСѓР»Сѓ РІ Editor</div><div>3) РќР°Р¶РјРёС‚Рµ <b>РџСЂРѕРІРµСЂРёС‚СЊ</b> РёР»Рё <b>РџРµСЂРµСЃС‡РёС‚Р°С‚СЊ</b></div><hr class='my-1'><div><b>РўРѕРєРµРЅС‹:</b> {РЎСѓС‰РЅРѕСЃС‚СЊ.РџРѕР»Рµ} РёР»Рё technical {deal_25|sp:1114|title}</div><div><b>РђРіСЂРµРіР°С‚С‹:</b> COUNT(), SUM(...), AVG(...), MIN(...), MAX(...)</div><div><b>Р¤СѓРЅРєС†РёРё:</b> CONCAT, UPPER, LOWER, IFNULL, LEN, NUMBER, ROUND, DAYS_BETWEEN, NOW</div><div><b>РђСЂРёС„РјРµС‚РёРєР°:</b> + - * /, СЃРєРѕР±РєРё, unary +/-</div><div><b>РџСЂРёРјРµСЂ:</b> DAYS_BETWEEN({deal_20||BEGINDATE}, {deal_20||CLOSEDATE})</div><div><b>Example (days until now):</b> MAX(0, DAYS_BETWEEN({deal_20||BEGINDATE}, NOW()))</div></div>"
-                                            aria-label="РЁРїР°СЂРіР°Р»РєР° РїРѕ Editor"
+                                            title="<div class='text-start'><div><b>Как пользоваться:</b></div><div>1) Нажмите <b>...</b> и вставьте поля</div><div>2) Напишите формулу в Editor</div><div>3) Нажмите <b>Проверить</b> или <b>Пересчитать</b></div><hr class='my-1'><div><b>Токены:</b> {Сущность.Поле} или technical {deal_25|sp:1114|title}</div><div><b>Агрегаты:</b> COUNT(), SUM(...), AVG(...), MIN(...), MAX(...)</div><div><b>Функции:</b> CONCAT, UPPER, LOWER, IFNULL, COALESCE, LEN, NUMBER, ROUND</div><div><b>Арифметика:</b> + - * /, скобки, unary +/-</div><div><b>Пример:</b> ROUND(NUMBER({deal_25||OPPORTUNITY}) - 1000, 0)</div></div>"
+                                            aria-label="Шпаргалка по Editor"
                                     >i</button>
                                 </div>
                                 <div class="d-flex align-items-end gap-2">
-                                    <textarea class="form-control flex-grow-1" id="customFieldPayloadTextarea" rows="6" placeholder="Р¤РѕСЂРјР° Рё Р»РѕРіРёРєР° SQL"></textarea>
-                                    <button type="button" class="btn btn-outline-primary flex-shrink-0" id="customFieldActionBtn" aria-label="Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕ">...</button>
+                                    <textarea class="form-control flex-grow-1" id="customFieldPayloadTextarea" rows="6" placeholder="Форма и логика SQL"></textarea>
+                                    <button type="button" class="btn btn-outline-primary flex-shrink-0" id="customFieldActionBtn" aria-label="Дополнительно">...</button>
                                 </div>
                                 <div class="d-flex justify-content-end gap-2 mt-2">
-                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="customFieldPreviewBtn">РџСЂРѕРІРµСЂРёС‚СЊ</button>
-                                    <button type="button" class="btn btn-outline-primary btn-sm" id="customFieldEditOpenBtn">Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ</button>
-                                    <button type="button" class="btn btn-outline-warning btn-sm" id="customFieldRecalcOpenBtn">РџРµСЂРµСЃС‡РёС‚Р°С‚СЊ</button>
-                                    <button type="button" class="btn btn-danger btn-sm" id="customFieldDeleteOpenBtn">РЈРґР°Р»РёС‚СЊ РїРѕР»Рµ</button>
-                                    <button type="button" class="btn btn-primary btn-sm" id="customFieldSaveBtn">РЎРѕС…СЂР°РЅРёС‚СЊ РєР°СЃС‚РѕРјРЅРѕРµ РїРѕР»Рµ</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="customFieldPreviewBtn">Проверить</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="customFieldEditOpenBtn">Редактировать</button>
+                                    <button type="button" class="btn btn-outline-warning btn-sm" id="customFieldRecalcOpenBtn">Пересчитать</button>
+                                    <button type="button" class="btn btn-danger btn-sm" id="customFieldDeleteOpenBtn">Удалить поле</button>
+                                    <button type="button" class="btn btn-primary btn-sm" id="customFieldSaveBtn">Сохранить кастомное поле</button>
                                 </div>
                                 <div class="small text-primary mt-1 d-none" id="customFieldEditModeHint"></div>
                                 <div class="small text-secondary mt-1 d-none" id="customFieldEditorReadableHint"></div>
@@ -422,8 +422,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">РћС‚РјРµРЅР°</button>
-                <button type="button" class="btn btn-primary" id="modalFieldsSave">РЎРѕС…СЂР°РЅРёС‚СЊ</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="modalFieldsSave">Сохранить</button>
             </div>
         </div>
     </div>
@@ -433,16 +433,16 @@
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РєР°СЃС‚РѕРјРЅРѕРµ РїРѕР»Рµ</h5>
+                <h5 class="modal-title">Редактировать кастомное поле</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="small text-muted mb-2">Р’С‹Р±РµСЂРёС‚Рµ РїРѕР»Рµ РґР»СЏ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ</div>
+                <div class="small text-muted mb-2">Выберите поле для редактирования</div>
                 <div id="customFieldEditList" class="d-flex flex-column gap-2"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">РћС‚РјРµРЅР°</button>
-                <button type="button" class="btn btn-primary" id="customFieldEditConfirmBtn">РћС‚РєСЂС‹С‚СЊ РІ С„РѕСЂРјРµ</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="customFieldEditConfirmBtn">Открыть в форме</button>
             </div>
         </div>
     </div>
@@ -452,16 +452,16 @@
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">РџРµСЂРµСЃС‡РёС‚Р°С‚СЊ РєР°СЃС‚РѕРјРЅРѕРµ РїРѕР»Рµ</h5>
+                <h5 class="modal-title">Пересчитать кастомное поле</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="small text-muted mb-2">Р’С‹Р±РµСЂРёС‚Рµ РїРѕР»Рµ РґР»СЏ РїРµСЂРµСЃС‡РµС‚Р°</div>
+                <div class="small text-muted mb-2">Выберите поле для пересчета</div>
                 <div id="customFieldRecalcList" class="d-flex flex-column gap-2"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">РћС‚РјРµРЅР°</button>
-                <button type="button" class="btn btn-warning" id="customFieldRecalcConfirmBtn">РџРµСЂРµСЃС‡РёС‚Р°С‚СЊ</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-warning" id="customFieldRecalcConfirmBtn">Пересчитать</button>
             </div>
         </div>
     </div>
@@ -471,16 +471,16 @@
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">РЈРґР°Р»РёС‚СЊ РєР°СЃС‚РѕРјРЅРѕРµ РїРѕР»Рµ</h5>
+                <h5 class="modal-title">Удалить кастомное поле</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="small text-muted mb-2">Р’С‹Р±РµСЂРёС‚Рµ РїРѕР»Рµ РґР»СЏ СѓРґР°Р»РµРЅРёСЏ</div>
+                <div class="small text-muted mb-2">Выберите поле для удаления</div>
                 <div id="customFieldDeleteList" class="d-flex flex-column gap-2"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">РћС‚РјРµРЅР°</button>
-                <button type="button" class="btn btn-danger" id="customFieldDeleteConfirmBtn">РЈРґР°Р»РёС‚СЊ</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" id="customFieldDeleteConfirmBtn">Удалить</button>
             </div>
         </div>
     </div>
@@ -490,16 +490,16 @@
     <div class="modal-dialog modal-dialog-scrollable modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Р¤РёР»СЊС‚СЂ + РїРѕРёСЃРє</h5>
+                <h5 class="modal-title">Фильтр + поиск</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body filterPanelInSection">
                 <div id="filterModalRowsContainer"></div>
-                <a href="javascript:void(0)" class="addFilterFieldInModal text-primary small mt-2 d-inline-block" id="addFilterFieldInModal">Р”РѕР±Р°РІРёС‚СЊ РїРѕР»Рµ</a>
+                <a href="javascript:void(0)" class="addFilterFieldInModal text-primary small mt-2 d-inline-block" id="addFilterFieldInModal">Добавить поле</a>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Р—Р°РєСЂС‹С‚СЊ</button>
-                <button type="button" class="btn btn-primary" id="modalFilterSave">РЎРѕС…СЂР°РЅРёС‚СЊ</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-primary" id="modalFilterSave">Сохранить</button>
             </div>
         </div>
     </div>
@@ -509,12 +509,12 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Р’С‹Р±РѕСЂ РїРѕР»РµР№ РґР»СЏ Editor</h5>
+                <h5 class="modal-title">Выбор полей для Editor</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <input type="text" class="form-control form-control-sm" id="customFieldPickerSearchInput" placeholder="РџРѕРёСЃРє РїРѕР»РµР№">
+                    <input type="text" class="form-control form-control-sm" id="customFieldPickerSearchInput" placeholder="Поиск полей">
                 </div>
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                     <div id="customFieldPickerNestedRow" class="d-flex flex-wrap gap-2 align-items-center"></div>
@@ -522,8 +522,8 @@
                 <div id="customFieldPickerList" class="fields-modal-grid"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">РћС‚РјРµРЅР°</button>
-                <button type="button" class="btn btn-primary" id="customFieldPickerInsertBtn">Р’СЃС‚Р°РІРёС‚СЊ</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="customFieldPickerInsertBtn">Вставить</button>
             </div>
         </div>
     </div>
@@ -533,18 +533,18 @@
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content">
             <div class="modal-header border-0 pb-3">
-                <h5 class="modal-title">Р”РѕР±Р°РІРёС‚СЊ РІРёР·СѓР°Р»</h5>
+                <h5 class="modal-title">Добавить визуал</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body pt-3">
                 <div class="d-grid gap-2">
                     <button type="button" class="btn btn-outline-primary btn-add-choice py-3 d-flex align-items-center justify-content-center gap-2" id="btnChoiceTable" data-choice="table">
                         <i class="iconoir-list fs-4"></i>
-                        <span>РўР°Р±Р»РёС†Сѓ</span>
+                        <span>Таблицу</span>
                     </button>
                     <button type="button" class="btn btn-outline-secondary btn-add-choice py-3 d-flex align-items-center justify-content-center gap-2" id="btnChoiceCard" data-choice="card">
                         <i class="iconoir-report-columns fs-4"></i>
-                        <span>РљР°СЂС‚РѕС‡РєСѓ</span>
+                        <span>Карточку</span>
                     </button>
                 </div>
             </div>
@@ -556,13 +556,13 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">РљСѓРґР° РІСЃС‚Р°РІРёС‚СЊ РЅРѕРІСѓСЋ С‚Р°Р±Р»РёС†Сѓ?</h5>
+                <h5 class="modal-title">Куда вставить новую таблицу?</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted small mb-3">Р’С‹Р±РµСЂРёС‚Рµ СЏС‡РµР№РєСѓ СЃРµС‚РєРё вЂ” РЅРѕРІР°СЏ С‚Р°Р±Р»РёС†Р° РїРѕСЏРІРёС‚СЃСЏ РІ РІС‹Р±СЂР°РЅРЅРѕР№ РїРѕР·РёС†РёРё.</p>
+                <p class="text-muted small mb-3">Выберите ячейку сетки — новая таблица появится в выбранной позиции.</p>
                 <div id="insertTableGrid" class="entity-insert-grid row g-2" style="max-width: 320px;">
-                    <!-- 3Г—3: СЏС‡РµР№РєРё СЃ data-insert-index="0".."8" РїРѕРґСЃС‚Р°РІР»СЏСЋС‚СЃСЏ СЃРєСЂРёРїС‚РѕРј -->
+                    <!-- 3×3: ячейки с data-insert-index="0".."8" подставляются скриптом -->
                 </div>
             </div>
         </div>
@@ -628,7 +628,7 @@
         }
 
         function applyTableModes(tableModes) {
-            /* Р—Р°РіР»СѓС€РєР°: РїСЂР°РІРёР»Р° СЂРµР¶РёРјРѕРІ С‚Р°Р±Р»РёС† РЅРµ РІР»РёСЏСЋС‚ РЅР° РёРЅС‚РµСЂС„РµР№СЃ; С‚РѕР»СЊРєРѕ РіРѕСЃС‚СЊ/Р°РґРјРёРЅ РѕРїСЂРµРґРµР»СЏСЋС‚ readonly */
+            /* Заглушка: правила режимов таблиц не влияют на интерфейс; только гость/админ определяют readonly */
             if (!entityTablesContainer) return;
             entityTablesContainer.querySelectorAll('.entity-table-section').forEach(function(section) {
                 section.classList.remove('entity-table-section-readonly', 'entity-table-section-hidden', 'entity-table-section-plus-hidden');
@@ -637,7 +637,7 @@
         }
 
         function applyPageMode(pageMode) {
-            /* Р—Р°РіР»СѓС€РєР°: СЂРµР¶РёРј СЃС‚СЂР°РЅРёС†С‹ РЅРµ РІР»РёСЏРµС‚ РЅР° РёРЅС‚РµСЂС„РµР№СЃ; С‚РѕР»СЊРєРѕ РіРѕСЃС‚СЊ/Р°РґРјРёРЅ РѕРїСЂРµРґРµР»СЏСЋС‚ readonly */
+            /* Заглушка: режим страницы не влияет на интерфейс; только гость/админ определяют readonly */
             var container = document.getElementById('entityTablesContainer');
             var wrapper = container && container.closest('.row');
             if (wrapper) wrapper.style.removeProperty('display');
@@ -645,7 +645,7 @@
 
         function renderComponentModesAdmin() {
             if (isGuestUser()) return;
-            /* Р—Р°РіР»СѓС€РєР°: Р±Р»РѕРєРё СЂРµР¶РёРјРѕРІ СЃРєСЂС‹С‚С‹ РІ UI (CSS), Р»РѕРіРёРєР° РЅРёР¶Рµ СЃРѕС…СЂР°РЅРµРЅР° РґР»СЏ РІРѕР·РјРѕР¶РЅРѕРіРѕ РїРѕРІС‚РѕСЂРЅРѕРіРѕ РІРєР»СЋС‡РµРЅРёСЏ */
+            /* Заглушка: блоки режимов скрыты в UI (CSS), логика ниже сохранена для возможного повторного включения */
             var adminEl = document.getElementById('componentModesAdmin');
             if (adminEl) { /* adminEl.style.setProperty('display', 'flex', 'important'); */ }
             var pageSelect = document.getElementById('pageModeSelect');
@@ -654,7 +654,7 @@
                 var idx = sel.getAttribute('data-table-index');
                 sel.value = currentTableModes[idx] || currentTableModes[String(idx)] || 'edit';
                 var wrap = sel.closest('.table-mode-admin');
-                if (wrap) { /* wrap.style.setProperty('display', 'block', 'important'); вЂ” СЃРєСЂС‹С‚Рѕ Р·Р°РіР»СѓС€РєРѕР№ */ }
+                if (wrap) { /* wrap.style.setProperty('display', 'block', 'important'); — скрыто заглушкой */ }
             });
         }
 
@@ -728,7 +728,7 @@
                 showTime: false,
                 dateTimeDisplayByColumn: {},
                 guestFilterInitialized: false,
-                filterFields: [{ label: 'РќР°Р·РІР°РЅРёРµ', key: '', type: 'text' }],
+                filterFields: [{ label: 'Название', key: '', type: 'text' }],
                 customFields: [],
                 selectedCustomFieldCodes: [],
                 customFieldTokenMap: {},
@@ -744,11 +744,11 @@
 
         /** Report card: title, main value (formula), secondary value (formula), icon. Same entities/fields/filters as tables. */
         var CARD_AGGREGATES = [
-            { value: 'count', label: 'РљРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РїРёСЃРµР№' },
-            { value: 'sum', label: 'РЎСѓРјРјР°' },
-            { value: 'avg', label: 'РЎСЂРµРґРЅРµРµ' },
-            { value: 'min', label: 'РњРёРЅРёРјСѓРј' },
-            { value: 'max', label: 'РњР°РєСЃРёРјСѓРј' }
+            { value: 'count', label: 'Количество записей' },
+            { value: 'sum', label: 'Сумма' },
+            { value: 'avg', label: 'Среднее' },
+            { value: 'min', label: 'Минимум' },
+            { value: 'max', label: 'Максимум' }
         ];
         var REPORT_CARD_ICONS = ['iconoir-activity', 'iconoir-handbag', 'iconoir-clock', 'iconoir-user', 'iconoir-dollar-circle', 'iconoir-report-columns', 'iconoir-reports-solid', 'iconoir-trophy', 'iconoir-chat-bubble', 'iconoir-mail', 'iconoir-fire-flame', 'iconoir-suitcase', 'iconoir-bell', 'iconoir-calendar', 'iconoir-list', 'iconoir-candlestick-chart', 'iconoir-map-pin', 'iconoir-send-mail', 'iconoir-page-star', 'iconoir-heart-solid'];
         function defaultCardState() {
@@ -758,7 +758,7 @@
                 icon: 'iconoir-activity',
                 selectedEntities: [],
                 selectedFields: [],
-                filterFields: [{ label: 'РќР°Р·РІР°РЅРёРµ', key: '', type: 'text' }],
+                filterFields: [{ label: 'Название', key: '', type: 'text' }],
                 mainFormula: { aggregate: 'count', fieldKey: null },
                 secondaryFormula: { aggregate: 'count', fieldKey: null, label: '' },
                 fullData: [],
@@ -829,7 +829,7 @@
         const customFieldRecalcOpenBtnDefaultText = customFieldRecalcOpenBtn ? String(customFieldRecalcOpenBtn.textContent || 'Recalculate') : 'Recalculate';
         const customFieldRecalcConfirmBtnDefaultText = customFieldRecalcConfirmBtn ? String(customFieldRecalcConfirmBtn.textContent || 'Recalculate') : 'Recalculate';
         var lastCustomFieldPreviewSampleRowId = null;
-        // TEMP presentation mode: show only rows where nested custom-field part (e.g. "РђР’РўРћ: ...") is present.
+        // TEMP presentation mode: show only rows where nested custom-field part (e.g. "АВТО: ...") is present.
         var TEMP_PRESENTATION_ONLY_ROWS_WITH_LINKED_SMART = false;
         const toggleCustomFieldsInFieldsTabBtn = document.getElementById('toggleCustomFieldsInFieldsTabBtn');
         const customFieldsSectionInFieldsTab = document.getElementById('customFieldsSectionInFieldsTab');
@@ -1226,7 +1226,7 @@
                     customFieldEditorReadableHint.classList.add('d-none');
                     return;
                 }
-                customFieldEditorReadableHint.textContent = 'Р§РёС‚Р°РµРјРѕ: ' + rendered;
+                customFieldEditorReadableHint.textContent = 'Читаемо: ' + rendered;
                 customFieldEditorReadableHint.classList.remove('d-none');
             }).catch(function() {
                 if (seq !== customFieldReadableHintRenderSeq) return;
@@ -1329,10 +1329,10 @@
         }
         function previewCustomFieldEditorViaApi(tableIndex, editorText) {
             var st = tableStates[tableIndex];
-            if (!st) return Promise.reject(new Error('РќРµС‚ Р°РєС‚РёРІРЅРѕР№ С‚Р°Р±Р»РёС†С‹'));
-            if (!Array.isArray(st.selectedEntities) || !st.selectedEntities.length) return Promise.reject(new Error('РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ СЃСѓС‰РЅРѕСЃС‚СЊ С‚Р°Р±Р»РёС†С‹'));
+            if (!st) return Promise.reject(new Error('Нет активной таблицы'));
+            if (!Array.isArray(st.selectedEntities) || !st.selectedEntities.length) return Promise.reject(new Error('Сначала выберите сущность таблицы'));
             var targetEntity = customFieldApiEntityPayload(st.selectedEntities[0]);
-            if (!targetEntity || !targetEntity.entity_key) return Promise.reject(new Error('РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ target entity'));
+            if (!targetEntity || !targetEntity.entity_key) return Promise.reject(new Error('Не удалось определить target entity'));
             return normalizeCustomFieldEditorForBackend(tableIndex, editorText).then(function(normalizedEditor) {
                 return buildNestedSourceEntityHintsForEditor(tableIndex, editorText, normalizedEditor).then(function(nestedHints) {
                 var payload = {
@@ -1371,9 +1371,9 @@
                 toggleCustomFieldsInFieldsTabBtn.classList.add('btn-outline-primary');
                 return;
             }
-            var html = '<div class="field-row fields-modal-entity-header" data-entity-header="1" data-entitykey="custom_fields"><span>РљР°СЃС‚РѕРјРЅС‹Рµ РїРѕР»СЏ</span></div>';
+            var html = '<div class="field-row fields-modal-entity-header" data-entity-header="1" data-entitykey="custom_fields"><span>Кастомные поля</span></div>';
             html += list.map(function(cf, idx) {
-                var name = String((cf && cf.name) || '').trim() || '(Р±РµР· РЅР°Р·РІР°РЅРёСЏ)';
+                var name = String((cf && cf.name) || '').trim() || '(без названия)';
                 var code = String((cf && cf.code) || '').trim();
                 var label = name;
                 var safeId = 'cf_fields_tab_' + idx;
@@ -1525,12 +1525,12 @@
             var st = tableStates[currentTableIndex];
             var list = ensureCustomFieldsArray(st);
             if (!list.length) {
-                customFieldDeleteList.innerHTML = '<div class="text-muted small">РќРµС‚ РєР°СЃС‚РѕРјРЅС‹С… РїРѕР»РµР№</div>';
+                customFieldDeleteList.innerHTML = '<div class="text-muted small">Нет кастомных полей</div>';
                 return;
             }
             customFieldDeleteList.innerHTML = list.map(function(cf, idx) {
                 var id = 'customFieldDeletePick_' + idx;
-                var name = String((cf && cf.name) || '').trim() || '(Р±РµР· РЅР°Р·РІР°РЅРёСЏ)';
+                var name = String((cf && cf.name) || '').trim() || '(без названия)';
                 var code = String((cf && cf.code) || '').trim();
                 var type = String((cf && cf.type) || 'single').trim();
                 var label = name + (code ? (' [' + code + ']') : '') + (type ? (' (' + type + ')') : '');
@@ -1547,12 +1547,12 @@
             var st = tableStates[currentTableIndex];
             var list = ensureCustomFieldsArray(st);
             if (!list.length) {
-                customFieldEditList.innerHTML = '<div class="text-muted small">РќРµС‚ РєР°СЃС‚РѕРјРЅС‹С… РїРѕР»РµР№</div>';
+                customFieldEditList.innerHTML = '<div class="text-muted small">Нет кастомных полей</div>';
                 return;
             }
             customFieldEditList.innerHTML = list.map(function(cf, idx) {
                 var id = 'customFieldEditPick_' + idx;
-                var name = String((cf && cf.name) || '').trim() || '(Р±РµР· РЅР°Р·РІР°РЅРёСЏ)';
+                var name = String((cf && cf.name) || '').trim() || '(без названия)';
                 var code = String((cf && cf.code) || '').trim();
                 var label = name + (code ? (' [' + code + ']') : '');
                 var safe = label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -1570,7 +1570,7 @@
                     customFieldEditModeHint.textContent = '';
                     customFieldEditModeHint.classList.add('d-none');
                 }
-                if (customFieldSaveBtn) customFieldSaveBtn.textContent = 'РЎРѕС…СЂР°РЅРёС‚СЊ РєР°СЃС‚РѕРјРЅРѕРµ РїРѕР»Рµ';
+                if (customFieldSaveBtn) customFieldSaveBtn.textContent = 'Сохранить кастомное поле';
                 if (customFieldCodeInput) customFieldCodeInput.disabled = false;
                 if (customFieldPayloadTextarea) customFieldPayloadTextarea.value = '';
                 renderCustomFieldEditorReadableHint();
@@ -1586,10 +1586,10 @@
             if (customFieldTypeSelect) customFieldTypeSelect.value = String(item.type || 'single') === 'card' ? 'card' : 'single';
             if (customFieldPayloadTextarea) customFieldPayloadTextarea.value = String(item.editor || '');
             if (customFieldEditModeHint) {
-                customFieldEditModeHint.textContent = 'Р РµР¶РёРј СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ: ' + (item.name || item.code || item.id || '');
+                customFieldEditModeHint.textContent = 'Режим редактирования: ' + (item.name || item.code || item.id || '');
                 customFieldEditModeHint.classList.remove('d-none');
             }
-            if (customFieldSaveBtn) customFieldSaveBtn.textContent = 'РЎРѕС…СЂР°РЅРёС‚СЊ РёР·РјРµРЅРµРЅРёСЏ';
+            if (customFieldSaveBtn) customFieldSaveBtn.textContent = 'Сохранить изменения';
             renderCustomFieldEditorReadableHint();
         }
         function renderCustomFieldRecalcList() {
@@ -1597,12 +1597,12 @@
             var st = tableStates[currentTableIndex];
             var list = ensureCustomFieldsArray(st);
             if (!list.length) {
-                customFieldRecalcList.innerHTML = '<div class="text-muted small">РќРµС‚ РєР°СЃС‚РѕРјРЅС‹С… РїРѕР»РµР№</div>';
+                customFieldRecalcList.innerHTML = '<div class="text-muted small">Нет кастомных полей</div>';
                 return;
             }
             customFieldRecalcList.innerHTML = list.map(function(cf, idx) {
                 var id = 'customFieldRecalcPick_' + idx;
-                var name = String((cf && cf.name) || '').trim() || '(Р±РµР· РЅР°Р·РІР°РЅРёСЏ)';
+                var name = String((cf && cf.name) || '').trim() || '(без названия)';
                 var code = String((cf && cf.code) || '').trim();
                 var type = String((cf && cf.type) || 'single').trim();
                 var label = name + (code ? (' [' + code + ']') : '') + (type ? (' (' + type + ')') : '');
@@ -1642,7 +1642,7 @@
                     finishLocalDelete();
                 })
                 .catch(function(err) {
-                    alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ РєР°СЃС‚РѕРјРЅРѕРµ РїРѕР»Рµ');
+                    alert((err && err.message) ? err.message : 'Не удалось удалить кастомное поле');
                 })
                 .finally(function() {
                     if (customFieldDeleteConfirmBtn) customFieldDeleteConfirmBtn.disabled = false;
@@ -1659,7 +1659,7 @@
             if (!Number.isFinite(idx) || idx < 0 || idx >= list.length) return;
             var item = list[idx] || {};
             if (!item.id) {
-                alert('РЈ РїРѕР»СЏ РЅРµС‚ id РґР»СЏ РїРµСЂРµСЃС‡РµС‚Р°');
+                alert('У поля нет id для пересчета');
                 return;
             }
             var targetEntity = (Array.isArray(st.selectedEntities) && st.selectedEntities.length)
@@ -1738,12 +1738,12 @@
                     var upd = res && res.recalculate_result && res.recalculate_result.updated_rows != null ? res.recalculate_result.updated_rows : null;
                     var modeDetail = res && res.recalculate_result && res.recalculate_result.mode_detail ? String(res.recalculate_result.mode_detail) : '';
                     if (upd != null) {
-                        alert('РџРµСЂРµСЃС‡РµС‚ РІС‹РїРѕР»РЅРµРЅ. РћР±РЅРѕРІР»РµРЅРѕ СЃС‚СЂРѕРє: ' + upd + (modeDetail ? ('\nР РµР¶РёРј: ' + modeDetail) : ''));
+                        alert('Пересчет выполнен. Обновлено строк: ' + upd + (modeDetail ? ('\nРежим: ' + modeDetail) : ''));
                     }
                 })
                 .catch(function(err) {
                                         setCustomFieldRecalcLoading(false);
-alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ РїРµСЂРµСЃС‡РёС‚Р°С‚СЊ РєР°СЃС‚РѕРјРЅРѕРµ РїРѕР»Рµ');
+alert((err && err.message) ? err.message : 'Не удалось пересчитать кастомное поле');
                 })
                 .finally(function() {
                     if (customFieldRecalcConfirmBtn) customFieldRecalcConfirmBtn.disabled = false;
@@ -1917,7 +1917,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
 
         let entityRadioName = 0;
 
-        /** Р”РµР»РµРіРёСЂРѕРІР°РЅРёРµ: РїСЂРё РєР»РёРєРµ РїРѕ РєРЅРѕРїРєРµ/С‡РµРєР±РѕРєСЃСѓ РІР»РѕР¶РµРЅРЅРѕСЃС‚Рё РїРѕРєР°Р·С‹РІР°С‚СЊ/СЃРєСЂС‹РІР°С‚СЊ СЂСѓР±СЂРёРєСѓ Рё РїРѕР»СЏ РІ СЂРµР°Р»СЊРЅРѕРј РІСЂРµРјРµРЅРё. */
+        /** Делегирование: при клике по кнопке/чекбоксу вложенности показывать/скрывать рубрику и поля в реальном времени. */
         if (nestedCheckboxesRow && fieldsList) {
             nestedCheckboxesRow.addEventListener('click', function(e) {
                 var target = e.target.closest && e.target.closest('.nested-toggle') ? e.target.closest('.nested-toggle') : (e.target.classList && e.target.classList.contains('nested-toggle') ? e.target : null);
@@ -1947,7 +1947,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             if (!els.loadingBlock) return;
             if (show) {
                 els.loadingBlock.classList.remove('d-none');
-                if (els.loadingText) els.loadingText.textContent = text || 'Р—Р°РіСЂСѓР·РєР°...';
+                if (els.loadingText) els.loadingText.textContent = text || 'Загрузка...';
             } else {
                 els.loadingBlock.classList.add('d-none');
             }
@@ -1957,7 +1957,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             return (e.entity_key || e.type) + (e.category_id != null ? '_' + e.category_id : '');
         }
 
-        /** РЎР»СѓР¶РµР±РЅС‹Рµ РєРѕР»РѕРЅРєРё РЅРµ РїРѕРєР°Р·С‹РІР°РµРј Рё РЅРµ СЃРѕС…СЂР°РЅСЏРµРј РІ РЅР°СЃС‚СЂРѕР№РєР°С…. */
+        /** Служебные колонки не показываем и не сохраняем в настройках. */
         function isSystemColumn(key) {
             if (!key) return true;
             if (key === '_entityKey') return true;
@@ -1966,7 +1966,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             return false;
         }
 
-        /** РЈР±РёСЂР°РµС‚ РґСѓР±Р»Рё СЃСѓС‰РЅРѕСЃС‚РµР№ Рё РѕР±СЉРµРґРёРЅСЏРµС‚ РїРѕР»СЏ РїРѕ entityKey (РѕРґРЅР° Р·Р°РїРёСЃСЊ РїРѕР»РµР№ РЅР° СЃСѓС‰РЅРѕСЃС‚СЊ). */
+        /** Убирает дубли сущностей и объединяет поля по entityKey (одна запись полей на сущность). */
         function normalizeEntitiesAndFields(entities, fields) {
             var seen = {};
             var dedupEntities = [];
@@ -2035,7 +2035,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                 };
             });
             if (!tablesPayload.some(function(t) { return t.entities && t.entities.length > 0 && t.fields && t.fields.length > 0; })) return;
-            var templateName = (st.tableTitle && String(st.tableTitle).trim()) || ('РЁР°Р±Р»РѕРЅ ' + new Date().toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
+            var templateName = (st.tableTitle && String(st.tableTitle).trim()) || ('Шаблон ' + new Date().toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
             fetch(API.templates, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2125,7 +2125,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             } catch (e) { return null; }
         }
 
-        /** РџРѕСЂСЏРґРѕРє РєРѕР»РѕРЅРѕРє: РїСЂРёРѕСЂРёС‚РµС‚ Сѓ Р»РѕРєР°Р»СЊРЅРѕРіРѕ (localStorage РїРѕСЃР»Рµ РїРµСЂРµС‚Р°СЃРєРёРІР°РЅРёСЏ), РёРЅР°С‡Рµ СЃ СЃРµСЂРІРµСЂР°. */
+        /** Порядок колонок: приоритет у локального (localStorage после перетаскивания), иначе с сервера. */
         function getColumnOrderForTable(tableIndex) {
             var local = loadColumnOrder(tableIndex);
             if (local && local.length) return local;
@@ -2134,7 +2134,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             return null;
         }
 
-        /** РЎР±СЂРѕСЃРёС‚СЊ СЃРѕС…СЂР°РЅС‘РЅРЅС‹Р№ РїРѕСЂСЏРґРѕРє РєРѕР»РѕРЅРѕРє РґР»СЏ РѕРґРЅРѕР№ С‚Р°Р±Р»РёС†С‹ (РїРѕСЃР»Рµ СЃРјРµРЅС‹ РїРѕР»РµР№ СѓРґР°Р»С‘РЅРЅС‹Рµ РєРѕР»РѕРЅРєРё РЅРµ РґРѕР»Р¶РЅС‹ РІР»РёСЏС‚СЊ РЅР° РїРѕСЂСЏРґРѕРє). */
+        /** Сбросить сохранённый порядок колонок для одной таблицы (после смены полей удалённые колонки не должны влиять на порядок). */
         function clearColumnOrderForTable(tableIndex) {
             if (!canUseLocalTableStorage()) return;
             try {
@@ -2158,7 +2158,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             } catch (e) {}
         }
 
-        /** РџРѕ selectedFields СЃС‚СЂРѕРёС‚ РјРЅРѕР¶РµСЃС‚РІРѕ РєР»СЋС‡РµР№ РєРѕР»РѕРЅРѕРє (key::title), РєРѕС‚РѕСЂС‹Рµ СЂРµР°Р»СЊРЅРѕ РІС‹Р±СЂР°РЅС‹ (Р±Р°Р·РѕРІС‹Рµ + РІР»РѕР¶РµРЅРЅС‹Рµ). _entityKey РЅРµ РІРєР»СЋС‡Р°РµС‚СЃСЏ РЅРё РґР»СЏ РєР°РєРёС… СЃСѓС‰РЅРѕСЃС‚РµР№. */
+        /** По selectedFields строит множество ключей колонок (key::title), которые реально выбраны (базовые + вложенные). _entityKey не включается ни для каких сущностей. */
         function getValidColumnKeysFromSelectedFields(st) {
             if (!st || !st.selectedEntities || !st.selectedFields) return {};
             var valid = {};
@@ -2200,11 +2200,11 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             return valid;
         }
 
-        /** РЎС‚Р°РЅРґР°СЂС‚РЅС‹Р№ РїРѕСЂСЏРґРѕРє РєРѕР»РѕРЅРѕРє РїСЂРё РїРµСЂРІРѕР№ Р·Р°РіСЂСѓР·РєРµ (РїРѕ РЅР°Р·РІР°РЅРёСЋ РїРѕР»СЏ). РћСЃС‚Р°Р»СЊРЅС‹Рµ вЂ” РїРѕСЃР»Рµ РІ С‚РµРєСѓС‰РµРј РїРѕСЂСЏРґРєРµ. */
+        /** Стандартный порядок колонок при первой загрузке (по названию поля). Остальные — после в текущем порядке. */
         var DEFAULT_COLUMN_ORDER = [
-            'Р’РѕСЂРѕРЅРєР°', 'РќР°Р·РІР°РЅРёРµ', 'РљРµРј СЃРѕР·РґР°РЅР°', 'РћС‚РІРµС‚СЃС‚РІРµРЅРЅС‹Р№', 'Р’Р°Р»СЋС‚Р°',
-            'Р”Р°С‚Р° СЃРѕР·РґР°РЅРёСЏ', 'Р”Р°С‚Р° РёР·РјРµРЅРµРЅРёСЏ', 'РЎС‚Р°РґРёСЏ', 'РЎС‚Р°РґРёСЏ СЃРґРµР»РєРё', 'РСЃС‚РѕС‡РЅРёРє',
-            'РЎСѓРјРјР°', 'ID', 'РўРёРї'
+            'Воронка', 'Название', 'Кем создана', 'Ответственный', 'Валюта',
+            'Дата создания', 'Дата изменения', 'Стадия', 'Стадия сделки', 'Источник',
+            'Сумма', 'ID', 'Тип'
         ];
         function applyDefaultColumnOrder(columns) {
             if (!columns || !columns.length) return columns;
@@ -2220,7 +2220,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
         }
 
         function applyColumnOrder(columns, orderKeys) {
-            /* Р‘РµР· СЃРѕС…СЂР°РЅС‘РЅРЅРѕРіРѕ РїРѕСЂСЏРґРєР° РѕСЃС‚Р°РІР»СЏРµРј РїРѕСЂСЏРґРѕРє РёР· РєРѕРЅС„РёРіР° (selectedFields), С‡С‚РѕР±С‹ РґР°С€Р±РѕСЂРґ СЃРѕРІРїР°РґР°Р» СЃ РЅР°СЃС‚СЂРѕР№РєР°РјРё. */
+            /* Без сохранённого порядка оставляем порядок из конфига (selectedFields), чтобы дашборд совпадал с настройками. */
             if (!orderKeys || !orderKeys.length) return columns.slice();
             var byKey = {};
             columns.forEach(function(c) { byKey[c.key] = c; });
@@ -2237,7 +2237,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
 
         var COLUMN_WIDTH_KEY_PREFIX = 'entity_table_column_widths_';
         var MIN_COL_WIDTH = 40;
-        /** РњРёРЅРёРјР°Р»СЊРЅР°СЏ С€РёСЂРёРЅР° (px), РїСЂРё РєРѕС‚РѕСЂРѕР№ РїСЂРёРјРµРЅСЏРµРј СЃРѕС…СЂР°РЅС‘РЅРЅСѓСЋ С€РёСЂРёРЅСѓ; РёРЅР°С‡Рµ РєРѕР»РѕРЅРєР° РїРѕРґСЃС‚СЂР°РёРІР°РµС‚СЃСЏ РїРѕРґ СЃРѕРґРµСЂР¶РёРјРѕРµ (РґР°С‚С‹, Р·Р°РіРѕР»РѕРІРєРё РЅРµ РѕР±СЂРµР·Р°СЋС‚СЃСЏ). */
+        /** Минимальная ширина (px), при которой применяем сохранённую ширину; иначе колонка подстраивается под содержимое (даты, заголовки не обрезаются). */
         var MIN_CONTENT_SAFE_WIDTH = 180;
         var RESIZE_SORT_CLICK_SUPPRESS_MS = 350;
 
@@ -2380,7 +2380,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                             icon: (t.icon && typeof t.icon === 'string') ? t.icon : 'iconoir-activity',
                             selectedEntities: norm.entities,
                             selectedFields: norm.fields,
-                            filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'РќР°Р·РІР°РЅРёРµ', key: '', type: 'text' }],
+                            filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }],
                             mainFormula: (t.main_formula && typeof t.main_formula === 'object') ? { aggregate: t.main_formula.aggregate || 'count', fieldKey: t.main_formula.fieldKey != null ? t.main_formula.fieldKey : null } : { aggregate: 'count', fieldKey: null },
                             secondaryFormula: (t.secondary_formula && typeof t.secondary_formula === 'object') ? { aggregate: t.secondary_formula.aggregate || 'count', fieldKey: t.secondary_formula.fieldKey != null ? t.secondary_formula.fieldKey : null, label: (t.secondary_formula.label != null) ? String(t.secondary_formula.label) : '' } : null,
                             fullData: [],
@@ -2408,7 +2408,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                         dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
                         customFields: (t.custom_fields && Array.isArray(t.custom_fields)) ? t.custom_fields : [],
                         selectedCustomFieldCodes: (t.selected_custom_fields && Array.isArray(t.selected_custom_fields)) ? t.selected_custom_fields : [],
-                        filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'РќР°Р·РІР°РЅРёРµ', key: '', type: 'text' }],
+                        filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }],
                         startNewRow: (t.start_new_row === true)
                     };
                 });
@@ -2449,7 +2449,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                     dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {},
                     customFields: (data.custom_fields && Array.isArray(data.custom_fields)) ? data.custom_fields : [],
                     selectedCustomFieldCodes: (data.selected_custom_fields && Array.isArray(data.selected_custom_fields)) ? data.selected_custom_fields : [],
-                    filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'РќР°Р·РІР°РЅРёРµ', key: '', type: 'text' }]
+                    filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                 }];
                 ensureSections();
                 applyTableStyleToSection(0);
@@ -2465,16 +2465,16 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
 
         function isStageLikeField(label, key) {
             var sample = ((label || '') + ' ' + (key || '')).toLowerCase();
-            return sample.indexOf('СЃС‚Р°Рґ') >= 0
+            return sample.indexOf('стад') >= 0
                 || sample.indexOf('stage') >= 0
                 || sample.indexOf('status') >= 0
-                || sample.indexOf('РІРѕСЂРѕРЅРє') >= 0
+                || sample.indexOf('воронк') >= 0
                 || sample.indexOf('pipeline') >= 0;
         }
 
         function isFunnelLikeField(label, key) {
             var sample = ((label || '') + ' ' + (key || '')).toLowerCase();
-            return sample.indexOf('РІРѕСЂРѕРЅРє') >= 0
+            return sample.indexOf('воронк') >= 0
                 || sample.indexOf('funnel') >= 0
                 || sample.indexOf('category') >= 0
                 || sample.indexOf('pipeline') >= 0;
@@ -2514,8 +2514,8 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             var siblingKeys = Object.keys(first).filter(function(k) {
                 if (k.indexOf(entityPrefix + '::') !== 0) return false;
                 var s = k.toLowerCase();
-                if (wantFunnel) return s.indexOf('РІРѕСЂРѕРЅРє') >= 0 || s.indexOf('funnel') >= 0 || s.indexOf('category') >= 0 || s.indexOf('pipeline') >= 0;
-                return s.indexOf('stage') >= 0 || s.indexOf('status') >= 0 || s.indexOf('СЃС‚Р°Рґ') >= 0;
+                if (wantFunnel) return s.indexOf('воронк') >= 0 || s.indexOf('funnel') >= 0 || s.indexOf('category') >= 0 || s.indexOf('pipeline') >= 0;
+                return s.indexOf('stage') >= 0 || s.indexOf('status') >= 0 || s.indexOf('стад') >= 0;
             });
             if (!siblingKeys.length) return options;
             var seen2 = {};
@@ -2604,7 +2604,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             var values = Array.isArray(selected) ? selected : [];
             var arrowHtml = '<i class="iconoir-nav-arrow-down ms-auto"></i>';
             if (!values.length) {
-                tagsDiv.innerHTML = '<span class="filter-multiselect-caption text-muted small">Р’С‹Р±РµСЂРёС‚Рµ...</span>' + arrowHtml;
+                tagsDiv.innerHTML = '<span class="filter-multiselect-caption text-muted small">Выберите...</span>' + arrowHtml;
                 return;
             }
             var tagsHtml = values.map(function(v) {
@@ -2689,10 +2689,10 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             if (guestMode) syncGuestFilterFieldsWithColumns(tableIndex);
             var addFilterFieldInModalEl = document.getElementById('addFilterFieldInModal');
             if (addFilterFieldInModalEl) addFilterFieldInModalEl.classList.toggle('d-none', guestMode);
-            if (!st.filterFields || !st.filterFields.length) st.filterFields = [{ label: 'РќР°Р·РІР°РЅРёРµ', key: '', type: 'text' }];
+            if (!st.filterFields || !st.filterFields.length) st.filterFields = [{ label: 'Название', key: '', type: 'text' }];
             st.filterFields.forEach(function(f) {
-                if ((f.key === '' || !f.key) && f.label === 'РќР°Р·РІР°РЅРёРµ' && st.allColumns && st.allColumns.length) {
-                    var col = st.allColumns.find(function(c) { return (c.label === 'РќР°Р·РІР°РЅРёРµ') || (c.key && String(c.key).indexOf('РќР°Р·РІР°РЅРёРµ') >= 0); });
+                if ((f.key === '' || !f.key) && f.label === 'Название' && st.allColumns && st.allColumns.length) {
+                    var col = st.allColumns.find(function(c) { return (c.label === 'Название') || (c.key && String(c.key).indexOf('Название') >= 0); });
                     if (col && col.key) f.key = col.key;
                 }
             });
@@ -2714,10 +2714,10 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                     var removeBtn = document.createElement('button');
                     removeBtn.type = 'button';
                     removeBtn.className = 'btn btn-link btn-sm text-danger p-0 ms-2';
-                    removeBtn.textContent = 'РЈРґР°Р»РёС‚СЊ';
+                    removeBtn.textContent = 'Удалить';
                     removeBtn.addEventListener('click', function() {
                         st.filterFields.splice(rowIdx, 1);
-                        if (!st.filterFields.length) st.filterFields = [{ label: 'РќР°Р·РІР°РЅРёРµ', key: '', type: 'text' }];
+                        if (!st.filterFields.length) st.filterFields = [{ label: 'Название', key: '', type: 'text' }];
                         renderFilterRows(tableIndex, container);
                     });
                     head.appendChild(removeBtn);
@@ -2739,7 +2739,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                     var searchInput = document.createElement('input');
                     searchInput.type = 'text';
                     searchInput.className = 'form-control form-control-sm filter-multiselect-search';
-                    searchInput.placeholder = 'РџРѕРёСЃРє РїРѕ Р·РЅР°С‡РµРЅРёСЏРј...';
+                    searchInput.placeholder = 'Поиск по значениям...';
                     searchWrap.appendChild(searchInput);
                     drop.appendChild(searchWrap);
                     options.forEach(function(opt) {
@@ -2753,7 +2753,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                     if (!options.length) {
                         var empty = document.createElement('div');
                         empty.className = 'small text-muted px-3 py-2 filter-multiselect-empty';
-                        empty.textContent = 'РќРµС‚ Р·РЅР°С‡РµРЅРёР№';
+                        empty.textContent = 'Нет значений';
                         drop.appendChild(empty);
                     }
                     wrap.appendChild(tagsDiv);
@@ -2813,10 +2813,10 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                         var emptyEl = drop.querySelector('.filter-multiselect-empty');
                         if (emptyEl) {
                             if (options.length === 0) {
-                                emptyEl.textContent = 'РќРµС‚ Р·РЅР°С‡РµРЅРёР№';
+                                emptyEl.textContent = 'Нет значений';
                                 emptyEl.style.display = '';
                             } else if (visibleCount === 0) {
-                                emptyEl.textContent = 'РќРёС‡РµРіРѕ РЅРµ РЅР°Р№РґРµРЅРѕ';
+                                emptyEl.textContent = 'Ничего не найдено';
                                 emptyEl.style.display = '';
                             } else {
                                 emptyEl.style.display = 'none';
@@ -2902,18 +2902,18 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             var tableCls = getTableClassesForStyle(styleKey);
             var theadCls = getTheadClassesForStyle(styleKey);
             var hasCaption = getTableCaptionForStyle(styleKey);
-            var captionHtml = hasCaption ? '<caption class="entity-table-caption">' + (st && st.tableDescription ? String(st.tableDescription).replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'Р”Р°РЅРЅС‹Рµ С‚Р°Р±Р»РёС†С‹') + '</caption>' : '';
+            var captionHtml = hasCaption ? '<caption class="entity-table-caption">' + (st && st.tableDescription ? String(st.tableDescription).replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'Данные таблицы') + '</caption>' : '';
             return '<div class="entity-table-section" data-table-index="' + tableIndex + '">' +
                 '<div class="entity-table-toolbar d-flex align-items-center flex-wrap">' +
-                '<button type="button" class="btn btn-primary btn-plus-content btnAddEntityInSection" title="Р”РѕР±Р°РІРёС‚СЊ СЃСѓС‰РЅРѕСЃС‚СЊ / РЅР°СЃС‚СЂРѕР№РєРё С‚Р°Р±Р»РёС†С‹"><i class="iconoir-plus"></i></button>' +
-                '<span class="entity-table-section-hidden-label text-muted small d-none">Р‘Р»РѕРє СЃРєСЂС‹С‚</span>' +
-                '<div class="table-mode-admin ms-2" style="display:none!important"><select class="form-select form-select-sm tableModeSelect" title="Р РµР¶РёРј С‚Р°Р±Р»РёС†С‹" data-table-index="' + tableIndex + '" style="width:auto;min-width:120px">' +
-                '<option value="edit">Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ</option><option value="read_only">РўРѕР»СЊРєРѕ РїСЂРѕСЃРјРѕС‚СЂ</option><option value="hide">РЎРєСЂС‹С‚СЊ</option></select></div></div>' +
-                '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Р—Р°РіСЂСѓР·РєР°...</p></div>' +
-                '<div class="d-flex align-items-center gap-2 flex-wrap gridTopRowInSection searchFilterRowInSection table-title-search-row d-none mb-2"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-0 tableTitleTextInSection" data-placeholder="РќР°Р·РІР°РЅРёРµ С‚Р°Р±Р»РёС†С‹"></h4></div><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="РџРѕРёСЃРє, С„РёР»СЊС‚СЂвЂ¦" autocomplete="off" aria-label="РџРѕРёСЃРє РїРѕ С‚Р°Р±Р»РёС†Рµ"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="РќР°СЃС‚СЂРѕР№РєРё РїРѕРёСЃРєР° Рё С„РёР»СЊС‚СЂР°" aria-label="РќР°СЃС‚СЂРѕР№РєРё РїРѕРёСЃРєР°"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="РќР°СЃС‚СЂРѕРёС‚СЊ РїРѕР»СЏ С‚Р°Р±Р»РёС†С‹" aria-label="РќР°СЃС‚СЂРѕР№РєРё С‚Р°Р±Р»РёС†С‹"><i class="iconoir-settings"></i></button><div class="filterDropdownInSection"><div class="filterDropdownCardInSection filterPanelInSection"><div class="filterDropdownRowsContainerInSection"></div><a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Р”РѕР±Р°РІРёС‚СЊ РїРѕР»Рµ</a><div class="d-flex justify-content-end gap-2 mt-3"><button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Р—Р°РєСЂС‹С‚СЊ</button><button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">РЎРѕС…СЂР°РЅРёС‚СЊ</button></div></div></div></div>' +
+                '<button type="button" class="btn btn-primary btn-plus-content btnAddEntityInSection" title="Добавить сущность / настройки таблицы"><i class="iconoir-plus"></i></button>' +
+                '<span class="entity-table-section-hidden-label text-muted small d-none">Блок скрыт</span>' +
+                '<div class="table-mode-admin ms-2" style="display:none!important"><select class="form-select form-select-sm tableModeSelect" title="Режим таблицы" data-table-index="' + tableIndex + '" style="width:auto;min-width:120px">' +
+                '<option value="edit">Редактирование</option><option value="read_only">Только просмотр</option><option value="hide">Скрыть</option></select></div></div>' +
+                '<div class="entity-table-loading loadingBlockInSection d-none"><div class="spinner-border text-primary" role="status"></div><p class="mb-0 mt-2 loadingTextInSection">Загрузка...</p></div>' +
+                '<div class="d-flex align-items-center gap-2 flex-wrap gridTopRowInSection searchFilterRowInSection table-title-search-row d-none mb-2"><div class="tableTitleBlockInSection d-none flex-grow-1"><h4 class="mb-0 tableTitleTextInSection" data-placeholder="Название таблицы"></h4></div><div class="input-group input-group-sm searchFilterInputWrap"><span class="input-group-text"><i class="iconoir-search"></i></span><input type="text" class="form-control searchFilterInputInSection" placeholder="Поиск, фильтр…" autocomplete="off" aria-label="Поиск по таблице"></div><button type="button" class="btn btn-outline-secondary btn-search-filter-gear" title="Настройки поиска и фильтра" aria-label="Настройки поиска"><i class="iconoir-settings"></i></button><div class="flex-grow-1"></div><button type="button" class="btn btn-outline-secondary btn-gear btnFieldsInSection d-none" title="Настроить поля таблицы" aria-label="Настройки таблицы"><i class="iconoir-settings"></i></button><div class="filterDropdownInSection"><div class="filterDropdownCardInSection filterPanelInSection"><div class="filterDropdownRowsContainerInSection"></div><a href="javascript:void(0)" class="addFilterFieldInDropdownInSection text-primary small mt-2 d-inline-block">Добавить поле</a><div class="d-flex justify-content-end gap-2 mt-3"><button type="button" class="btn btn-outline-secondary btn-sm filterDropdownCloseInSection">Закрыть</button><button type="button" class="btn btn-primary btn-sm filterDropdownSaveInSection">Сохранить</button></div></div></div></div>' +
                 '<div class="entity-table-grid-wrap table-responsive gridBlockInSection d-none"><table class="' + tableCls + '">' +
                 (hasCaption ? captionHtml : '') + '<thead class="' + theadCls + '"></thead><tbody class="entity-table-grid-body"></tbody></table></div>' +
-                '<div class="datatable-bottom paginationBlockInSection d-none"><div class="pagination-left-in-section d-flex align-items-center flex-wrap gap-2"><span class="datatable-info small text-muted paginationInfoInSection">РџРѕРєР°Р·Р°РЅРѕ 0 вЂ” 0 РёР· 0 Р·Р°РїРёСЃРµР№</span><span class="small text-muted">РќР° СЃС‚СЂР°РЅРёС†Рµ:</span><select class="datatable-input pageSizeInSection" style="width:70px;"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></div><nav class="datatable-pagination paginationNavInSection" aria-label="РџР°РіРёРЅР°С†РёСЏ С‚Р°Р±Р»РёС†С‹"></nav></div></div>';
+                '<div class="datatable-bottom paginationBlockInSection d-none"><div class="pagination-left-in-section d-flex align-items-center flex-wrap gap-2"><span class="datatable-info small text-muted paginationInfoInSection">Показано 0 — 0 из 0 записей</span><span class="small text-muted">На странице:</span><select class="datatable-input pageSizeInSection" style="width:70px;"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></div><nav class="datatable-pagination paginationNavInSection" aria-label="Пагинация таблицы"></nav></div></div>';
         }
 
         /** Report card section HTML: title, main value, secondary, icon; settings on double-click, delete in modal */
@@ -2921,13 +2921,13 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             var st = tableStates[cardIndex];
             var icon = (st && st.icon) ? st.icon : 'iconoir-activity';
             var iconClass = 'bg-primary-subtle text-primary';
-            return '<div class="entity-report-card-section" data-card-index="' + cardIndex + '" role="button" tabindex="0" title="Р”РІРѕР№РЅРѕР№ РєР»РёРє вЂ” РЅР°СЃС‚СЂРѕР№РєРё">' +
+            return '<div class="entity-report-card-section" data-card-index="' + cardIndex + '" role="button" tabindex="0" title="Двойной клик — настройки">' +
                 '<div class="card report-card">' +
                 '<div class="card-body">' +
                 '<div class="row d-flex justify-content-center align-items-center">' +
                 '<div class="col">' +
                 '<p class="report-card-title text-dark mb-0"></p>' +
-                '<h3 class="report-card-main-value my-1 fs-20">вЂ”</h3>' +
+                '<h3 class="report-card-main-value my-1 fs-20">—</h3>' +
                 '<p class="report-card-secondary-value text-muted mb-0"></p>' +
                 '</div>' +
                 '<div class="col-auto align-self-center">' +
@@ -3196,7 +3196,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             }
         }
 
-        /** Р”РµР»РµРіРёСЂРѕРІР°РЅРёРµ: РєР»РёРєРё РїРѕ РєРЅРѕРїРєР°Рј РїР°РіРёРЅР°С†РёРё (prev/next/РЅРѕРјРµСЂ СЃС‚СЂР°РЅРёС†С‹) вЂ” РїСЂРёРІСЏР·С‹РІР°РµС‚СЃСЏ РѕРґРёРЅ СЂР°Р·. */
+        /** Делегирование: клики по кнопкам пагинации (prev/next/номер страницы) — привязывается один раз. */
         if (entityTablesContainer && !entityTablesContainer._paginationDelegationBound) {
             entityTablesContainer._paginationDelegationBound = true;
             entityTablesContainer.addEventListener('click', function(e) {
@@ -3215,7 +3215,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             });
         }
 
-        /** Р—Р°РіСЂСѓР·РєР° РєРѕРЅС„РёРіР°: СЃРЅР°С‡Р°Р»Р° СЃ СЃРµСЂРІРµСЂР°; РµСЃР»Рё РїСѓСЃС‚Рѕ РёР»Рё РѕС€РёР±РєР° вЂ” РІРѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј РёР· localStorage. */
+        /** Загрузка конфига: сначала с сервера; если пусто или ошибка — восстанавливаем из localStorage. */
         function loadConfig() {
             var slug = getPageSlug();
             if (!isDashboardSlug() && canUseLocalTableStorage()) { try { localStorage.removeItem(STORAGE_KEY_PREFIX + slug); } catch (e) {} }
@@ -3252,7 +3252,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                                 dateTimeDisplayByColumn: (t.date_time_display && typeof t.date_time_display === 'object') ? t.date_time_display : {},
                                 customFields: (t.custom_fields && Array.isArray(t.custom_fields)) ? t.custom_fields : [],
                                 selectedCustomFieldCodes: (t.selected_custom_fields && Array.isArray(t.selected_custom_fields)) ? t.selected_custom_fields : [],
-                                filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'РќР°Р·РІР°РЅРёРµ', key: '', type: 'text' }]
+                                filterFields: (t.filter_fields && Array.isArray(t.filter_fields)) ? t.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                             };
                         });
                         tableStates = tableStates.filter(isConfiguredSectionState);
@@ -3300,7 +3300,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                             sortDir: (data.sort_dir === 'asc' || data.sort_dir === 'desc') ? data.sort_dir : '',
                             showTime: (data.show_time === true),
                             dateTimeDisplayByColumn: (data.date_time_display && typeof data.date_time_display === 'object') ? data.date_time_display : {},
-                            filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'РќР°Р·РІР°РЅРёРµ', key: '', type: 'text' }]
+                            filterFields: (data.filter_fields && Array.isArray(data.filter_fields)) ? data.filter_fields : [{ label: 'Название', key: '', type: 'text' }]
                         }];
                         ensureSections();
                         applyTableStyleToSection(0);
@@ -3342,7 +3342,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                 isReadOnly = isGuestUser();
                 applyReadOnlyMode();
                 var errEl = document.getElementById('entityTablesError');
-                if (errEl) { errEl.classList.remove('d-none'); errEl.textContent = 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РґСЌС€Р±РѕСЂРґ. РџСЂРѕРІРµСЂСЊС‚Рµ РїРѕРґРєР»СЋС‡РµРЅРёРµ РёР»Рё РѕР±РЅРѕРІРёС‚Рµ СЃС‚СЂР°РЅРёС†Сѓ.'; }
+                if (errEl) { errEl.classList.remove('d-none'); errEl.textContent = 'Не удалось загрузить дэшборд. Проверьте подключение или обновите страницу.'; }
             }
 
             function tryApplyStored() {
@@ -3484,7 +3484,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             theadEl.className = (s.theadClass || '') + ' entity-table-grid-head';
             var captionEl = tableEl.querySelector('caption.entity-table-caption');
             if (s.caption) {
-                var captionText = (st.tableDescription && String(st.tableDescription).trim()) ? st.tableDescription.trim() : 'Р”Р°РЅРЅС‹Рµ С‚Р°Р±Р»РёС†С‹';
+                var captionText = (st.tableDescription && String(st.tableDescription).trim()) ? st.tableDescription.trim() : 'Данные таблицы';
                 if (captionEl) {
                     captionEl.textContent = captionText;
                 } else {
@@ -3505,7 +3505,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             if (!els.tableTitleBlock) return;
             var titleText = (st.tableTitle && String(st.tableTitle).trim()) || '';
             if (els.tableTitleText) {
-                els.tableTitleText.textContent = titleText || els.tableTitleText.getAttribute('data-placeholder') || 'РќР°Р·РІР°РЅРёРµ С‚Р°Р±Р»РёС†С‹';
+                els.tableTitleText.textContent = titleText || els.tableTitleText.getAttribute('data-placeholder') || 'Название таблицы';
                 els.tableTitleText.classList.toggle('text-muted', !titleText);
             }
             var gridHidden = !els.gridBlock || els.gridBlock.classList.contains('d-none');
@@ -3513,7 +3513,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             applyTableStyleToSection(tableIndex);
         }
 
-        /** API РјРѕР¶РµС‚ РІРѕР·РІСЂР°С‰Р°С‚СЊ type: "entity" РёР»Рё "crm_entity" вЂ” РѕР±Р° СЃС‡РёС‚Р°РµРј СЃРјР°СЂС‚-РїСЂРѕС†РµСЃСЃР°РјРё. */
+        /** API может возвращать type: "entity" или "crm_entity" — оба считаем смарт-процессами. */
         function normalizeEntityType(e) {
             var t = (e && e.type) ? e.type : '';
             if (t === 'entity' || t === 'crm_entity') return Object.assign({}, e, { type: 'smart_process' });
@@ -3554,34 +3554,34 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                 var leftCol = '';
                 var rightCol = '';
                 if (contact) {
-                    leftCol += '<div class="entity-group"><div class="entity-group-title">РљРѕРЅС‚Р°РєС‚С‹</div>';
-                    leftCol += '<div class="form-check"><input class="form-check-input" type="radio" name="' + name + '" value="contact" data-entity=\'' + JSON.stringify({ type: 'contact', entity_key: 'contact', title: contact.title || 'РљРѕРЅС‚Р°РєС‚С‹' }) + '\'><label class="form-check-label">' + (contact.title || 'РљРѕРЅС‚Р°РєС‚С‹') + '</label></div></div>';
+                    leftCol += '<div class="entity-group"><div class="entity-group-title">Контакты</div>';
+                    leftCol += '<div class="form-check"><input class="form-check-input" type="radio" name="' + name + '" value="contact" data-entity=\'' + JSON.stringify({ type: 'contact', entity_key: 'contact', title: contact.title || 'Контакты' }) + '\'><label class="form-check-label">' + (contact.title || 'Контакты') + '</label></div></div>';
                 }
                 if (deal) {
-                    leftCol += '<div class="entity-group"><div class="entity-group-title"><strong>РЎРґРµР»РєРё</strong></div>';
+                    leftCol += '<div class="entity-group"><div class="entity-group-title"><strong>Сделки</strong></div>';
                     if (dealCategories.length) {
                         dealCategories.forEach(function(c) {
-                            var ent = { type: 'deal', entity_key: 'deal', category_id: c.id, title: c.title || 'РЎРґРµР»РєРё (' + c.id + ')' };
+                            var ent = { type: 'deal', entity_key: 'deal', category_id: c.id, title: c.title || 'Сделки (' + c.id + ')' };
                             leftCol += '<div class="form-check"><input class="form-check-input" type="radio" name="' + name + '" value="deal" data-entity=\'' + JSON.stringify(ent) + '\'><label class="form-check-label">' + (c.title || c.id) + '</label></div>';
                         });
                     } else {
-                        leftCol += '<div class="form-check"><input class="form-check-input" type="radio" name="' + name + '" value="deal" data-entity=\'' + JSON.stringify({ type: 'deal', entity_key: 'deal', title: deal.title || 'РЎРґРµР»РєРё' }) + '\'><label class="form-check-label">' + (deal.title || 'РЎРґРµР»РєРё') + '</label></div>';
+                        leftCol += '<div class="form-check"><input class="form-check-input" type="radio" name="' + name + '" value="deal" data-entity=\'' + JSON.stringify({ type: 'deal', entity_key: 'deal', title: deal.title || 'Сделки' }) + '\'><label class="form-check-label">' + (deal.title || 'Сделки') + '</label></div>';
                     }
                     leftCol += '</div>';
                 }
                 if (lead) {
-                    rightCol += '<div class="entity-group"><div class="entity-group-title">Р›РёРґС‹</div>';
-                    rightCol += '<div class="form-check"><input class="form-check-input" type="radio" name="' + name + '" value="lead" data-entity=\'' + JSON.stringify({ type: 'lead', entity_key: 'lead', title: lead.title || 'Р›РёРґС‹' }) + '\'><label class="form-check-label">' + (lead.title || 'Р›РёРґС‹') + '</label></div></div>';
+                    rightCol += '<div class="entity-group"><div class="entity-group-title">Лиды</div>';
+                    rightCol += '<div class="form-check"><input class="form-check-input" type="radio" name="' + name + '" value="lead" data-entity=\'' + JSON.stringify({ type: 'lead', entity_key: 'lead', title: lead.title || 'Лиды' }) + '\'><label class="form-check-label">' + (lead.title || 'Лиды') + '</label></div></div>';
                 }
                 if (smartList.length) {
-                    rightCol += '<div class="entity-group"><div class="entity-group-title"><strong>РЎРјР°СЂС‚-РїСЂРѕС†РµСЃСЃС‹</strong></div>';
+                    rightCol += '<div class="entity-group"><div class="entity-group-title"><strong>Смарт-процессы</strong></div>';
                     smartList.forEach(function(e) {
                         var ent = { type: 'smart_process', entity_key: e.entity_key, title: e.title || e.entity_key };
                         rightCol += '<div class="form-check"><input class="form-check-input" type="radio" name="' + name + '" value="smart" data-entity=\'' + JSON.stringify(ent) + '\'><label class="form-check-label">' + (e.title || e.entity_key) + '</label></div>';
                     });
                     rightCol += '</div>';
                 }
-                var html = (leftCol || rightCol) ? ('<div class="entity-list-col">' + (leftCol || '<p class="text-muted small">вЂ”</p>') + '</div><div class="entity-list-col">' + (rightCol || '<p class="text-muted small">вЂ”</p>') + '</div>') : '<p class="text-muted">РќРµС‚ СЃСѓС‰РЅРѕСЃС‚РµР№.</p>';
+                var html = (leftCol || rightCol) ? ('<div class="entity-list-col">' + (leftCol || '<p class="text-muted small">—</p>') + '</div><div class="entity-list-col">' + (rightCol || '<p class="text-muted small">—</p>') + '</div>') : '<p class="text-muted">Нет сущностей.</p>';
                 modalEntityBody.innerHTML = html;
                 modalEntity.show();
             });
@@ -3599,10 +3599,10 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             var descInput = document.getElementById('tableDescriptionInput');
             var title = nameInput ? nameInput.value.trim() : '';
             var desc = descInput ? descInput.value.trim() : '';
-            if (!title) { alert('Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ С‚Р°Р±Р»РёС†С‹.'); if (nameInput) nameInput.focus(); return; }
+            if (!title) { alert('Введите название таблицы.'); if (nameInput) nameInput.focus(); return; }
             st.tableTitle = title;
             st.tableDescription = desc;
-            // РќРµ СЃРѕС…СЂР°РЅСЏРµРј РєРѕРЅС„РёРі РЅР° СЃРµСЂРІРµСЂ РІ РїРµСЂРІРѕРј РјРѕРґР°Р»СЊРЅРѕРј вЂ” С‚РѕР»СЊРєРѕ РїРѕСЃР»Рµ РІС‹Р±РѕСЂР° РїРѕР»РµР№ РІРѕ РІС‚РѕСЂРѕРј
+            // Не сохраняем конфиг на сервер в первом модальном — только после выбора полей во втором
             var radio = modalEntityBody.querySelector('input[type="radio"]:checked');
             if (radio) {
                 var entity = JSON.parse(radio.getAttribute('data-entity') || '{}');
@@ -3613,7 +3613,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             }
             if (isPendingNew) {
                 if (!st.selectedEntities.length) {
-                    alert('РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ СЃСѓС‰РЅРѕСЃС‚СЊ С‚Р°Р±Р»РёС†С‹.');
+                    alert('Сначала выберите сущность таблицы.');
                     return;
                 }
                 var insertIdx = pendingNewTableInsertIndex;
@@ -3650,8 +3650,8 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                 return Promise.resolve(fieldsCache[key]);
             }
             var url = API.metaFields + '?type=' + encodeURIComponent(ent.type);
-            // РџРµСЂРµРґР°С‘Рј entity_key РґР»СЏ РІСЃРµС… СЃСѓС‰РЅРѕСЃС‚РµР№, РіРґРµ РѕРЅ РµСЃС‚СЊ.
-            // Р’ СЃРјРµС€Р°РЅРЅС‹С… С‚Р°Р±Р»РёС†Р°С… upstream РјРѕР¶РµС‚ РѕРїРёСЂР°С‚СЊСЃСЏ РЅР° СЌС‚РѕС‚ РїР°СЂР°РјРµС‚СЂ.
+            // Передаём entity_key для всех сущностей, где он есть.
+            // В смешанных таблицах upstream может опираться на этот параметр.
             if (ent.entity_key) url += '&entity_key=' + encodeURIComponent(ent.entity_key);
             if (ent.category_id != null && ent.category_id !== '') url += '&category_id=' + encodeURIComponent(ent.category_id);
             return fetch(url).then(function(r) { return r.json(); }).then(function(data) {
@@ -3708,7 +3708,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             var st = tableStates[currentTableIndex];
             if (!st || !st.selectedEntities || !st.selectedEntities.length) return;
             if (!modalCustomFieldPicker || !customFieldPickerList) return;
-            customFieldPickerList.innerHTML = '<div class="text-muted small">Р—Р°РіСЂСѓР·РєР° РїРѕР»РµР№...</div>';
+            customFieldPickerList.innerHTML = '<div class="text-muted small">Загрузка полей...</div>';
             if (customFieldPickerSearchInput) customFieldPickerSearchInput.value = '';
             Promise.all(st.selectedEntities.map(function(ent) {
                 return loadFieldsForEntity(ent).then(function(res) { return { ent: ent, res: res || { fields: [] } }; })
@@ -3801,7 +3801,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             if (!st || !st.selectedEntities || !st.selectedEntities.length) return;
             if (!modalCustomFieldPicker || !customFieldPickerList) return;
             if (customFieldPickerNestedRow) customFieldPickerNestedRow.innerHTML = '';
-            customFieldPickerList.innerHTML = '<div class="text-muted small">Р—Р°РіСЂСѓР·РєР° РїРѕР»РµР№...</div>';
+            customFieldPickerList.innerHTML = '<div class="text-muted small">Загрузка полей...</div>';
             if (customFieldPickerSearchInput) customFieldPickerSearchInput.value = '';
             Promise.all(st.selectedEntities.map(function(ent) {
                 return loadFieldsForEntity(ent).then(function(res) { return { ent: ent, res: res || { fields: [] } }; })
@@ -3893,7 +3893,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                         groupLabel.setAttribute('data-search-text', ((entityTitle || '') + ' ' + (group.label || typ)).toLowerCase());
                         groupLabel.style.display = 'none';
                         groupLabel.style.gridColumn = '1 / -1';
-                        groupLabel.innerHTML = '<span class="fw-bold text-dark">РџРѕР»СЏ: ' + String(group.label || typ).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>';
+                        groupLabel.innerHTML = '<span class="fw-bold text-dark">Поля: ' + String(group.label || typ).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>';
                         customFieldPickerList.appendChild(groupLabel);
                         group.fields.forEach(function(n, idx) {
                             var title = String((n && (n.human_title || n.column_name)) || '').trim();
@@ -4171,9 +4171,9 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             var st = tableStates[currentTableIndex];
             var rows = (st && Array.isArray(st.fullData)) ? st.fullData : [];
             var row = rows.length ? rows[0] : null;
-            if (!st) throw new Error('РќРµС‚ Р°РєС‚РёРІРЅРѕР№ С‚Р°Р±Р»РёС†С‹');
+            if (!st) throw new Error('Нет активной таблицы');
             var expr = String(exprText || '').trim();
-            if (!expr) throw new Error('Editor РїСѓСЃС‚РѕР№');
+            if (!expr) throw new Error('Editor пустой');
             var values = [];
             var jsExpr = expr.replace(/\{([^}]+)\}/g, function(_, tokenBody) {
                 var idx = values.length;
@@ -4186,20 +4186,6 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             }
             function scalar(v) {
                 return (v && typeof v === 'object' && v.__customEditorTokenValue) ? v.current : v;
-            }
-            function toDateValue(v) {
-                var sv = scalar(v);
-                if (sv == null || sv === '') return null;
-                if (sv instanceof Date) return isNaN(sv.getTime()) ? null : sv;
-                var raw = String(sv).trim();
-                if (!raw) return null;
-                var d = new Date(raw);
-                if (!isNaN(d.getTime())) return d;
-                if (raw.indexOf(' ') > 0 && raw.indexOf('T') < 0) {
-                    d = new Date(raw.replace(' ', 'T'));
-                    if (!isNaN(d.getTime())) return d;
-                }
-                return null;
             }
             var argNames = values.map(function(_, i) { return '__t' + i; });
             var FNS = {
@@ -4249,16 +4235,6 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                     var prec = parseInt(p, 10); if (isNaN(prec)) prec = 0;
                     var m = Math.pow(10, prec);
                     return Math.round(n * m) / m;
-                },
-                NOW: function() {
-                    return new Date().toISOString();
-                },
-                DAYS_BETWEEN: function(fromVal, toVal) {
-                    var d1 = toDateValue(fromVal);
-                    var d2 = toDateValue(toVal);
-                    if (!d1 || !d2) return 0;
-                    var days = (d2.getTime() - d1.getTime()) / 86400000;
-                    return days >= 0 ? Math.floor(days) : Math.ceil(days);
                 }
             };
             var fnNames = Object.keys(FNS);
@@ -4267,7 +4243,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                 var fn = Function.apply(null, argNames.concat(fnNames).concat([body]));
                 return fn.apply(null, values.concat(fnNames.map(function(n) { return FNS[n]; })));
             } catch (e) {
-                throw new Error('РћС€РёР±РєР° РІС‹СЂР°Р¶РµРЅРёСЏ: ' + (e && e.message ? e.message : e));
+                throw new Error('Ошибка выражения: ' + (e && e.message ? e.message : e));
             }
         }
 
@@ -4299,7 +4275,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             renderCustomFieldPreviewSampleRowHint(null);
             customFieldPreviewResult.classList.remove('text-danger', 'text-success');
             customFieldPreviewResult.classList.add('text-muted');
-            customFieldPreviewResult.textContent = 'РџСЂРѕРІРµСЂРєР°...';
+            customFieldPreviewResult.textContent = 'Проверка...';
             previewCustomFieldEditorViaApi(currentTableIndex, customFieldPayloadTextarea ? customFieldPayloadTextarea.value : '')
                 .then(function(body) {
                     var pr = (body && body.preview_result) ? body.preview_result : {};
@@ -4309,7 +4285,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                     lastCustomFieldPreviewSampleRowId = sampleRowId;
                     customFieldPreviewResult.classList.remove('text-muted', 'text-danger');
                     customFieldPreviewResult.classList.add('text-success');
-                    customFieldPreviewResult.textContent = 'Р РµР·СѓР»СЊС‚Р°С‚: ' + ((val == null || val === '') ? 'РџСѓСЃС‚Рѕ' : String(val)) + (modeDetail ? (' (' + modeDetail + ')') : '');
+                    customFieldPreviewResult.textContent = 'Результат: ' + ((val == null || val === '') ? 'Пусто' : String(val)) + (modeDetail ? (' (' + modeDetail + ')') : '');
                     renderCustomFieldPreviewSampleRowHint(sampleRowId);
                 })
                 .catch(function(e) {
@@ -4328,18 +4304,18 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
         }
 
         var NESTED_TYPE_LABELS = {
-            contact: 'РљРѕРЅС‚Р°РєС‚',
-            company: 'РљРѕРјРїР°РЅРёСЏ',
-            lead: 'Р›РёРґ',
-            deal: 'РЎРґРµР»РєР°',
-            entity: 'РЎРјР°СЂС‚-РџСЂРѕС†РµСЃСЃ',
-            smart_process: 'РЎРјР°СЂС‚-РџСЂРѕС†РµСЃСЃ'
+            contact: 'Контакт',
+            company: 'Компания',
+            lead: 'Лид',
+            deal: 'Сделка',
+            entity: 'Смарт-Процесс',
+            smart_process: 'Смарт-Процесс'
         };
         var ENTITY_TYPE_TITLES = {
-            contact: 'РљРѕРЅС‚Р°РєС‚С‹',
-            lead: 'Р›РёРґС‹',
-            deal: 'РЎРґРµР»РєРё',
-            smart_process: 'РЎРјР°СЂС‚-РїСЂРѕС†РµСЃСЃ'
+            contact: 'Контакты',
+            lead: 'Лиды',
+            deal: 'Сделки',
+            smart_process: 'Смарт-процесс'
         };
         function nestedTypeLabel(type) {
             return NESTED_TYPE_LABELS[type] || type;
@@ -4348,7 +4324,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             return ENTITY_TYPE_TITLES[ent.type] || ent.title || entityKey(ent);
         }
 
-        /** Р’ API РїРѕР»Рµ field_type РјРѕР¶РµС‚ Р±С‹С‚СЊ entity РёР»Рё crm_entity вЂ” РѕР±Р° РѕС‚РѕР±СЂР°Р¶Р°РµРј РєР°Рє РЎРјР°СЂС‚-РџСЂРѕС†РµСЃСЃ. */
+        /** В API поле field_type может быть entity или crm_entity — оба отображаем как Смарт-Процесс. */
         function nestedTypeKey(apiType) {
             var t = ((apiType || '').replace('crm_', '') || 'entity').toLowerCase();
             if (t === 'entity') t = 'smart_process';
@@ -4387,8 +4363,8 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             if (tableStyleSelect && TABLE_STYLES[st.tableStyle]) tableStyleSelect.value = st.tableStyle;
             var entityLabel = document.getElementById('settingsModalEntityLabel');
             var customEntityLabel = document.getElementById('customFieldEntityLabel');
-            if (entityLabel) entityLabel.textContent = st.selectedEntities.length ? st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ') : 'вЂ”';
-            if (customEntityLabel) customEntityLabel.textContent = st.selectedEntities.length ? st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ') : 'РІР‚вЂќ';
+            if (entityLabel) entityLabel.textContent = st.selectedEntities.length ? st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ') : '—';
+            if (customEntityLabel) customEntityLabel.textContent = st.selectedEntities.length ? st.selectedEntities.map(function(e) { return e.title || e.type; }).join(', ') : 'вЂ”';
             var descField = document.getElementById('settingsModalTableDescription');
             if (descField) descField.value = (st.tableDescription && String(st.tableDescription).trim()) ? st.tableDescription.trim() : '';
             var settingsTab = document.querySelector('#modalFields [href="#settingsTabPane"]');
@@ -4490,7 +4466,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                         groupLabel.setAttribute('data-search-text', ((entityTitle || '') + ' ' + (group.label || typ)).toLowerCase());
                         groupLabel.style.display = hasSelectedLabel ? '' : 'none';
                         groupLabel.style.gridColumn = '1 / -1';
-                        groupLabel.innerHTML = '<span class="fw-bold text-dark">РџРѕР»СЏ: ' + (group.label || typ) + '</span>';
+                        groupLabel.innerHTML = '<span class="fw-bold text-dark">Поля: ' + (group.label || typ) + '</span>';
                         fieldsList.appendChild(groupLabel);
                         group.fields.forEach(function(n) {
                             var div = document.createElement('div');
@@ -4560,7 +4536,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                 row.style.display = show ? '' : 'none';
                 if (show && entityMeta[entityKeyVal]) entityMeta[entityKeyVal].visibleCount++;
             });
-            // РџРѕРєР°Р·С‹РІР°РµРј Р·Р°РіРѕР»РѕРІРѕРє nested-РіСЂСѓРїРїС‹, РµСЃР»Рё РІ РЅРµР№ РµСЃС‚СЊ РІРёРґРёРјС‹Рµ РїРѕР»СЏ РїРѕСЃР»Рµ РїРѕРёСЃРєР°.
+            // Показываем заголовок nested-группы, если в ней есть видимые поля после поиска.
             fieldsList.querySelectorAll('.fields-modal-group-label.field-row').forEach(function(labelRow) {
                 var entityKeyVal = labelRow.getAttribute('data-entitykey') || '';
                 var nestedType = labelRow.getAttribute('data-nested-type') || '';
@@ -4699,7 +4675,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                 saveConfigToStorage();
             }, 0);
             modalFields.hide();
-            // РђРІС‚РѕСЃРѕС…СЂР°РЅРµРЅРёРµ С€Р°Р±Р»РѕРЅР° РЅР° СЃРµСЂРІРµСЂРµ (РѕР±С‰РёР№ РґР»СЏ РІСЃРµС… РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№) РїРѕСЃР»Рµ РІС‹Р±РѕСЂР° РїРѕР»РµР№
+            // Автосохранение шаблона на сервере (общий для всех пользователей) после выбора полей
             saveTemplateSnapshot(currentTableIndex);
         });
 
@@ -4828,8 +4804,8 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
 
         function fetchPage(ent, titles, key, offset, limit, filterFieldMaps) {
             var url = API.metaData + '?type=' + encodeURIComponent(ent.type) + '&limit=' + limit + '&offset=' + offset;
-            // РџРµСЂРµРґР°С‘Рј entity_key РґР»СЏ РІСЃРµС… СЃСѓС‰РЅРѕСЃС‚РµР№, РіРґРµ РѕРЅ РµСЃС‚СЊ.
-            // Р’ СЃРјРµС€Р°РЅРЅС‹С… С‚Р°Р±Р»РёС†Р°С… upstream РјРѕР¶РµС‚ РѕРїРёСЂР°С‚СЊСЃСЏ РЅР° СЌС‚РѕС‚ РїР°СЂР°РјРµС‚СЂ.
+            // Передаём entity_key для всех сущностей, где он есть.
+            // В смешанных таблицах upstream может опираться на этот параметр.
             if (ent.entity_key) url += '&entity_key=' + encodeURIComponent(ent.entity_key);
             if (ent.category_id != null && ent.category_id !== '') url += '&category_id=' + encodeURIComponent(String(ent.category_id));
             if (titles && titles.length) url += '&fields=' + titles.map(function(t) { return encodeURIComponent(t); }).join(',');
@@ -5043,9 +5019,9 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             var savedOrderKeys = getColumnOrderForTable(tableIndex) || [];
             st.fullData = [];
             st.allColumns = [];
-            showLoading(tableIndex, true, 'Р—Р°РіСЂСѓР·РєР° РґР°РЅРЅС‹С…...');
+            showLoading(tableIndex, true, 'Загрузка данных...');
             var columnsByKey = [];
-            var FUNNEL_FIELD = 'Р’РѕСЂРѕРЅРєР°';
+            var FUNNEL_FIELD = 'Воронка';
             var filterTitlesByEntityKey = {};
             var filterFieldMapsByEntityKey = {};
             (st.filterFields || []).forEach(function(f) {
@@ -5398,7 +5374,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                 if (els.paginationBlock) els.paginationBlock.classList.remove('d-none');
                 updateTableTitleBlock(tableIndex);
 
-                /* РќР° РґР°С€Р±РѕСЂРґРµ (СЂРµР¶РёРј С‚РѕР»СЊРєРѕ РїСЂРѕСЃРјРѕС‚СЂ) РЅРµ РґРѕРіСЂСѓР¶Р°РµРј РІСЃРµ Р·Р°РїРёСЃРё вЂ” С‚РѕР»СЊРєРѕ РїРµСЂРІР°СЏ РїРѕСЂС†РёСЏ РїРѕ РЅР°СЃС‚СЂРѕР№РєРµ С‚Р°Р±Р»РёС†С‹ */
+                /* На дашборде (режим только просмотр) не догружаем все записи — только первая порция по настройке таблицы */
                 var isDashboard = isReadOnly || isDashboardSlug();
                 if (!isDashboard && firstResults.length === 1) {
                     columnsByKey.forEach(function(obj, idx) {
@@ -5524,14 +5500,14 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                 var mainVal = computeAggregate(rows, st.mainFormula, rowKeys);
                 var secVal = (st.secondaryFormula && (st.secondaryFormula.aggregate || st.secondaryFormula.fieldKey)) ? computeAggregate(rows, st.secondaryFormula, rowKeys) : null;
                 var els = getSectionEls(cardIndex);
-                if (els.mainValueEl) els.mainValueEl.textContent = (mainVal != null) ? (typeof mainVal === 'number' && (mainVal % 1 !== 0 || mainVal > 1e9) ? mainVal.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : mainVal) : 'вЂ”';
+                if (els.mainValueEl) els.mainValueEl.textContent = (mainVal != null) ? (typeof mainVal === 'number' && (mainVal % 1 !== 0 || mainVal > 1e9) ? mainVal.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : mainVal) : '—';
                 if (els.secondaryValueEl) {
                     if (secVal != null) els.secondaryValueEl.textContent = (st.secondaryFormula && st.secondaryFormula.label) ? (st.secondaryFormula.label + ': ' + secVal) : String(secVal);
                     else els.secondaryValueEl.textContent = (st.secondaryFormula && st.secondaryFormula.label) ? st.secondaryFormula.label : '';
                 }
             }).catch(function() {
                 var els = getSectionEls(cardIndex);
-                if (els.mainValueEl) els.mainValueEl.textContent = 'вЂ”';
+                if (els.mainValueEl) els.mainValueEl.textContent = '—';
                 if (els.secondaryValueEl) els.secondaryValueEl.textContent = '';
             });
         }
@@ -5545,7 +5521,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             }
             var els = getSectionEls(cardIndex);
             if (!els.section) return;
-            if (els.cardTitleEl) els.cardTitleEl.textContent = (st.cardTitle && st.cardTitle.trim()) ? st.cardTitle.trim() : 'РљР°СЂС‚РѕС‡РєР°';
+            if (els.cardTitleEl) els.cardTitleEl.textContent = (st.cardTitle && st.cardTitle.trim()) ? st.cardTitle.trim() : 'Карточка';
             if (els.iconEl) {
                 els.iconEl.className = (st.icon || 'iconoir-activity') + ' fs-4';
             }
@@ -5555,7 +5531,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             loadCardData(cardIndex);
         }
 
-        /** Р’РѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ allColumns РёР· selectedEntities/selectedFields, РµСЃР»Рё РєРѕР»РѕРЅРєРё РїРѕС‚РµСЂСЏРЅС‹. */
+        /** Восстанавливает allColumns из selectedEntities/selectedFields, если колонки потеряны. */
         function rebuildAllColumnsFromSelectedFields(tableIndex) {
             var st = tableStates[tableIndex];
             if (!st || !st.selectedEntities || !st.selectedEntities.length || !st.selectedFields) return;
@@ -5599,7 +5575,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             st.allColumns = applyColumnOrder(cols, getColumnOrderForTable(tableIndex));
         }
 
-        /** Р”РѕРїРѕР»РЅСЏРµС‚ selectedFields РёР· allColumns (РґР»СЏ С‚РµРєСѓС‰РµР№ СЃС‚СЂР°РЅРёС†С‹). */
+        /** Дополняет selectedFields из allColumns (для текущей страницы). */
         function syncSelectedFieldsFromAllColumns(tableIndex) {
             var st = tableStates[tableIndex];
             if (!st || !st.allColumns || !st.allColumns.length || !st.selectedFields) return;
@@ -5616,7 +5592,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             });
         }
 
-        /** РЎС‚СЂРѕРёС‚ РјР°СЃСЃРёРІ fields РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ РґСЌС€Р±РѕСЂРґР° С‚РѕР»СЊРєРѕ РёР· allColumns вЂ” Р±РµР· РѕРїРѕСЂС‹ РЅР° selectedFields. */
+        /** Строит массив fields для сохранения дэшборда только из allColumns — без опоры на selectedFields. */
         function buildFieldsFromAllColumns(st) {
             if (!st || !st.allColumns || !st.allColumns.length) return (st && st.selectedFields) ? st.selectedFields : [];
             var selectedCustomCodes = ensureSelectedCustomFieldCodes(st);
@@ -5630,7 +5606,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             return buildFieldsFromColumnKeys(keys);
         }
 
-        /** РџРѕ СЃРїРёСЃРєСѓ РєР»СЋС‡РµР№ РєРѕР»РѕРЅРѕРє (entityKey::title) СЃС‚СЂРѕРёС‚ РјР°СЃСЃРёРІ fields РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ. */
+        /** По списку ключей колонок (entityKey::title) строит массив fields для сохранения. */
         function buildFieldsFromColumnKeys(columnKeys) {
             if (!columnKeys || !columnKeys.length) return [];
             var byKey = {};
@@ -5649,7 +5625,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             });
         }
 
-        /** Р‘РµСЂС‘С‚ РєР»СЋС‡Рё РєРѕР»РѕРЅРѕРє РёР· DOM (С‚Рѕ, С‡С‚Рѕ СЂРµР°Р»СЊРЅРѕ РѕС‚СЂРёСЃРѕРІР°РЅРѕ РІ РЅР°СЃС‚СЂРѕР№РєР°С…) вЂ” С‚Р°Рє РІ РґСЌС€Р±РѕСЂРґ РїРѕРїР°РґР°РµС‚ С‚РѕС‡РЅР°СЏ РєРѕРїРёСЏ. */
+        /** Берёт ключи колонок из DOM (то, что реально отрисовано в настройках) — так в дэшборд попадает точная копия. */
         function getColumnKeysFromSection(tableIndex) {
             var els = getSectionEls(tableIndex);
             if (!els.gridHead) return [];
@@ -5661,7 +5637,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             return keys;
         }
 
-        /** Р’РѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ allColumns РёР· РєР»СЋС‡РµР№ РїРµСЂРІРѕР№ СЃС‚СЂРѕРєРё fullData, РµСЃР»Рё РІ РґР°РЅРЅС‹С… Р±РѕР»СЊС€Рµ РїРѕР»РµР№, С‡РµРј РІ allColumns. */
+        /** Восстанавливает allColumns из ключей первой строки fullData, если в данных больше полей, чем в allColumns. */
         function rebuildAllColumnsFromData(tableIndex) {
             var st = tableStates[tableIndex];
             if (!st || !st.fullData || !st.fullData.length) return;
@@ -5735,7 +5711,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
         function isLikelyDateColumn(st, col) {
             if (!st || !col || !col.key) return false;
             var sampleLabel = String((col.label || '') + ' ' + (col.key || '')).toLowerCase();
-            if (sampleLabel.indexOf('РґР°С‚Р°') >= 0 || sampleLabel.indexOf('date') >= 0) return true;
+            if (sampleLabel.indexOf('дата') >= 0 || sampleLabel.indexOf('date') >= 0) return true;
             var rows = st.fullData || [];
             var checked = 0;
             var parsed = 0;
@@ -5790,9 +5766,9 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
             function score(col) {
                 var sample = normalizeSearchText(String((col && col.label) || '') + ' ' + String((col && col.key) || ''));
                 if (!sample) return 0;
-                if (sample.indexOf('РєРѕРіРґР° СЃРѕР·РґР°РЅ') >= 0) return 100;
-                if (sample.indexOf('РґР°С‚Р° СЃРѕР·РґР°РЅ') >= 0 || sample.indexOf('created at') >= 0) return 95;
-                if (sample.indexOf('created') >= 0 || sample.indexOf('РґР°С‚Р°') >= 0 || sample.indexOf('date') >= 0) return 80;
+                if (sample.indexOf('когда создан') >= 0) return 100;
+                if (sample.indexOf('дата создан') >= 0 || sample.indexOf('created at') >= 0) return 95;
+                if (sample.indexOf('created') >= 0 || sample.indexOf('дата') >= 0 || sample.indexOf('date') >= 0) return 80;
                 var key = String((col && col.key) || '').toLowerCase();
                 if (key === 'id' || /::id$/.test(key)) return 70;
                 return 0;
@@ -5823,7 +5799,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                     var s = String(raw);
                     if (!s.trim()) continue;
                     var low = s.toLowerCase();
-                    var idx = low.indexOf('Р°РІС‚Рѕ:');
+                    var idx = low.indexOf('авто:');
                     if (idx < 0) idx = low.indexOf('auto:');
                     if (idx < 0) continue;
                     var tail = s.slice(idx + 5).trim();
@@ -5892,9 +5868,9 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                 var isDateColumn = isLikelyDateColumn(st, c);
                 var showTime = isTimeVisibleForColumn(st, c.key);
                 var timeToggle = isDateColumn
-                    ? ('<button type="button" class="entity-table-time-toggle' + (showTime ? ' is-active' : '') + '" data-column-key="' + keyEsc + '" title="' + (showTime ? 'РЎРєСЂС‹С‚СЊ РІСЂРµРјСЏ РґР»СЏ СЌС‚РѕР№ РєРѕР»РѕРЅРєРё' : 'РџРѕРєР°Р·С‹РІР°С‚СЊ РІСЂРµРјСЏ РґР»СЏ СЌС‚РѕР№ РєРѕР»РѕРЅРєРё') + '" aria-label="' + (showTime ? 'РЎРєСЂС‹С‚СЊ РІСЂРµРјСЏ РґР»СЏ СЌС‚РѕР№ РєРѕР»РѕРЅРєРё' : 'РџРѕРєР°Р·С‹РІР°С‚СЊ РІСЂРµРјСЏ РґР»СЏ СЌС‚РѕР№ РєРѕР»РѕРЅРєРё') + '"><i class="iconoir-clock"></i></button>')
+                    ? ('<button type="button" class="entity-table-time-toggle' + (showTime ? ' is-active' : '') + '" data-column-key="' + keyEsc + '" title="' + (showTime ? 'Скрыть время для этой колонки' : 'Показывать время для этой колонки') + '" aria-label="' + (showTime ? 'Скрыть время для этой колонки' : 'Показывать время для этой колонки') + '"><i class="iconoir-clock"></i></button>')
                     : '';
-                return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '" data-full-label="' + fullLabelAttr + '" title="' + titleEsc + '"' + style + '><span class="entity-table-th-inline"><span class="entity-table-th-label">' + labelEsc + '</span><span class="entity-table-sort-indicator">' + sortIcon + '</span>' + timeToggle + '</span><span class="entity-table-col-resize" title="РР·РјРµРЅРёС‚СЊ С€РёСЂРёРЅСѓ"></span></th>';
+                return '<th class="entity-table-th-draggable entity-table-th-wrap" draggable="true" data-column-index="' + i + '" data-column-key="' + keyEsc + '" data-full-label="' + fullLabelAttr + '" title="' + titleEsc + '"' + style + '><span class="entity-table-th-inline"><span class="entity-table-th-label">' + labelEsc + '</span><span class="entity-table-sort-indicator">' + sortIcon + '</span>' + timeToggle + '</span><span class="entity-table-col-resize" title="Изменить ширину"></span></th>';
             }).join('') + '</tr>';
             els.gridBody.innerHTML = slice.map(function(row) {
                 return '<tr>' + st.allColumns.map(function(c) {
@@ -5915,7 +5891,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                     return '<td' + (isNum ? ' class="entity-table-cell-numeric"' : '') + '>' + cellHtml + '</td>';
                 }).join('') + '</tr>';
             }).join('');
-            if (els.paginationInfo) els.paginationInfo.textContent = 'РџРѕРєР°Р·Р°РЅРѕ ' + (totalRows ? (start + 1) : 0) + ' вЂ” ' + (start + slice.length) + ' РёР· ' + totalRows + ' Р·Р°РїРёСЃРµР№';
+            if (els.paginationInfo) els.paginationInfo.textContent = 'Показано ' + (totalRows ? (start + 1) : 0) + ' — ' + (start + slice.length) + ' из ' + totalRows + ' записей';
             if (els.paginationNav) {
                 var ul = document.createElement('ul');
                 if (totalPages > 0) {
@@ -5925,7 +5901,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                     var prevBtn = document.createElement('button');
                     prevBtn.type = 'button';
                     prevBtn.setAttribute('data-page', 'prev');
-                    prevBtn.textContent = 'вЂ№';
+                    prevBtn.textContent = '‹';
                     prevBtn.disabled = prevDisabled;
                     prevLi.appendChild(prevBtn);
                     ul.appendChild(prevLi);
@@ -5946,7 +5922,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                     var nextBtn = document.createElement('button');
                     nextBtn.type = 'button';
                     nextBtn.setAttribute('data-page', 'next');
-                    nextBtn.textContent = 'вЂє';
+                    nextBtn.textContent = '›';
                     nextBtn.disabled = nextDisabled;
                     nextLi.appendChild(nextBtn);
                     ul.appendChild(nextLi);
@@ -6289,12 +6265,12 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                         if (isOccupied) {
                             var st = tableStates[idx];
                             var isCard = st && st.type === 'card';
-                            var label = isCard ? (st.cardTitle && st.cardTitle.trim()) ? st.cardTitle.trim() : 'РљР°СЂС‚РѕС‡РєР°' : (st && st.tableTitle && st.tableTitle.trim()) ? st.tableTitle.trim() : (st && st.selectedEntities && st.selectedEntities[0]) ? (st.selectedEntities[0].title || st.selectedEntities[0].type || '') : '';
-                            if (label.length > 20) label = label.slice(0, 17) + 'вЂ¦';
-                            cell.setAttribute('title', label ? ((isCard ? 'РљР°СЂС‚РѕС‡РєР° ' : 'РўР°Р±Р»РёС†Р° ') + (idx + 1) + ': ' + label) : ((isCard ? 'РљР°СЂС‚РѕС‡РєР° ' : 'РўР°Р±Р»РёС†Р° ') + (idx + 1)));
+                            var label = isCard ? (st.cardTitle && st.cardTitle.trim()) ? st.cardTitle.trim() : 'Карточка' : (st && st.tableTitle && st.tableTitle.trim()) ? st.tableTitle.trim() : (st && st.selectedEntities && st.selectedEntities[0]) ? (st.selectedEntities[0].title || st.selectedEntities[0].type || '') : '';
+                            if (label.length > 20) label = label.slice(0, 17) + '…';
+                            cell.setAttribute('title', label ? ((isCard ? 'Карточка ' : 'Таблица ') + (idx + 1) + ': ' + label) : ((isCard ? 'Карточка ' : 'Таблица ') + (idx + 1)));
                             cell.innerHTML = '<span class="cell-placeholder cell-occupied">' + (idx + 1) + '</span>';
                         } else {
-                            cell.innerHTML = '<span class="cell-placeholder">' + (disabled ? 'вЂ”' : '+') + '</span>';
+                            cell.innerHTML = '<span class="cell-placeholder">' + (disabled ? '—' : '+') + '</span>';
                         }
                         if (!disabled) {
                             cell.addEventListener('click', function() {
@@ -6318,7 +6294,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
 
             window.openInsertTableGrid = function() {
                 if (tableStates.length >= MAX_CELLS) {
-                    alert('Р”РѕСЃС‚РёРіРЅСѓС‚ РјР°РєСЃРёРјСѓРј РІРёРґР¶РµС‚РѕРІ РЅР° СЃС‚СЂР°РЅРёС†Рµ (' + MAX_CELLS + ').');
+                    alert('Достигнут максимум виджетов на странице (' + MAX_CELLS + ').');
                     return;
                 }
                 renderInsertModalGrid();
@@ -6359,11 +6335,11 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
 
         /* Card add/edit modal and logic moved to partial entity_card_modal.html + entity-card-widget.js; window.openAddCardModal is set by that script. */
 
-        // --- РЁР°Р±Р»РѕРЅС‹: СЃ СЃРµСЂРІРµСЂР° (РѕР±С‰РёРµ РґР»СЏ РІСЃРµС…), РІС‹РїР°РґР°СЋС‰РёР№ СЃРїРёСЃРѕРє РїРѕ РєРЅРѕРїРєРµ В«РЁР°Р±Р»РѕРЅС‹В» ---
+        // --- Шаблоны: с сервера (общие для всех), выпадающий список по кнопке «Шаблоны» ---
         function loadTemplates() {
             var modalDropdown = document.getElementById('templatesDropdown');
             var modalFieldsDropdown = document.getElementById('templatesDropdownFields');
-            var emptyLi = '<li><span class="dropdown-item text-muted">РќРµС‚ С€Р°Р±Р»РѕРЅРѕРІ</span></li>';
+            var emptyLi = '<li><span class="dropdown-item text-muted">Нет шаблонов</span></li>';
             if (!modalDropdown && !modalFieldsDropdown) return;
             if (modalDropdown) modalDropdown.innerHTML = emptyLi;
             if (modalFieldsDropdown) modalFieldsDropdown.innerHTML = emptyLi;
@@ -6387,7 +6363,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                         var dataFields = (JSON.stringify(t.fields || []).replace(/'/g, '&#39;'));
                         return '<li class="d-flex align-items-center dropdown-item-wrap">' +
                             '<a class="dropdown-item flex-grow-1 text-truncate" href="#" data-id="' + (t.id || '') + '" data-entities=\'' + dataEntities + '\' data-fields=\'' + dataFields + '\'' + (dataTables ? ' data-tables=\'' + dataTables + '\'' : '') + '>' + nameEsc + '</a>' +
-                            '<button type="button" class="btn btn-link btn-sm text-danger p-1 ms-1" title="РЈРґР°Р»РёС‚СЊ С€Р°Р±Р»РѕРЅ" data-delete-id="' + (t.id || '') + '" aria-label="РЈРґР°Р»РёС‚СЊ">&times;</button>' +
+                            '<button type="button" class="btn btn-link btn-sm text-danger p-1 ms-1" title="Удалить шаблон" data-delete-id="' + (t.id || '') + '" aria-label="Удалить">&times;</button>' +
                             '</li>';
                     }).join('')
                     : emptyLi;
@@ -6435,7 +6411,7 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
                             e.stopPropagation();
                             var id = this.getAttribute('data-delete-id');
                             if (!id) return;
-                            if (!confirm('РЈРґР°Р»РёС‚СЊ СЌС‚РѕС‚ С€Р°Р±Р»РѕРЅ?')) return;
+                            if (!confirm('Удалить этот шаблон?')) return;
                             fetch(API.templates + '/' + id, { method: 'DELETE' })
                                 .then(function(r) { return r.json(); })
                                 .then(function(res) { if (res && res.ok) loadTemplates(); })
@@ -6489,4 +6465,3 @@ alert((err && err.message) ? err.message : 'РќРµ СѓРґР°Р»РѕСЃС�
 </script>
 <script src="{{ config.ASSETS_ROOT }}/js/entity-card-widget.js"></script>
 {% endblock %}
-
