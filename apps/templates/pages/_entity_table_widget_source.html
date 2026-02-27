@@ -5910,8 +5910,12 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             var toColor = String(parts[3] || '').trim();
             var explicitValue = parts.length >= 5 ? parseFloat(String(parts[4]).replace(',', '.')) : NaN;
             var isHexColor = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+            var isNamedColor = /^[a-z]{3,30}$/i;
+            var isRgbColor = /^rgba?\(\s*[\d.\s,%]+\)$/i;
             if (!isFinite(minVal) || !isFinite(maxVal) || maxVal === minVal) return null;
-            if (!isHexColor.test(fromColor) || !isHexColor.test(toColor)) return null;
+            var isValidFrom = isHexColor.test(fromColor) || isNamedColor.test(fromColor) || isRgbColor.test(fromColor);
+            var isValidTo = isHexColor.test(toColor) || isNamedColor.test(toColor) || isRgbColor.test(toColor);
+            if (!isValidFrom || !isValidTo) return null;
             var valueNum = explicitValue;
             if (!isFinite(valueNum)) {
                 var inferred = parseFloat(displayText.replace(/\s/g, '').replace(',', '.'));
