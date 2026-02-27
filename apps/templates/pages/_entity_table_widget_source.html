@@ -2235,6 +2235,13 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             });
         }
 
+        function getPersistedTableFields(st) {
+            if (st && Array.isArray(st.selectedFields) && st.selectedFields.length) {
+                return st.selectedFields;
+            }
+            return buildFieldsFromAllColumns(st);
+        }
+
         function saveConfigToStorage() {
             if (!canUseLocalTableStorage()) return;
             try {
@@ -2267,7 +2274,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                         table_description: st.tableDescription,
                         table_style: st.tableStyle || 'hoverable_rows',
                         entities: st.selectedEntities,
-                        fields: buildFieldsFromAllColumns(st),
+                        fields: getPersistedTableFields(st),
                         custom_fields: (st.customFields && Array.isArray(st.customFields)) ? st.customFields : [],
                         selected_custom_fields: ensureSelectedCustomFieldCodes(st).slice(),
                         filter_fields: getPersistedTableFilterFields(st),
@@ -3348,7 +3355,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     table_description: st.tableDescription,
                     table_style: st.tableStyle || 'hoverable_rows',
                     entities: st.selectedEntities,
-                    fields: buildFieldsFromAllColumns(st),
+                    fields: getPersistedTableFields(st),
                     custom_fields: (st.customFields && Array.isArray(st.customFields)) ? st.customFields : [],
                     selected_custom_fields: ensureSelectedCustomFieldCodes(st).slice(),
                     filter_fields: getPersistedTableFilterFields(st),
