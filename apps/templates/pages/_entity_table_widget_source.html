@@ -6128,13 +6128,17 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 if (!Array.isArray(cols) || fromIdx < 0 || fromIdx >= cols.length) { clearDragState(); return; }
                 if (insertIdx < 0) insertIdx = 0;
                 if (insertIdx > cols.length) insertIdx = cols.length;
+                // Compute final target before mutating the array to avoid accidental item loss.
+                var finalInsertIdx = insertIdx;
+                if (finalInsertIdx > fromIdx) finalInsertIdx--;
+                if (finalInsertIdx < 0) finalInsertIdx = 0;
+                if (finalInsertIdx > (cols.length - 1)) finalInsertIdx = cols.length - 1;
+                if (finalInsertIdx === fromIdx) { clearDragState(); return; }
                 var moved = cols[fromIdx];
                 cols.splice(fromIdx, 1);
-                if (insertIdx > fromIdx) insertIdx--;
-                if (insertIdx < 0) insertIdx = 0;
-                if (insertIdx > cols.length) insertIdx = cols.length;
-                if (insertIdx === fromIdx) { clearDragState(); return; }
-                cols.splice(insertIdx, 0, moved);
+                if (finalInsertIdx < 0) finalInsertIdx = 0;
+                if (finalInsertIdx > cols.length) finalInsertIdx = cols.length;
+                cols.splice(finalInsertIdx, 0, moved);
                 st.columnOrderFromServer = cols.map(function(c) { return c.key; });
                 saveColumnOrder();
                 saveConfigToStorage();
