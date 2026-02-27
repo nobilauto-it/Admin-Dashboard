@@ -6039,22 +6039,38 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             var gridHead = els.gridHead;
             if (!gridHead || gridHead._dragDropBound) return;
             gridHead._dragDropBound = true;
-            var columnDropInsertIndex = null;
-            function headerCells() {
+            var draggedFromIndex = null;
+            var dropInsertIndex = null;
+
+            function clearDragState() {
+                gridHead.querySelectorAll('th').forEach(function(el) {
+                    el.classList.remove('dragging', 'drag-over');
+                });
+                draggedFromIndex = null;
+                dropInsertIndex = null;
+            }
+
+            function getHeaderCells() {
                 return Array.prototype.slice.call(gridHead.querySelectorAll('th.entity-table-th-draggable'));
             }
-            function computeInsertIndexByX(clientX) {
-                var ths = headerCells();
+
+            function computeInsertIndex(clientX) {
+                var ths = getHeaderCells();
                 if (!ths.length) return null;
+                var firstRect = ths[0].getBoundingClientRect();
+                var lastRect = ths[ths.length - 1].getBoundingClientRect();
+                if (clientX <= firstRect.left) return 0;
+                if (clientX >= lastRect.right) return ths.length;
                 for (var i = 0; i < ths.length; i++) {
                     var rect = ths[i].getBoundingClientRect();
-                    var mid = rect.left + (rect.width / 2);
+                    var mid = rect.left + rect.width / 2;
                     if (clientX < mid) return i;
                 }
                 return ths.length;
             }
-            function markDropHint(insertIdx) {
-                var ths = headerCells();
+
+            function renderDropHint(insertIdx) {
+                var ths = getHeaderCells();
                 ths.forEach(function(el) { el.classList.remove('drag-over'); });
                 if (!ths.length || insertIdx == null || isNaN(insertIdx)) return;
                 if (insertIdx <= 0) {
@@ -6072,44 +6088,44 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 if (e.target.closest('.entity-table-col-resize')) { e.preventDefault(); return; }
                 var th = e.target.closest('th');
                 if (!th || !th.classList.contains('entity-table-th-draggable')) return;
+                draggedFromIndex = parseInt(th.getAttribute('data-column-index'), 10);
+                if (isNaN(draggedFromIndex)) { e.preventDefault(); return; }
                 e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', th.getAttribute('data-column-index'));
-                e.dataTransfer.setData('text/html', th.innerHTML);
+                e.dataTransfer.setData('text/plain', String(draggedFromIndex));
                 th.classList.add('dragging');
-                columnDropInsertIndex = null;
+                dropInsertIndex = null;
             });
             gridHead.addEventListener('dragend', function(e) {
-                gridHead.querySelectorAll('th').forEach(function(el) {
-                    el.classList.remove('dragging', 'drag-over');
-                });
-                columnDropInsertIndex = null;
+                clearDragState();
             });
             gridHead.addEventListener('dragover', function(e) {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
-                columnDropInsertIndex = computeInsertIndexByX(e.clientX);
-                markDropHint(columnDropInsertIndex);
+                dropInsertIndex = computeInsertIndex(e.clientX);
+                renderDropHint(dropInsertIndex);
             });
             gridHead.addEventListener('dragleave', function(e) {
                 if (!gridHead.contains(e.relatedTarget)) {
-                    gridHead.querySelectorAll('th').forEach(function(el) { el.classList.remove('drag-over'); });
-                    columnDropInsertIndex = null;
+                    renderDropHint(null);
+                    dropInsertIndex = null;
                 }
             });
             gridHead.addEventListener('drop', function(e) {
                 e.preventDefault();
-                gridHead.querySelectorAll('th').forEach(function(el) { el.classList.remove('drag-over'); });
-                var insertIdx = columnDropInsertIndex;
+                var insertIdx = dropInsertIndex;
                 if (insertIdx == null || isNaN(insertIdx)) {
-                    insertIdx = computeInsertIndexByX(e.clientX);
+                    insertIdx = computeInsertIndex(e.clientX);
                 }
                 if (insertIdx == null || isNaN(insertIdx)) return;
-                var fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                if (isNaN(fromIdx)) return;
+                var fromIdx = draggedFromIndex;
+                if (isNaN(fromIdx)) {
+                    fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                }
+                if (isNaN(fromIdx)) { clearDragState(); return; }
                 var st = tableStates[tableIndex];
-                if (!st) return;
+                if (!st) { clearDragState(); return; }
                 var cols = st.allColumns;
-                if (!Array.isArray(cols) || fromIdx < 0 || fromIdx >= cols.length) return;
+                if (!Array.isArray(cols) || fromIdx < 0 || fromIdx >= cols.length) { clearDragState(); return; }
                 if (insertIdx < 0) insertIdx = 0;
                 if (insertIdx > cols.length) insertIdx = cols.length;
                 var moved = cols[fromIdx];
@@ -6117,17 +6133,14 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 if (insertIdx > fromIdx) insertIdx--;
                 if (insertIdx < 0) insertIdx = 0;
                 if (insertIdx > cols.length) insertIdx = cols.length;
-                if (insertIdx === fromIdx) {
-                    columnDropInsertIndex = null;
-                    return;
-                }
+                if (insertIdx === fromIdx) { clearDragState(); return; }
                 cols.splice(insertIdx, 0, moved);
                 st.columnOrderFromServer = cols.map(function(c) { return c.key; });
                 saveColumnOrder();
                 saveConfigToStorage();
                 saveConfig();
                 renderGrid(tableIndex);
-                columnDropInsertIndex = null;
+                clearDragState();
             });
         }
 
