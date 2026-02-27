@@ -6031,6 +6031,7 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
     }
     target_storage_entity_key = str(target_resolved.get("storage_entity_key") or "")
     materialization_debug: Optional[Dict[str, Any]] = None
+    recalc_debug_rows: List[Dict[str, Any]] = []
     if _entity_table_editor_ast_has_aggregate(ast):
         value = _entity_table_editor_eval_ast(conn, ast, row)
         if isinstance(value, tuple) and value and value[0] == "field_ref":
@@ -6139,16 +6140,66 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(f'SELECT {cols_sql} FROM "{storage_table}" WHERE id IS NOT NULL')
             rows = cur.fetchall() or []
+
+        # Debug target: technical OPPORTUNITY token resolution in recalculate path.
+        opportunity_refs: List[Dict[str, Any]] = []
+        for ref in list(ref_cache.values()):
+            if not isinstance(ref, dict):
+                continue
+            token_full = str(ref.get("token_full") or "").strip()
+            token_norm = token_full.replace(" ", "").lower()
+            if re.match(r"^\{deal(?:_\d+)?\|\|opportunity(?::(?:raw|display))?\}$", token_norm):
+                opportunity_refs.append(ref)
+
         updates: List[Tuple[int, Optional[str]]] = []
         for db_row in rows:
             rid = db_row.get("id")
             if rid is None:
                 continue
+            row_debug_tokens: List[Dict[str, Any]] = []
+            if opportunity_refs and len(recalc_debug_rows) < 50:
+                for ref in opportunity_refs:
+                    trace: Dict[str, Any] = {}
+                    token_full = str(ref.get("token_full") or "{deal_25||OPPORTUNITY}")
+                    try:
+                        raw_v = _entity_table_editor_resolve_rowwise_ref_raw_value(
+                            conn,
+                            ref,
+                            storage_table,
+                            db_row,
+                            foreign_row_cache,
+                            token_full,
+                            debug_trace=trace,
+                        )
+                        resolved_v = _entity_table_editor_row_value_from_ref(conn, ref, raw_v, None, display_cache)
+                    except Exception as e:
+                        raw_v = None
+                        resolved_v = None
+                        trace["debug_error"] = str(e)
+                    row_debug_tokens.append({
+                        "token": token_full,
+                        "resolved_field_code": str(ref.get("field_name") or ""),
+                        "resolved_value_raw": raw_v,
+                        "resolved_value": resolved_v,
+                        "resolved_link_field": trace.get("resolved_link_field"),
+                        "resolved_target_entity": str(ref.get("entity_key") or ""),
+                        "resolved_target_table": trace.get("resolved_target_table") or str(ref.get("table") or ""),
+                        "resolved_target_id": trace.get("resolved_target_id"),
+                        "debug_status": trace.get("debug_status"),
+                        "debug_error": trace.get("debug_error"),
+                    })
             # `display_cache` is shared across rows for efficient ref display resolution.
             val = _entity_table_editor_eval_ast_rowwise(
                 conn, ast, row, target_storage_entity_key, storage_table, db_row, ref_cache, display_cache, foreign_row_cache
             )
-            updates.append((int(rid), _entity_table_editor_format_result_for_text(val)))
+            computed_text = _entity_table_editor_format_result_for_text(val)
+            updates.append((int(rid), computed_text))
+            if row_debug_tokens and len(recalc_debug_rows) < 50:
+                recalc_debug_rows.append({
+                    "deal_id": int(rid),
+                    "tokens": row_debug_tokens,
+                    "computed_value": computed_text,
+                })
         updated_rows = _entity_table_write_custom_field_row_values(conn, storage_table, storage_column, updates)
         mode = "editor_eval"
         mode_detail = "row_wise"
@@ -6196,6 +6247,8 @@ def _entity_table_recalculate_custom_field_editor(conn, row: Dict[str, Any]) -> 
     }
     if materialization_debug is not None:
         out["materialization_debug"] = materialization_debug
+    if recalc_debug_rows:
+        out["resolver_debug_rows"] = recalc_debug_rows
     return out
 
 def _entity_table_validate_custom_field_payload(payload: Any) -> Dict[str, Any]:
