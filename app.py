@@ -4140,8 +4140,6 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
     def parse_number() -> Any:
         nonlocal i
         start = i
-        if s[i] in "+-":
-            i += 1
         has_dot = False
         while i < n and (s[i].isdigit() or (s[i] == "." and not has_dot)):
             if s[i] == ".":
@@ -4181,7 +4179,7 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
         entity_name, field_name, value_mode = _entity_table_editor_split_ref_token(token)
         return ("ref", entity_name, field_name, value_mode)
 
-    def parse_expr() -> Any:
+    def parse_primary() -> Any:
         nonlocal i
         skip_ws()
         if i >= n:
@@ -4191,8 +4189,16 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
             return parse_string()
         if ch == "{":
             return parse_ref()
-        if ch.isdigit() or (ch in "+-" and i + 1 < n and s[i + 1].isdigit()):
+        if ch.isdigit():
             return parse_number()
+        if ch == "(":
+            i += 1
+            expr = parse_expr()
+            skip_ws()
+            if i >= n or s[i] != ")":
+                raise HTTPException(status_code=400, detail="Unclosed parenthesis in editor")
+            i += 1
+            return expr
         if ch.isalpha() or ch == "_":
             ident = parse_ident()
             skip_ws()
@@ -4218,6 +4224,49 @@ def _entity_table_editor_parse(expr_text: str) -> Any:
                 return ("call", ident.upper(), args)
             return ("ident", ident)
         raise HTTPException(status_code=400, detail=f"Unsupported token '{ch}' in editor")
+
+    def parse_unary() -> Any:
+        nonlocal i
+        skip_ws()
+        if i < n and s[i] in "+-":
+            op = s[i]
+            i += 1
+            inner = parse_unary()
+            if op == "+":
+                return inner
+            return ("unary", op, inner)
+        return parse_primary()
+
+    def parse_mul_div() -> Any:
+        nonlocal i
+        left = parse_unary()
+        while True:
+            skip_ws()
+            if i < n and s[i] in "*/":
+                op = s[i]
+                i += 1
+                right = parse_unary()
+                left = ("binary", op, left, right)
+                continue
+            break
+        return left
+
+    def parse_add_sub() -> Any:
+        nonlocal i
+        left = parse_mul_div()
+        while True:
+            skip_ws()
+            if i < n and s[i] in "+-":
+                op = s[i]
+                i += 1
+                right = parse_mul_div()
+                left = ("binary", op, left, right)
+                continue
+            break
+        return left
+
+    def parse_expr() -> Any:
+        return parse_add_sub()
 
     ast = parse_expr()
     skip_ws()
@@ -5124,6 +5173,42 @@ def _entity_table_editor_eval_ast(conn, ast: Any, row: Dict[str, Any]) -> Any:
         if ident.upper() == "NULL":
             return None
         raise HTTPException(status_code=400, detail=f"Unsupported identifier in editor: {ident}")
+    if kind == "unary":
+        op = str(ast[1] or "")
+        inner = _entity_table_editor_eval_ast(conn, ast[2], row)
+        if isinstance(inner, tuple) and inner and inner[0] == "field_ref":
+            raise HTTPException(status_code=400, detail="Arithmetic with direct field reference is not supported without NUMBER()")
+        num = _entity_table_editor_parse_number(inner)
+        if num is None:
+            return None
+        if op == "-":
+            return -num
+        if op == "+":
+            return num
+        raise HTTPException(status_code=400, detail=f"Unsupported unary operator in editor: {op}")
+    if kind == "binary":
+        op = str(ast[1] or "")
+        left_v = _entity_table_editor_eval_ast(conn, ast[2], row)
+        right_v = _entity_table_editor_eval_ast(conn, ast[3], row)
+        if isinstance(left_v, tuple) and left_v and left_v[0] == "field_ref":
+            raise HTTPException(status_code=400, detail="Arithmetic with direct field reference is not supported without NUMBER()")
+        if isinstance(right_v, tuple) and right_v and right_v[0] == "field_ref":
+            raise HTTPException(status_code=400, detail="Arithmetic with direct field reference is not supported without NUMBER()")
+        lnum = _entity_table_editor_parse_number(left_v)
+        rnum = _entity_table_editor_parse_number(right_v)
+        if lnum is None or rnum is None:
+            return None
+        if op == "+":
+            return lnum + rnum
+        if op == "-":
+            return lnum - rnum
+        if op == "*":
+            return lnum * rnum
+        if op == "/":
+            if rnum == 0:
+                raise HTTPException(status_code=400, detail="Division by zero in editor")
+            return lnum / rnum
+        raise HTTPException(status_code=400, detail=f"Unsupported binary operator in editor: {op}")
     if kind == "ref":
         entity_name = ast[1]
         field_name = ast[2]
@@ -5206,6 +5291,10 @@ def _entity_table_editor_eval_ast(conn, ast: Any, row: Dict[str, Any]) -> Any:
 def _entity_table_editor_ast_has_aggregate(ast: Any) -> bool:
     if not isinstance(ast, tuple) or not ast:
         return False
+    if ast[0] == "unary":
+        return _entity_table_editor_ast_has_aggregate(ast[2])
+    if ast[0] == "binary":
+        return _entity_table_editor_ast_has_aggregate(ast[2]) or _entity_table_editor_ast_has_aggregate(ast[3])
     if ast[0] == "call":
         fn = str(ast[1] or "").upper()
         if fn in ("COUNT", "SUM", "AVG", "MIN", "MAX"):
@@ -5758,6 +5847,42 @@ def _entity_table_editor_eval_ast_rowwise(
         if ident.upper() == "NULL":
             return None
         raise HTTPException(status_code=400, detail=f"Unsupported identifier in editor: {ident}")
+    if kind == "unary":
+        op = str(ast[1] or "")
+        inner = _entity_table_editor_eval_ast_rowwise(
+            conn, ast[2], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+        )
+        num = _entity_table_editor_parse_number(inner)
+        if num is None:
+            return None
+        if op == "-":
+            return -num
+        if op == "+":
+            return num
+        raise HTTPException(status_code=400, detail=f"Unsupported unary operator in editor: {op}")
+    if kind == "binary":
+        op = str(ast[1] or "")
+        left_v = _entity_table_editor_eval_ast_rowwise(
+            conn, ast[2], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+        )
+        right_v = _entity_table_editor_eval_ast_rowwise(
+            conn, ast[3], cf_row, target_entity_key, target_storage_table, current_row, ref_cache, display_cache, foreign_row_cache
+        )
+        lnum = _entity_table_editor_parse_number(left_v)
+        rnum = _entity_table_editor_parse_number(right_v)
+        if lnum is None or rnum is None:
+            return None
+        if op == "+":
+            return lnum + rnum
+        if op == "-":
+            return lnum - rnum
+        if op == "*":
+            return lnum * rnum
+        if op == "/":
+            if rnum == 0:
+                raise HTTPException(status_code=400, detail="Division by zero in editor")
+            return lnum / rnum
+        raise HTTPException(status_code=400, detail=f"Unsupported binary operator in editor: {op}")
     if kind == "ref":
         entity_name = str(ast[1] or "").strip()
         field_name = str(ast[2] or "").strip()
