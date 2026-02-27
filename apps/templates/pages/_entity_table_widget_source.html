@@ -4826,6 +4826,22 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             return m ? m[0] : '';
         }
 
+        function buildReverseDealIdMap(rows, entityKeyValue) {
+            var map = {};
+            var candidates = ['parentid2', 'parent_id_2', 'parentid', 'parent_id', 'deal_id', 'parent_id_1114'];
+            (rows || []).forEach(function(row) {
+                var dealId = '';
+                for (var i = 0; i < candidates.length; i++) {
+                    var v = rowValueByPrefixedField(row, entityKeyValue, candidates[i]);
+                    var id = extractFirstLinkedId(v);
+                    if (id) { dealId = id; break; }
+                }
+                if (!dealId) return;
+                if (!map[dealId]) map[dealId] = row;
+            });
+            return map;
+        }
+
         function loadData(tableIndex, skipMetaWarmup, skipEntityExpansion) {
             var st = tableStates[tableIndex];
             if (!st || !st.selectedEntities.length) return;
@@ -5136,6 +5152,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                         var dealKey = dealState.obj.key;
                         var nonDealStates = mergedEntityState.filter(function(s) { return s !== dealState; });
                         var idMapsByEntityKey = {};
+                        var reverseDealMapsByEntityKey = {};
                         nonDealStates.forEach(function(s) {
                             var eKey = s && s.obj ? s.obj.key : '';
                             if (!eKey) return;
@@ -5148,10 +5165,12 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                                 map[k] = row;
                             });
                             idMapsByEntityKey[eKey] = map;
+                            reverseDealMapsByEntityKey[eKey] = buildReverseDealIdMap(s.rows || [], eKey);
                         });
                         (dealState.rows || []).forEach(function(dealRow, rIdx) {
                             var mergedRow = {};
                             if (dealRow) Object.assign(mergedRow, dealRow);
+                            var dealRowId = extractFirstLinkedId(rowValueByPrefixedField(dealRow, dealKey, 'ID'));
                             nonDealStates.forEach(function(s) {
                                 var eKey = s && s.obj ? s.obj.key : '';
                                 if (!eKey) return;
@@ -5166,6 +5185,9 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                                         var matched = idMapsByEntityKey[eKey] && idMapsByEntityKey[eKey][relId];
                                         if (matched) { related = matched; break; }
                                     }
+                                }
+                                if (!related && dealRowId && reverseDealMapsByEntityKey[eKey]) {
+                                    related = reverseDealMapsByEntityKey[eKey][dealRowId] || null;
                                 }
                                 // If relation hints exist for this entity, never fallback to positional merge.
                                 // Positional fallback creates random cross-entity matches in mixed mode.
