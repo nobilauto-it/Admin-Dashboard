@@ -5509,12 +5509,30 @@ def _entity_table_editor_resolve_rowwise_ref_raw_value(
     debug_trace: Optional[Dict[str, Any]] = None,
 ) -> Any:
     if str(ref.get("table") or "") == str(target_storage_table):
-        raw_local = current_row.get(ref["column"])
+        col_name = str(ref.get("column") or "").strip()
+        raw_local = current_row.get(col_name) if col_name else None
+        used_fallback = False
+        # Recalculate may evaluate with a row projection that misses some columns.
+        # If local column is absent in current_row, fallback to DB read by id.
+        if col_name and col_name not in current_row:
+            rid = _entity_table_editor_extract_single_link_id(current_row.get("id"))
+            if rid:
+                full_row = _entity_table_editor_fetch_foreign_row_cached(
+                    conn,
+                    str(target_storage_table),
+                    int(rid),
+                    foreign_row_cache,
+                )
+                raw_local = full_row.get(col_name) if isinstance(full_row, dict) else None
+                used_fallback = True
         if isinstance(debug_trace, dict):
             debug_trace["resolved_link_field"] = None
             debug_trace["resolved_target_table"] = str(target_storage_table)
             debug_trace["resolved_target_id"] = current_row.get("id")
             debug_trace["resolved_value_raw"] = raw_local
+            debug_trace["debug_status"] = "local_ok_fallback" if used_fallback else "local_ok"
+            debug_trace["local_column_present"] = bool(col_name and col_name in current_row)
+            debug_trace["resolved_column"] = col_name
         return raw_local
 
     steps = ref.get("rowwise_join_steps")
