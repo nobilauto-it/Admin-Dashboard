@@ -6040,6 +6040,33 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             if (!gridHead || gridHead._dragDropBound) return;
             gridHead._dragDropBound = true;
             var columnDropInsertIndex = null;
+            function headerCells() {
+                return Array.prototype.slice.call(gridHead.querySelectorAll('th.entity-table-th-draggable'));
+            }
+            function computeInsertIndexByX(clientX) {
+                var ths = headerCells();
+                if (!ths.length) return null;
+                for (var i = 0; i < ths.length; i++) {
+                    var rect = ths[i].getBoundingClientRect();
+                    var mid = rect.left + (rect.width / 2);
+                    if (clientX < mid) return i;
+                }
+                return ths.length;
+            }
+            function markDropHint(insertIdx) {
+                var ths = headerCells();
+                ths.forEach(function(el) { el.classList.remove('drag-over'); });
+                if (!ths.length || insertIdx == null || isNaN(insertIdx)) return;
+                if (insertIdx <= 0) {
+                    ths[0].classList.add('drag-over');
+                    return;
+                }
+                if (insertIdx >= ths.length) {
+                    ths[ths.length - 1].classList.add('drag-over');
+                    return;
+                }
+                ths[insertIdx].classList.add('drag-over');
+            }
 
             gridHead.addEventListener('dragstart', function(e) {
                 if (e.target.closest('.entity-table-col-resize')) { e.preventDefault(); return; }
@@ -6060,22 +6087,8 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             gridHead.addEventListener('dragover', function(e) {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
-                var th = document.elementFromPoint(e.clientX, e.clientY);
-                if (th) th = th.closest('th');
-                if (!th || !th.classList.contains('entity-table-th-draggable')) {
-                    gridHead.querySelectorAll('th').forEach(function(el) { el.classList.remove('drag-over'); });
-                    var allTh = gridHead.querySelectorAll('th.entity-table-th-draggable');
-                    columnDropInsertIndex = allTh.length;
-                    return;
-                }
-                var toIdx = parseInt(th.getAttribute('data-column-index'), 10);
-                if (!isNaN(toIdx)) {
-                    var rect = th.getBoundingClientRect();
-                    var insertAfter = e.clientX > (rect.left + rect.width / 2);
-                    columnDropInsertIndex = toIdx + (insertAfter ? 1 : 0);
-                }
-                gridHead.querySelectorAll('th').forEach(function(el) { el.classList.remove('drag-over'); });
-                th.classList.add('drag-over');
+                columnDropInsertIndex = computeInsertIndexByX(e.clientX);
+                markDropHint(columnDropInsertIndex);
             });
             gridHead.addEventListener('dragleave', function(e) {
                 if (!gridHead.contains(e.relatedTarget)) {
@@ -6088,16 +6101,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 gridHead.querySelectorAll('th').forEach(function(el) { el.classList.remove('drag-over'); });
                 var insertIdx = columnDropInsertIndex;
                 if (insertIdx == null || isNaN(insertIdx)) {
-                    var th = document.elementFromPoint(e.clientX, e.clientY);
-                    if (th) th = th.closest('th');
-                    if (th && th.classList.contains('entity-table-th-draggable')) {
-                        var fallbackIdx = parseInt(th.getAttribute('data-column-index'), 10);
-                        if (!isNaN(fallbackIdx)) {
-                            var rect = th.getBoundingClientRect();
-                            var insertAfter = e.clientX > (rect.left + rect.width / 2);
-                            insertIdx = fallbackIdx + (insertAfter ? 1 : 0);
-                        }
-                    }
+                    insertIdx = computeInsertIndexByX(e.clientX);
                 }
                 if (insertIdx == null || isNaN(insertIdx)) return;
                 var fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
@@ -6113,6 +6117,10 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 if (insertIdx > fromIdx) insertIdx--;
                 if (insertIdx < 0) insertIdx = 0;
                 if (insertIdx > cols.length) insertIdx = cols.length;
+                if (insertIdx === fromIdx) {
+                    columnDropInsertIndex = null;
+                    return;
+                }
                 cols.splice(insertIdx, 0, moved);
                 st.columnOrderFromServer = cols.map(function(c) { return c.key; });
                 saveColumnOrder();
