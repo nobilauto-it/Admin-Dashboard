@@ -4802,6 +4802,30 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             return null;
         }
 
+        function extractFirstLinkedId(rawValue) {
+            if (rawValue == null) return '';
+            if (Array.isArray(rawValue)) {
+                for (var i = 0; i < rawValue.length; i++) {
+                    var v = extractFirstLinkedId(rawValue[i]);
+                    if (v) return v;
+                }
+                return '';
+            }
+            if (typeof rawValue === 'number') {
+                return isFinite(rawValue) ? String(Math.trunc(rawValue)) : '';
+            }
+            var s = String(rawValue).trim();
+            if (!s) return '';
+            if ((s[0] === '[' && s[s.length - 1] === ']') || (s[0] === '{' && s[s.length - 1] === '}')) {
+                try {
+                    var parsed = JSON.parse(s);
+                    return extractFirstLinkedId(parsed);
+                } catch (e) {}
+            }
+            var m = s.match(/\d+/);
+            return m ? m[0] : '';
+        }
+
         function loadData(tableIndex, skipMetaWarmup, skipEntityExpansion) {
             var st = tableStates[tableIndex];
             if (!st || !st.selectedEntities.length) return;
@@ -5137,13 +5161,15 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                                     for (var a = 0; a < relAliases.length; a++) {
                                         var relVal = rowValueByPrefixedField(dealRow, dealKey, relAliases[a]);
                                         if (relVal == null || relVal === '') continue;
-                                        var relId = String(relVal).trim();
+                                        var relId = extractFirstLinkedId(relVal);
                                         if (!relId) continue;
                                         var matched = idMapsByEntityKey[eKey] && idMapsByEntityKey[eKey][relId];
                                         if (matched) { related = matched; break; }
                                     }
                                 }
-                                if (!related && s.rows && s.rows[rIdx]) related = s.rows[rIdx];
+                                // If relation hints exist for this entity, never fallback to positional merge.
+                                // Positional fallback creates random cross-entity matches in mixed mode.
+                                if (!related && !relAliases.length && s.rows && s.rows[rIdx]) related = s.rows[rIdx];
                                 if (related) Object.assign(mergedRow, related);
                             });
                             if (Object.keys(mergedRow).length) st.fullData.push(mergedRow);
