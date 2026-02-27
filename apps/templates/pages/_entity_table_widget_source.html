@@ -4742,6 +4742,66 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             });
         }
 
+        function buildDealNestedJoinHints(st, entitiesForLoad) {
+            var hints = {};
+            if (!st || !Array.isArray(st.selectedEntities) || !st.selectedEntities.length) return hints;
+            var dealEnt = st.selectedEntities.find(function(e) { return e && String(e.type || '').toLowerCase() === 'deal'; });
+            if (!dealEnt) return hints;
+            var dealKey = entityKey(dealEnt);
+            var sel = (st.selectedFields || []).find(function(f) { return f && f.entityKey === dealKey; });
+            if (!sel || !sel.nestedFields || typeof sel.nestedFields !== 'object') return hints;
+            var cacheFields = (fieldsCache[dealKey] && Array.isArray(fieldsCache[dealKey].fields)) ? fieldsCache[dealKey].fields : [];
+            function groupKeyForField(f) {
+                var t = nestedTypeKey(f && f.field_type);
+                var nestedEntityKey = String((f && f.nested_entity_key) || '').trim();
+                var slug = String((f && (f.human_title || f.column_name || f.id)) || '')
+                    .replace(/\s/g, '_').replace(/[^a-zA-Z0-9_-]/g, '_') || t;
+                return t + '::' + (nestedEntityKey || slug);
+            }
+            function aliasesForField(f) {
+                var out = [];
+                ['field_code', 'b24_field', 'column_name'].forEach(function(k) {
+                    var v = String((f && f[k]) || '').trim();
+                    if (v && out.indexOf(v) < 0) out.push(v);
+                });
+                return out;
+            }
+            Object.keys(sel.nestedFields).forEach(function(typ) {
+                var mappedEnt = resolveNestedMappedEntity(typ, entitiesForLoad || st.selectedEntities || []);
+                if (!mappedEnt) return;
+                var targetKey = entityKey(mappedEnt);
+                if (!targetKey || targetKey === dealKey) return;
+                var aliases = [];
+                cacheFields.forEach(function(f) {
+                    if (!f || !Array.isArray(f.nested_fields) || !f.nested_fields.length) return;
+                    if (groupKeyForField(f) !== typ) return;
+                    aliases = aliases.concat(aliasesForField(f));
+                });
+                if (!aliases.length) return;
+                if (!hints[targetKey]) hints[targetKey] = [];
+                aliases.forEach(function(a) {
+                    if (hints[targetKey].indexOf(a) < 0) hints[targetKey].push(a);
+                });
+            });
+            return hints;
+        }
+
+        function rowValueByPrefixedField(row, entityKeyValue, fieldName) {
+            if (!row || !entityKeyValue || !fieldName) return null;
+            var direct = String(entityKeyValue) + '::' + String(fieldName);
+            if (Object.prototype.hasOwnProperty.call(row, direct)) return row[direct];
+            var wanted = normalizeSearchText(String(fieldName || ''));
+            var prefix = String(entityKeyValue) + '::';
+            var keys = Object.keys(row);
+            for (var i = 0; i < keys.length; i++) {
+                var k = keys[i];
+                if (k.indexOf(prefix) !== 0) continue;
+                var tail = k.slice(prefix.length);
+                if (normalizeSearchText(tail) === wanted) return row[k];
+            }
+            return null;
+        }
+
         function loadData(tableIndex, skipMetaWarmup, skipEntityExpansion) {
             var st = tableStates[tableIndex];
             if (!st || !st.selectedEntities.length) return;
@@ -4803,6 +4863,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             });
             var entitiesForLoad = (st._expandedLoadEntities && st._expandedLoadEntities.length) ? st._expandedLoadEntities : st.selectedEntities;
             var nestedTitlesByEntity = st._nestedTitlesByEntity || {};
+            var dealJoinHintsByTargetKey = buildDealNestedJoinHints(st, entitiesForLoad);
             entitiesForLoad.forEach(function(ent) {
                 var key = entityKey(ent);
                 var sel = st.selectedFields.find(function(f) { return f.entityKey === key; });
@@ -4933,6 +4994,13 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 if (ent.type === 'deal' && ent.category_id != null && displayTitles.indexOf(FUNNEL_FIELD) < 0) {
                     fetchTitles.push(FUNNEL_FIELD);
                 }
+                if (String(ent.type || '').toLowerCase() === 'deal') {
+                    Object.keys(dealJoinHintsByTargetKey).forEach(function(targetKey) {
+                        (dealJoinHintsByTargetKey[targetKey] || []).forEach(function(alias) {
+                            if (alias && fetchTitles.indexOf(alias) < 0) fetchTitles.push(alias);
+                        });
+                    });
+                }
                 // console.debug helper: helps verify all selected entities are requested
                 if (typeof console !== 'undefined' && console.debug) {
                     console.debug('[entity-table] request entity', key, { type: ent.type, titles: displayTitles.length, fetchTitles: fetchTitles.length });
@@ -5038,12 +5106,58 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     mergedEntityState.forEach(function(s) {
                         if (s.rows.length > initialMax) initialMax = s.rows.length;
                     });
-                    for (var r = 0; r < initialMax; r++) {
-                        var mergedRow = {};
-                        mergedEntityState.forEach(function(s) {
-                            if (s.rows[r]) Object.assign(mergedRow, s.rows[r]);
+                    var dealState = mergedEntityState.find(function(s) { return s && s.obj && s.obj.ent && String(s.obj.ent.type || '').toLowerCase() === 'deal'; }) || null;
+                    var didJoinByRelation = false;
+                    if (dealState && dealState.obj && dealState.obj.key) {
+                        var dealKey = dealState.obj.key;
+                        var nonDealStates = mergedEntityState.filter(function(s) { return s !== dealState; });
+                        var idMapsByEntityKey = {};
+                        nonDealStates.forEach(function(s) {
+                            var eKey = s && s.obj ? s.obj.key : '';
+                            if (!eKey) return;
+                            var map = {};
+                            (s.rows || []).forEach(function(row) {
+                                var rowId = rowValueByPrefixedField(row, eKey, 'ID');
+                                if (rowId == null || rowId === '') return;
+                                var k = String(rowId).trim();
+                                if (!k) return;
+                                map[k] = row;
+                            });
+                            idMapsByEntityKey[eKey] = map;
                         });
-                        if (Object.keys(mergedRow).length) st.fullData.push(mergedRow);
+                        (dealState.rows || []).forEach(function(dealRow, rIdx) {
+                            var mergedRow = {};
+                            if (dealRow) Object.assign(mergedRow, dealRow);
+                            nonDealStates.forEach(function(s) {
+                                var eKey = s && s.obj ? s.obj.key : '';
+                                if (!eKey) return;
+                                var relAliases = dealJoinHintsByTargetKey[eKey] || [];
+                                var related = null;
+                                if (relAliases.length) {
+                                    for (var a = 0; a < relAliases.length; a++) {
+                                        var relVal = rowValueByPrefixedField(dealRow, dealKey, relAliases[a]);
+                                        if (relVal == null || relVal === '') continue;
+                                        var relId = String(relVal).trim();
+                                        if (!relId) continue;
+                                        var matched = idMapsByEntityKey[eKey] && idMapsByEntityKey[eKey][relId];
+                                        if (matched) { related = matched; break; }
+                                    }
+                                }
+                                if (!related && s.rows && s.rows[rIdx]) related = s.rows[rIdx];
+                                if (related) Object.assign(mergedRow, related);
+                            });
+                            if (Object.keys(mergedRow).length) st.fullData.push(mergedRow);
+                        });
+                        didJoinByRelation = true;
+                    }
+                    if (!didJoinByRelation) {
+                        for (var r = 0; r < initialMax; r++) {
+                            var mergedRowFallback = {};
+                            mergedEntityState.forEach(function(s) {
+                                if (s.rows[r]) Object.assign(mergedRowFallback, s.rows[r]);
+                            });
+                            if (Object.keys(mergedRowFallback).length) st.fullData.push(mergedRowFallback);
+                        }
                     }
                 }
                 showLoading(tableIndex, false);
