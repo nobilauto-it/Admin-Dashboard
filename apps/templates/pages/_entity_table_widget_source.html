@@ -785,6 +785,8 @@
         const modalEntity = new bootstrap.Modal(document.getElementById('modalEntity'));
         const modalEntityBody = document.getElementById('modalEntityBody');
         const modalEntitySave = document.getElementById('modalEntitySave');
+        let pendingNewTableInsertIndex = null;
+        let pendingNewTableDraft = null;
         const modalFields = new bootstrap.Modal(document.getElementById('modalFields'));
         const modalFieldsEl = document.getElementById('modalFields');
         const modalFilter = new bootstrap.Modal(document.getElementById('modalFilter'));
@@ -3527,6 +3529,9 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
 
         function openEntityModal() {
             var st = tableStates[currentTableIndex];
+            if (!st && pendingNewTableDraft && pendingNewTableInsertIndex === currentTableIndex) {
+                st = pendingNewTableDraft;
+            }
             if (!st) return;
             var nameInput = document.getElementById('tableNameInput');
             var descInput = document.getElementById('tableDescriptionInput');
