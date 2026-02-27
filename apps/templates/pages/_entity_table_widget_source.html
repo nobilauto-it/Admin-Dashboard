@@ -2267,6 +2267,38 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             } catch (e) { return {}; }
         }
 
+        function parseColumnWidths(value) {
+            if (!value) return {};
+            if (typeof value === 'object') return value;
+            if (typeof value === 'string') {
+                try {
+                    var parsed = JSON.parse(value);
+                    return (parsed && typeof parsed === 'object') ? parsed : {};
+                } catch (e) {
+                    return {};
+                }
+            }
+            return {};
+        }
+
+        function getColumnWidthValue(st, columnKey) {
+            if (!st || !st.columnWidths || !columnKey) return null;
+            var direct = st.columnWidths[columnKey];
+            if (direct != null) return direct;
+            var idx = String(columnKey).indexOf('::');
+            if (idx <= 0) return null;
+            var tail = String(columnKey).slice(idx + 2);
+            if (!tail) return null;
+            var keys = Object.keys(st.columnWidths);
+            for (var i = 0; i < keys.length; i++) {
+                var k = keys[i];
+                var sep = String(k).indexOf('::');
+                if (sep <= 0) continue;
+                if (String(k).slice(sep + 2) === tail) return st.columnWidths[k];
+            }
+            return null;
+        }
+
         function getPersistedTableFilterFields(st) {
             if (!st || !Array.isArray(st.filterFields) || !st.filterFields.length) return [];
             var allowedKeys = {};
@@ -2388,7 +2420,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                         };
                     }
                     var orderFromServer = (t.column_order && Array.isArray(t.column_order)) ? t.column_order : null;
-                    var widthsFromServer = (t.column_widths && typeof t.column_widths === 'object') ? t.column_widths : {};
+                    var widthsFromServer = parseColumnWidths(t.column_widths);
                     return {
                         type: 'table',
                         selectedEntities: norm.entities,
@@ -2430,7 +2462,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
             if (data.entities && Array.isArray(data.entities) && data.entities.length > 0) {
                 var norm = normalizeEntitiesAndFields(data.entities, data.fields || []);
                 var orderFromServer = (data.column_order && Array.isArray(data.column_order)) ? data.column_order : null;
-                var widthsFromServer = (data.column_widths && typeof data.column_widths === 'object') ? data.column_widths : {};
+                var widthsFromServer = parseColumnWidths(data.column_widths);
                 tableStates = [{
                     selectedEntities: norm.entities,
                     selectedFields: norm.fields,
@@ -3234,7 +3266,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                         tableStates = data.tables.map(function(t, idx) {
                             var norm = normalizeEntitiesAndFields(t.entities || [], t.fields || []);
                             var orderFromServer = (t.column_order && Array.isArray(t.column_order)) ? t.column_order : null;
-                            var widthsFromServer = (t.column_widths && typeof t.column_widths === 'object') ? t.column_widths : {};
+                            var widthsFromServer = parseColumnWidths(t.column_widths);
                             return {
                                 selectedEntities: norm.entities,
                                 selectedFields: norm.fields,
@@ -3286,7 +3318,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                     }
                     if (data.entities && Array.isArray(data.entities) && data.entities.length > 0) {
                         var norm = normalizeEntitiesAndFields(data.entities, data.fields || []);
-                        var widthsFromServer = (data.column_widths && typeof data.column_widths === 'object') ? data.column_widths : {};
+                        var widthsFromServer = parseColumnWidths(data.column_widths);
                         tableStates = [{
                             selectedEntities: norm.entities,
                             selectedFields: norm.fields,
@@ -5945,7 +5977,7 @@ alert((err && err.message) ? err.message : 'Не удалось пересчит
                 var fullLabelAttr = (fullLabel || '').replace(/"/g, '&quot;');
                 var sortIcon = '';
                 if (st.sortKey === c.key) sortIcon = (st.sortDir === 'asc') ? '&#9650;' : (st.sortDir === 'desc' ? '&#9660;' : '');
-                var w = st.columnWidths[c.key];
+                var w = getColumnWidthValue(st, c.key);
                 /* Apply saved width even if smaller than content so user can narrow columns; content truncates with ellipsis. */
                 var style = (w != null && w >= 1) ? ' style="width:' + w + 'px;min-width:' + w + 'px;max-width:' + w + 'px;"' : '';
                 var isDateColumn = isLikelyDateColumn(st, c);
