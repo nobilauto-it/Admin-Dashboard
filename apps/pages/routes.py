@@ -1,6 +1,7 @@
 import base64
 import json
 import re
+import threading
 import traceback
 import unicodedata
 from pathlib import Path
@@ -200,7 +201,7 @@ def _list_pages_with_fallback():
 
 @blueprint.route('/')
 def index():
-    
+
     return render_template('pages/index.html', segment='index')
 
 
@@ -210,7 +211,7 @@ def deals():
     try:
         segment = get_segment(request)
         deals_data = []
-        
+
         if requests is None:
             current_app.logger.error("Error: requests library is not installed. Please run: pip install requests")
         else:
@@ -219,7 +220,7 @@ def deals():
                 api_url = 'http://194.33.40.197:7070/api/data/deals'
                 current_app.logger.info(f"Fetching deals data from {api_url}")
                 response = requests.get(api_url, timeout=10)
-                
+
                 if response.status_code == 200:
                     data = response.json()
                     if data.get('ok') and 'data' in data:
@@ -236,7 +237,7 @@ def deals():
                 current_app.logger.error(f"Error fetching deals data: {e}")
                 current_app.logger.error(traceback.format_exc())
                 deals_data = []
-        
+
         return render_template('pages/deals.html', segment=segment, deals=deals_data)
     except Exception as e:
         current_app.logger.error(f"Error in deals route: {e}")
@@ -466,7 +467,7 @@ def entity_table_processes_deals():
     """Прокси: список сущностей для формы выбора (контакты, лиды, сделки, смарт-процессы)."""
     url = f"{_crm_base_url()}/api/processes-deals/"
     try:
-        data = _proxy_get(url)
+        data = _proxy_get(url, timeout=120)
         return jsonify(data)
     except Exception as e:
         current_app.logger.error(f"Entity table processes-deals: {e}")
@@ -577,6 +578,74 @@ def entity_table_config():
     if requests is None:
         return make_response(jsonify({"ok": False, "error": "python-requests not available"}), 500)
 
+    def _save_local_cache_non_dash(page_slug_value, payload_obj):
+        try:
+            if not page_slug_value:
+                return
+            tables_val = payload_obj.get('tables')
+            if not isinstance(tables_val, list):
+                return
+            rec_local = EntityTableConfig.query.filter(
+                db.func.lower(EntityTableConfig.page_slug) == page_slug_value.lower()
+            ).first()
+            if not rec_local:
+                rec_local = EntityTableConfig(page_slug=page_slug_value)
+                db.session.add(rec_local)
+            rec_local.set_tables(tables_val)
+            if tables_val:
+                first_local = tables_val[0] if isinstance(tables_val[0], dict) else {}
+                rec_local.table_title = (first_local.get('table_title') or '').strip() or rec_local.table_title or ''
+                rec_local.table_description = (first_local.get('table_description') or '').strip() or (rec_local.table_description or '')
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Entity table config local cache (non-dash) save failed")
+
+    def _merge_local_cache_non_dash(page_slug_value, body_obj):
+        try:
+            if not page_slug_value or not isinstance(body_obj, dict):
+                return body_obj
+            rec_local = EntityTableConfig.query.filter(
+                db.func.lower(EntityTableConfig.page_slug) == page_slug_value.lower()
+            ).first()
+            if not rec_local:
+                return body_obj
+            local_tables = rec_local.get_tables() or []
+            if not local_tables:
+                return body_obj
+            ui_keys = {
+                'table_title', 'table_description', 'table_style',
+                'column_order', 'column_widths', 'sort_key', 'sort_dir',
+                'show_time', 'date_time_display', 'filter_fields', 'custom_fields', 'selected_custom_fields', 'start_new_row'
+            }
+            if isinstance(body_obj.get('tables'), list):
+                merged_tables = []
+                remote_tables = body_obj.get('tables') or []
+                max_len = max(len(remote_tables), len(local_tables))
+                for i in range(max_len):
+                    remote_t = remote_tables[i] if i < len(remote_tables) and isinstance(remote_tables[i], dict) else {}
+                    local_t = local_tables[i] if i < len(local_tables) and isinstance(local_tables[i], dict) else {}
+                    if not remote_t and local_t:
+                        merged_tables.append(local_t)
+                        continue
+                    merged = dict(remote_t)
+                    for k in ui_keys:
+                        if k in local_t:
+                            merged[k] = local_t.get(k)
+                    merged_tables.append(merged)
+                body_obj['tables'] = merged_tables
+                return body_obj
+            # Backward-compatible single-table shape
+            if isinstance(local_tables, list) and local_tables and isinstance(local_tables[0], dict):
+                first_local = local_tables[0]
+                for k in ui_keys:
+                    if k in first_local:
+                        body_obj[k] = first_local.get(k)
+            return body_obj
+        except Exception:
+            current_app.logger.exception("Entity table config local cache (non-dash) merge failed")
+            return body_obj
+
     try:
         if request.method == 'GET':
             params = dict(request.args or {})
@@ -593,12 +662,133 @@ def entity_table_config():
             resp = requests.post(upstream_url, json=payload, headers=headers, timeout=30)
 
         try:
+            if request.method == 'POST' and resp.status_code < 400 and isinstance(payload, dict):
+                _save_local_cache_non_dash(page_slug, payload)
             body = resp.json()
+            if request.method == 'GET':
+                body = _merge_local_cache_non_dash(page_slug, body)
             return make_response(jsonify(body), resp.status_code)
         except Exception:
             return make_response(resp.text, resp.status_code)
     except Exception as e:
         current_app.logger.exception("Entity table config proxy: %s", e)
+        return make_response(jsonify({"ok": False, "error": str(e)}), 502)
+
+
+@blueprint.route('/api/entity-table/custom-fields/preview', methods=['POST'])
+def entity_table_custom_fields_preview_proxy():
+    """Proxy custom field preview to CRM backend (7070)."""
+    upstream_url = f"{_crm_base_url()}/api/entity-table/custom-fields/preview"
+    if requests is None:
+        return make_response(jsonify({"ok": False, "error": "python-requests not available"}), 500)
+    try:
+        headers = {'Content-Type': 'application/json'}
+        x_user_role = request.headers.get('x-user-role')
+        x_guest = request.headers.get('x-guest')
+        if x_user_role:
+            headers['x-user-role'] = x_user_role
+        if x_guest:
+            headers['x-guest'] = x_guest
+        payload = request.get_json(silent=True) or {}
+        resp = requests.post(upstream_url, json=payload, headers=headers, timeout=120)
+        try:
+            return make_response(jsonify(resp.json()), resp.status_code)
+        except Exception:
+            return make_response(resp.text, resp.status_code)
+    except Exception as e:
+        current_app.logger.exception("Entity table custom-fields preview proxy: %s", e)
+        return make_response(jsonify({"ok": False, "error": str(e)}), 502)
+
+
+@blueprint.route('/api/entity-table/custom-fields', methods=['GET', 'POST'])
+@blueprint.route('/api/entity-table/custom-fields/<path:item_id>', methods=['DELETE', 'PUT', 'PATCH'])
+def entity_table_custom_fields_proxy(item_id=None):
+    """Proxy custom fields CRUD to CRM backend (7070) to avoid browser CORS from 7474 UI."""
+    upstream_url = f"{_crm_base_url()}/api/entity-table/custom-fields"
+    if item_id is not None:
+        upstream_url = f"{upstream_url}/{item_id}"
+    if requests is None:
+        return make_response(jsonify({"ok": False, "error": "python-requests not available"}), 500)
+
+    try:
+        headers = {}
+        x_user_role = request.headers.get('x-user-role')
+        x_guest = request.headers.get('x-guest')
+        if x_user_role:
+            headers['x-user-role'] = x_user_role
+        if x_guest:
+            headers['x-guest'] = x_guest
+
+        if request.method == 'GET':
+            resp = requests.get(upstream_url, params=dict(request.args or {}), headers=headers, timeout=30)
+        elif request.method == 'POST':
+            payload = request.get_json(silent=True) or {}
+            headers['Content-Type'] = 'application/json'
+            resp = requests.post(upstream_url, json=payload, headers=headers, timeout=180)
+        elif request.method in ('PUT', 'PATCH'):
+            payload = request.get_json(silent=True) or {}
+            headers['Content-Type'] = 'application/json'
+            if request.method == 'PUT':
+                resp = requests.put(upstream_url, json=payload, headers=headers, timeout=180)
+            else:
+                resp = requests.patch(upstream_url, json=payload, headers=headers, timeout=180)
+        else:  # DELETE
+            resp = requests.delete(upstream_url, headers=headers, timeout=30)
+
+        try:
+            body = resp.json()
+            return make_response(jsonify(body), resp.status_code)
+        except Exception:
+            return make_response(resp.text, resp.status_code)
+    except Exception as e:
+        current_app.logger.exception("Entity table custom-fields proxy: %s", e)
+        return make_response(jsonify({"ok": False, "error": str(e)}), 502)
+
+
+@blueprint.route('/api/entity-table/custom-fields/<path:item_id>/recalculate', methods=['POST'])
+def entity_table_custom_fields_recalculate_proxy(item_id):
+    """Proxy custom field recalculate to CRM backend (7070)."""
+    upstream_url = f"{_crm_base_url()}/api/entity-table/custom-fields/{item_id}/recalculate"
+    if requests is None:
+        return make_response(jsonify({"ok": False, "error": "python-requests not available"}), 500)
+    try:
+        headers = {'Content-Type': 'application/json'}
+        x_user_role = request.headers.get('x-user-role')
+        x_guest = request.headers.get('x-guest')
+        if x_user_role:
+            headers['x-user-role'] = x_user_role
+        if x_guest:
+            headers['x-guest'] = x_guest
+        payload = request.get_json(silent=True) or {}
+        async_mode = bool(payload.pop("async", True))
+        if async_mode:
+            app = current_app._get_current_object()
+
+            def _run_recalculate_async():
+                try:
+                    requests.post(upstream_url, json=payload, headers=headers, timeout=300)
+                except Exception as e:
+                    try:
+                        with app.app_context():
+                            current_app.logger.exception("Entity table custom-fields recalculate async proxy: %s", e)
+                    except Exception:
+                        pass
+
+            t = threading.Thread(target=_run_recalculate_async, daemon=True)
+            t.start()
+            return make_response(jsonify({
+                "ok": True,
+                "started_async": True,
+                "custom_field_id": item_id
+            }), 202)
+
+        resp = requests.post(upstream_url, json=payload, headers=headers, timeout=300)
+        try:
+            return make_response(jsonify(resp.json()), resp.status_code)
+        except Exception:
+            return make_response(resp.text, resp.status_code)
+    except Exception as e:
+        current_app.logger.exception("Entity table custom-fields recalculate proxy: %s", e)
         return make_response(jsonify({"ok": False, "error": str(e)}), 502)
 
 
@@ -681,7 +871,7 @@ def entity_table_save_dashboard():
         "var PAGE_SLUG = " + json.dumps(slug) + ";",
         template_content,
         count=1,
-    )
+        )
     if "__PAGE_SLUG__" in template_content:
         template_content = template_content.replace("__PAGE_SLUG__", slug)
     try:
@@ -878,7 +1068,7 @@ def route_template(template):
             segment=segment,
             is_dashboard_page=is_dashboard_page,
             page_slug=page_slug,
-        )
+            )
 
     except TemplateNotFound:
         return render_template('pages/error-404.html'), 404
