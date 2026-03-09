@@ -251,6 +251,10 @@ def _normalize_id(v: Any) -> str:
     return m.group(0) if m else s
 
 
+def _canonical_text(v: Any) -> str:
+    return re.sub(r"\s+", " ", _coerce_text(v)).strip().lower()
+
+
 def _raw_get(raw_obj: Any, *keys: str) -> Any:
     if raw_obj is None:
         return None
@@ -337,6 +341,7 @@ def _fetch_rows() -> List[Dict[str, Any]]:
 
     now_local = datetime.now(ZoneInfo(AUTO_HOME_TZ))
     rows: List[Dict[str, Any]] = []
+    seen_cars: set[str] = set()
     for rec in raw:
         row = dict(zip(selected_cols, rec))
         assigned_raw = row.get(assigned_name_col) if assigned_name_col else row.get(assigned_id_col) if assigned_id_col else None
@@ -385,6 +390,18 @@ def _fetch_rows() -> List[Dict[str, Any]]:
         car_lookup_key = _normalize_id(car_txt)
         if car_lookup_key and car_lookup_key in car_name_by_id:
             car_txt = car_name_by_id[car_lookup_key]
+
+        dedupe_key = ""
+        if car_lookup_key and car_lookup_key in car_name_by_id:
+            dedupe_key = f"id:{car_lookup_key}"
+        else:
+            cname = _canonical_text(car_txt)
+            if cname:
+                dedupe_key = f"name:{cname}"
+        if dedupe_key:
+            if dedupe_key in seen_cars:
+                continue
+            seen_cars.add(dedupe_key)
 
         rows.append(
             {
