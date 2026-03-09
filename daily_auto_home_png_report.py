@@ -248,6 +248,11 @@ def _bitrix_post(method: str, payload: Dict[str, Any]) -> Dict[str, Any]:
 def _send_png_to_chat(png_bytes: bytes, filename: str, caption: str) -> Dict[str, Any]:
     chat_raw = AUTO_HOME_CHAT_ID
     dialog_id = chat_raw if chat_raw.startswith("chat") else f"chat{chat_raw}"
+    chat_id_for_commit: Any = chat_raw
+    if chat_raw.startswith("chat") and chat_raw[4:].isdigit():
+        chat_id_for_commit = int(chat_raw[4:])
+    elif chat_raw.isdigit():
+        chat_id_for_commit = int(chat_raw)
 
     folder = _bitrix_post("im.disk.folder.get", {"DIALOG_ID": dialog_id})
     folder_result = folder.get("result") or {}
@@ -281,10 +286,7 @@ def _send_png_to_chat(png_bytes: bytes, filename: str, caption: str) -> Dict[str
     if not file_id:
         raise RuntimeError(f"upload url response has no file id: {str(up_json)[:300]}")
 
-    commit_payload: Dict[str, Any] = {
-        "CHAT_ID": int(chat_raw) if chat_raw.isdigit() else chat_raw,
-        "FILE_ID": file_id,
-    }
+    commit_payload: Dict[str, Any] = {"CHAT_ID": chat_id_for_commit, "FILE_ID": file_id}
     if caption:
         commit_payload["COMMENT"] = caption
     commit = _bitrix_post("im.disk.file.commit", commit_payload)
