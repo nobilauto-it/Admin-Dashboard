@@ -19,7 +19,10 @@ BITRIX_WEBHOOK = os.getenv(
     "BITRIX_WEBHOOK",
     "https://nobilauto.bitrix24.ru/rest/18397/h5c7kw97sfp3uote",
 ).strip().rstrip("/")
-BITRIX_WEBHOOK_REPORTS = os.getenv("BITRIX_WEBHOOK_REPORTS", "").strip().rstrip("/")
+BITRIX_WEBHOOK_REPORTS = os.getenv(
+    "BITRIX_WEBHOOK_REPORTS",
+    "https://nobilauto.bitrix24.ru/rest/20532/grmoroz08bush0kp",
+).strip().rstrip("/")
 
 PG_HOST = os.getenv("PG_HOST", "194.33.40.197")
 PG_PORT = int(os.getenv("PG_PORT", "5432"))
