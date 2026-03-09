@@ -37,6 +37,7 @@ AUTO_HOME_CHAT_ID = os.getenv("AUTO_HOME_CHAT_ID", "chat2846").strip() or "chat2
 AUTO_HOME_TZ = os.getenv("AUTO_HOME_TZ", os.getenv("REPORT_TZ", "Europe/Chisinau")).strip() or "Europe/Chisinau"
 AUTO_HOME_SEND_HOUR = int(os.getenv("AUTO_HOME_SEND_HOUR", "20"))
 AUTO_HOME_SEND_MINUTE = int(os.getenv("AUTO_HOME_SEND_MINUTE", "0"))
+AUTO_HOME_ACTIVE_STATUS = os.getenv("AUTO_HOME_ACTIVE_STATUS", "5").strip() or "5"
 
 AUTO_HOME_MARK_DIR = os.getenv("AUTO_HOME_MARK_DIR", "/tmp").strip() or "/tmp"
 AUTO_HOME_ENABLED = os.getenv("AUTO_HOME_ENABLED", "1") == "1"
@@ -296,6 +297,7 @@ def _fetch_rows() -> List[Dict[str, Any]]:
         )
         car_col = _pick_col(cols, "ufcrm58_1757152826", "UFCRM58_1757152826")
         goal_col = _pick_col(cols, "ufcrm58_1758016604", "UFCRM58_1758016604")
+        status_col = _pick_col(cols, "ufcrm58_1758016179", "UFCRM58_1758016179")
         created_col = _pick_col(cols, "created_at", "CREATED_AT", "date_create", "DATE_CREATE")
         closed_col = _pick_col(cols, "closed", "CLOSED")
         raw_col = _pick_col(cols, "raw", "RAW")
@@ -312,6 +314,8 @@ def _fetch_rows() -> List[Dict[str, Any]]:
         elif assigned_id_col:
             selected_cols.append(assigned_id_col)
         selected_cols.extend([car_col, goal_col, created_col])
+        if status_col:
+            selected_cols.append(status_col)
         if raw_col:
             selected_cols.append(raw_col)
 
@@ -328,12 +332,16 @@ def _fetch_rows() -> List[Dict[str, Any]]:
         if closed_col:
             parts.append(sql.SQL("AND ({} IS NULL OR CAST({} AS text) <> 'Y')").format(sql.Identifier(closed_col), sql.Identifier(closed_col)))
 
-        parts.append(sql.SQL("ORDER BY {} ASC").format(sql.Identifier(created_col)))
+        if status_col and AUTO_HOME_ACTIVE_STATUS:
+            parts.append(sql.SQL("AND CAST({} AS text) = %s").format(sql.Identifier(status_col)))
+
+        parts.append(sql.SQL("ORDER BY {} DESC").format(sql.Identifier(created_col)))
         parts.append(sql.SQL("LIMIT 500"))
 
         query = sql.SQL(" ").join(parts)
         with conn.cursor() as cur:
-            cur.execute(query)
+            params: List[Any] = [AUTO_HOME_ACTIVE_STATUS] if status_col and AUTO_HOME_ACTIVE_STATUS else []
+            cur.execute(query, params)
             raw = cur.fetchall()
 
         user_name_by_id = _load_user_name_map(conn)
