@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -110,6 +111,96 @@ def _as_datetime(v: Any) -> Optional[datetime]:
     return None
 
 
+def _load_user_name_map(conn) -> Dict[str, str]:
+    out: Dict[str, str] = {}
+
+    # 1) Try crm_users first (as requested)
+    try:
+        cols = _table_columns(conn, "crm_users")
+        if cols:
+            id_col = _pick_col(cols, "id", "ID")
+            name_col = _pick_col(cols, "name", "full_name", "fio", "username", "login", "title")
+            if id_col and name_col:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        sql.SQL("SELECT {}, {} FROM {}.{}").format(
+                            sql.Identifier(id_col),
+                            sql.Identifier(name_col),
+                            sql.Identifier("public"),
+                            sql.Identifier("crm_users"),
+                        )
+                    )
+                    for uid, uname in cur.fetchall():
+                        if uid is None:
+                            continue
+                        uname_txt = _coerce_text(uname)
+                        if uname_txt:
+                            out[str(uid).strip()] = uname_txt
+    except Exception:
+        pass
+
+    # 2) Fallback/merge from b24_users
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name FROM b24_users")
+            for uid, uname in cur.fetchall():
+                if uid is None:
+                    continue
+                key = str(uid).strip()
+                if key and key not in out:
+                    uname_txt = _coerce_text(uname)
+                    if uname_txt:
+                        out[key] = uname_txt
+    except Exception:
+        pass
+
+    return out
+
+
+def _load_car_name_map(conn) -> Dict[str, str]:
+    out: Dict[str, str] = {}
+    try:
+        cols = _table_columns(conn, "b24_sp_f_1114")
+        if not cols:
+            return out
+
+        id_col = _pick_col(cols, "id", "ID")
+        name_col = _pick_col(cols, "name", "NAME", "title", "TITLE")
+        if not id_col or not name_col:
+            return out
+
+        with conn.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    "SELECT {}, {} FROM {}.{} WHERE {} IS NOT NULL AND btrim(CAST({} AS text)) <> ''"
+                ).format(
+                    sql.Identifier(id_col),
+                    sql.Identifier(name_col),
+                    sql.Identifier("public"),
+                    sql.Identifier("b24_sp_f_1114"),
+                    sql.Identifier(name_col),
+                    sql.Identifier(name_col),
+                )
+            )
+            for cid, cname in cur.fetchall():
+                if cid is None:
+                    continue
+                cname_txt = _coerce_text(cname)
+                if cname_txt:
+                    out[str(cid).strip()] = cname_txt
+    except Exception:
+        pass
+    return out
+
+
+def _normalize_id(v: Any) -> str:
+    s = _coerce_text(v)
+    if not s:
+        return ""
+    m = re.search(r"\d+", s)
+    return m.group(0) if m else s
+
+
 def _fetch_rows() -> List[Dict[str, Any]]:
     with _pg_conn() as conn:
         cols = _table_columns(conn, AUTO_HOME_TABLE)
@@ -157,17 +248,8 @@ def _fetch_rows() -> List[Dict[str, Any]]:
             cur.execute(query)
             raw = cur.fetchall()
 
-        user_name_by_id: Dict[str, str] = {}
-        if assigned_name_col is None and assigned_id_col:
-            try:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT id, name FROM b24_users")
-                    for uid, uname in cur.fetchall():
-                        if uid is None:
-                            continue
-                        user_name_by_id[str(uid).strip()] = _coerce_text(uname)
-            except Exception:
-                user_name_by_id = {}
+        user_name_by_id = _load_user_name_map(conn)
+        car_name_by_id = _load_car_name_map(conn)
 
     now_local = datetime.now(ZoneInfo(AUTO_HOME_TZ))
     rows: List[Dict[str, Any]] = []
@@ -186,12 +268,17 @@ def _fetch_rows() -> List[Dict[str, Any]]:
 
         assigned_txt = _coerce_text(assigned_raw)
         if assigned_name_col is None and assigned_txt:
-            assigned_txt = user_name_by_id.get(assigned_txt, assigned_txt)
+            assigned_txt = user_name_by_id.get(_normalize_id(assigned_txt), assigned_txt)
+
+        car_txt = _coerce_text(car)
+        car_lookup_key = _normalize_id(car_txt)
+        if car_lookup_key and car_lookup_key in car_name_by_id:
+            car_txt = car_name_by_id[car_lookup_key]
 
         rows.append(
             {
                 "assigned": assigned_txt or "Fara responsabil",
-                "car": _coerce_text(car) or "-",
+                "car": car_txt or "-",
                 "goal": _coerce_text(goal) or "-",
                 "created": created_local,
                 "days": days,
