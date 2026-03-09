@@ -282,6 +282,12 @@ app.include_router(entity_meta_data_router)
 from Login import router as login_router
 app.include_router(login_router)
 
+from daily_auto_home_png_report import (
+    router as auto_home_png_router,
+    start_auto_home_png_scheduler,
+)
+app.include_router(auto_home_png_router)
+
 # -----------------------------
 # Bitrix REST client
 # -----------------------------
@@ -3541,6 +3547,9 @@ def on_startup():
         file=sys.stderr,
         flush=True,
     )
+
+    # Daily PNG for smart-process "zayavka na avto" (table b24_sp_f_1168) to Bitrix chat
+    start_auto_home_png_scheduler()
 
     # WEBHOOK ONLY: do not poll Bitrix, process only outbound events
     if WEBHOOK_ONLY:
