@@ -158,6 +158,31 @@ def _load_user_name_map(conn) -> Dict[str, str]:
     return out
 
 
+def _bitrix_user_name(user_id: str) -> str:
+    uid = _normalize_id(user_id)
+    if not uid:
+        return ""
+    webhook = BITRIX_WEBHOOK_REPORTS or BITRIX_WEBHOOK
+    if not webhook:
+        return ""
+    try:
+        r = requests.post(f"{webhook}/user.get.json", json={"ID": uid}, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+        users = data.get("result") if isinstance(data, dict) else None
+        if not isinstance(users, list) or not users:
+            return ""
+        u = users[0] if isinstance(users[0], dict) else {}
+        name = _coerce_text(u.get("NAME"))
+        last = _coerce_text(u.get("LAST_NAME"))
+        full = f"{name} {last}".strip()
+        if full:
+            return full
+        return _coerce_text(u.get("FULL_NAME")) or _coerce_text(u.get("LOGIN"))
+    except Exception:
+        return ""
+
+
 def _load_car_name_map(conn) -> Dict[str, str]:
     out: Dict[str, str] = {}
     try:
@@ -254,7 +279,17 @@ def _fetch_rows() -> List[Dict[str, Any]]:
             raise RuntimeError(f"Table public.{AUTO_HOME_TABLE} not found or has no columns")
 
         assigned_name_col = _pick_col(cols, "assigned_by_name", "ASSIGNED_BY_NAME")
-        assigned_id_col = _pick_col(cols, "assigned_by_id", "ASSIGNED_BY_ID", "created_by_id", "CREATED_BY_ID")
+        assigned_id_col = _pick_col(
+            cols,
+            "assigned_by_id",
+            "ASSIGNED_BY_ID",
+            "assigned_by",
+            "ASSIGNED_BY",
+            "created_by_id",
+            "CREATED_BY_ID",
+            "created_by",
+            "CREATED_BY",
+        )
         car_col = _pick_col(cols, "ufcrm58_1757152826", "UFCRM58_1757152826")
         goal_col = _pick_col(cols, "ufcrm58_1758016604", "UFCRM58_1758016604")
         created_col = _pick_col(cols, "created_at", "CREATED_AT", "date_create", "DATE_CREATE")
@@ -319,10 +354,30 @@ def _fetch_rows() -> List[Dict[str, Any]]:
         assigned_txt = _coerce_text(assigned_raw)
         if not assigned_txt:
             assigned_txt = _coerce_text(
-                _raw_get(raw_obj, "ASSIGNED_BY_NAME", "assigned_by_name", "ASSIGNED_BY_ID", "assigned_by_id", "CREATED_BY_ID", "created_by_id")
+                _raw_get(
+                    raw_obj,
+                    "ASSIGNED_BY_NAME",
+                    "assigned_by_name",
+                    "ASSIGNED_BY_ID",
+                    "assigned_by_id",
+                    "ASSIGNED_BY",
+                    "assignedById",
+                    "assignedBy",
+                    "CREATED_BY_ID",
+                    "created_by_id",
+                    "CREATED_BY",
+                    "createdById",
+                    "createdBy",
+                )
             )
         if assigned_name_col is None and assigned_txt:
-            assigned_txt = user_name_by_id.get(_normalize_id(assigned_txt), assigned_txt)
+            aid = _normalize_id(assigned_txt)
+            assigned_txt = user_name_by_id.get(aid, assigned_txt)
+            if aid and (not assigned_txt or assigned_txt == aid):
+                bname = _bitrix_user_name(aid)
+                if bname:
+                    assigned_txt = bname
+                    user_name_by_id[aid] = bname
 
         car_txt = _coerce_text(car)
         if not car_txt:
