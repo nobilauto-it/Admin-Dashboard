@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import sys
 import time
@@ -314,45 +314,33 @@ def _bitrix_list_items(entity_type_id: int, select_fields: List[str], order_desc
     return items
 
 
-def _bitrix_car_name_map(car_ids: List[str]) -> Dict[str, str]:
-    out: Dict[str, str] = {}
-    webhook = BITRIX_WEBHOOK_REPORTS or BITRIX_WEBHOOK
-    if not webhook:
-        return out
-
-    unique_ids = [cid for cid in dict.fromkeys(car_ids) if cid]
-    for cid in unique_ids:
-        try:
-            payload = {"entityTypeId": 1114, "id": int(cid)}
-            r = requests.post(f"{webhook}/crm.item.get.json", json=payload, timeout=30)
-            r.raise_for_status()
-            data = r.json() if r.content else {}
-            result = data.get("result") if isinstance(data, dict) else {}
-            item = result.get("item") if isinstance(result, dict) else {}
-            if not isinstance(item, dict):
-                continue
-            title = _coerce_text(item.get("title") or item.get("TITLE"))
-            if title:
-                out[cid] = title
-        except Exception:
-            continue
-    return out
-
-
 def _extract_assigned_from_title(title: str) -> str:
     t = _coerce_text(title)
     if not t:
         return ""
-    m = re.search(r"^\s*(.*?)\s+бер[её]т\s+авто", t, flags=re.IGNORECASE)
-    return _coerce_text(m.group(1)) if m else ""
+    low = t.lower()
+    marker = " берет авто "
+    pos = low.find(marker)
+    if pos <= 0:
+        return ""
+    return t[:pos].strip()
 
 
 def _extract_car_from_title(title: str) -> str:
     t = _coerce_text(title)
     if not t:
         return ""
-    m = re.search(r"авто\s+(.*?)\s+с\s+целью", t, flags=re.IGNORECASE)
-    return _coerce_text(m.group(1)) if m else ""
+    low = t.lower()
+    start_marker = "берет авто "
+    end_marker = " с целью"
+    s = low.find(start_marker)
+    if s < 0:
+        return ""
+    s += len(start_marker)
+    e = low.find(end_marker, s)
+    if e < 0:
+        return t[s:].strip()
+    return t[s:e].strip()
 
 
 def _fetch_rows_from_bitrix() -> List[Dict[str, Any]]:
@@ -371,12 +359,6 @@ def _fetch_rows_from_bitrix() -> List[Dict[str, Any]]:
         return []
 
     now_local = datetime.now(ZoneInfo(AUTO_HOME_TZ))
-    car_ids: List[str] = []
-    for it in items:
-        cid = _normalize_id(_raw_get(it, "ufCrm58_1757152826", "UFCRM58_1757152826"))
-        if cid:
-            car_ids.append(cid)
-    car_name_by_id = _bitrix_car_name_map(car_ids)
 
     rows: List[Dict[str, Any]] = []
     seen_cars: set[str] = set()
@@ -393,11 +375,20 @@ def _fetch_rows_from_bitrix() -> List[Dict[str, Any]]:
 
         title = _coerce_text(_raw_get(it, "title", "TITLE"))
         assigned_id = _normalize_id(_raw_get(it, "assignedById", "ASSIGNED_BY_ID", "assigned_by_id"))
-        assigned_txt = _extract_assigned_from_title(title) or _bitrix_user_name(assigned_id) or assigned_id
+        assigned_txt = (
+            _coerce_text(_raw_get(it, "assignedByName", "ASSIGNED_BY_NAME", "assigned_by_name"))
+            or _extract_assigned_from_title(title)
+            or _bitrix_user_name(assigned_id)
+            or assigned_id
+        )
         goal_txt = _coerce_text(_raw_get(it, "ufCrm58_1758016604", "UFCRM58_1758016604")) or "-"
 
-        car_id = _normalize_id(_raw_get(it, "ufCrm58_1757152826", "UFCRM58_1757152826"))
-        car_txt = car_name_by_id.get(car_id, "") or _extract_car_from_title(title) or car_id or "-"
+        car_raw = _raw_get(it, "ufCrm58_1757152826", "UFCRM58_1757152826")
+        car_txt = _coerce_text(car_raw)
+        if not car_txt or car_txt.isdigit():
+            car_txt = _extract_car_from_title(title) or car_txt
+        car_id = _normalize_id(car_txt)
+        car_txt = car_txt or "-"
 
         dedupe_key = f"id:{car_id}" if car_id else f"name:{_canonical_text(car_txt)}"
         if dedupe_key in seen_cars:
@@ -407,7 +398,7 @@ def _fetch_rows_from_bitrix() -> List[Dict[str, Any]]:
         rows.append(
             {
                 "assigned": assigned_txt or "Fara responsabil",
-                "car": car_txt or "-",
+                "car": car_txt,
                 "goal": goal_txt,
                 "created": created_local,
                 "days": days,
@@ -567,13 +558,7 @@ def _fetch_rows_from_db() -> List[Dict[str, Any]]:
 
 
 def _fetch_rows() -> List[Dict[str, Any]]:
-    try:
-        rows = _fetch_rows_from_bitrix()
-        if rows:
-            return rows
-    except Exception as e:
-        _log(f"bitrix source failed, fallback to db: {e}")
-    return _fetch_rows_from_db()
+    return _fetch_rows_from_bitrix()
 
 
 def _build_png(rows: List[Dict[str, Any]]) -> bytes:
@@ -782,3 +767,4 @@ def start_auto_home_png_scheduler() -> bool:
         f"table=public.{AUTO_HOME_TABLE}; chat={AUTO_HOME_CHAT_ID}"
     )
     return True
+
