@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import time
+import json
 from datetime import datetime, timezone
 from textwrap import shorten
 from typing import Any, Dict, List, Optional
@@ -166,26 +167,50 @@ def _load_car_name_map(conn) -> Dict[str, str]:
 
         id_col = _pick_col(cols, "id", "ID")
         name_col = _pick_col(cols, "name", "NAME", "title", "TITLE")
-        if not id_col or not name_col:
+        plate_col = _pick_col(cols, "ufcrm34_1748431574")
+        brand_col = _pick_col(cols, "ufcrm34_1748347910")
+        model_col = _pick_col(cols, "ufcrm34_1748431620")
+        raw_col = _pick_col(cols, "raw", "RAW")
+        if not id_col:
             return out
 
         with conn.cursor() as cur:
+            select_cols = [id_col]
+            if name_col:
+                select_cols.append(name_col)
+            if plate_col:
+                select_cols.append(plate_col)
+            if brand_col:
+                select_cols.append(brand_col)
+            if model_col:
+                select_cols.append(model_col)
+            if raw_col:
+                select_cols.append(raw_col)
+
             cur.execute(
                 sql.SQL(
-                    "SELECT {}, {} FROM {}.{} WHERE {} IS NOT NULL AND btrim(CAST({} AS text)) <> ''"
+                    "SELECT {} FROM {}.{}"
                 ).format(
-                    sql.Identifier(id_col),
-                    sql.Identifier(name_col),
+                    sql.SQL(", ").join(sql.Identifier(c) for c in select_cols),
                     sql.Identifier("public"),
                     sql.Identifier("b24_sp_f_1114"),
-                    sql.Identifier(name_col),
-                    sql.Identifier(name_col),
                 )
             )
-            for cid, cname in cur.fetchall():
+            for rec in cur.fetchall():
+                row = dict(zip(select_cols, rec))
+                cid = row.get(id_col)
                 if cid is None:
                     continue
-                cname_txt = _coerce_text(cname)
+                cname_txt = _coerce_text(row.get(name_col)) if name_col else ""
+                if not cname_txt:
+                    brand = _coerce_text(row.get(brand_col)) if brand_col else ""
+                    model = _coerce_text(row.get(model_col)) if model_col else ""
+                    plate = _coerce_text(row.get(plate_col)) if plate_col else ""
+                    cname_txt = " ".join(x for x in [brand, model, plate] if x).strip()
+                if not cname_txt and raw_col:
+                    cname_txt = _coerce_text(
+                        _raw_get(row.get(raw_col), "title", "TITLE", "name", "NAME")
+                    )
                 if cname_txt:
                     out[str(cid).strip()] = cname_txt
     except Exception:
@@ -201,6 +226,27 @@ def _normalize_id(v: Any) -> str:
     return m.group(0) if m else s
 
 
+def _raw_get(raw_obj: Any, *keys: str) -> Any:
+    if raw_obj is None:
+        return None
+    data = raw_obj
+    if isinstance(raw_obj, str):
+        try:
+            data = json.loads(raw_obj)
+        except Exception:
+            return None
+    if not isinstance(data, dict):
+        return None
+    for k in keys:
+        if k in data and data.get(k) not in (None, "", []):
+            return data.get(k)
+        lk = k.lower()
+        for dk, dv in data.items():
+            if str(dk).lower() == lk and dv not in (None, "", []):
+                return dv
+    return None
+
+
 def _fetch_rows() -> List[Dict[str, Any]]:
     with _pg_conn() as conn:
         cols = _table_columns(conn, AUTO_HOME_TABLE)
@@ -213,6 +259,7 @@ def _fetch_rows() -> List[Dict[str, Any]]:
         goal_col = _pick_col(cols, "ufcrm58_1758016604", "UFCRM58_1758016604")
         created_col = _pick_col(cols, "created_at", "CREATED_AT", "date_create", "DATE_CREATE")
         closed_col = _pick_col(cols, "closed", "CLOSED")
+        raw_col = _pick_col(cols, "raw", "RAW")
 
         if not car_col or not goal_col or not created_col:
             raise RuntimeError(
@@ -226,6 +273,8 @@ def _fetch_rows() -> List[Dict[str, Any]]:
         elif assigned_id_col:
             selected_cols.append(assigned_id_col)
         selected_cols.extend([car_col, goal_col, created_col])
+        if raw_col:
+            selected_cols.append(raw_col)
 
         parts = [
             sql.SQL("SELECT {}").format(
@@ -253,12 +302,13 @@ def _fetch_rows() -> List[Dict[str, Any]]:
 
     now_local = datetime.now(ZoneInfo(AUTO_HOME_TZ))
     rows: List[Dict[str, Any]] = []
-    for r in raw:
-        if len(r) == 4:
-            assigned_raw, car, goal, created = r
-        else:
-            assigned_raw = None
-            car, goal, created = r
+    for rec in raw:
+        row = dict(zip(selected_cols, rec))
+        assigned_raw = row.get(assigned_name_col) if assigned_name_col else row.get(assigned_id_col) if assigned_id_col else None
+        car = row.get(car_col)
+        goal = row.get(goal_col)
+        created = row.get(created_col)
+        raw_obj = row.get(raw_col) if raw_col else None
 
         created_dt = _as_datetime(created)
         if created_dt is None:
@@ -267,10 +317,16 @@ def _fetch_rows() -> List[Dict[str, Any]]:
         days = max((now_local.date() - created_local.date()).days, 0)
 
         assigned_txt = _coerce_text(assigned_raw)
+        if not assigned_txt:
+            assigned_txt = _coerce_text(
+                _raw_get(raw_obj, "ASSIGNED_BY_NAME", "assigned_by_name", "ASSIGNED_BY_ID", "assigned_by_id", "CREATED_BY_ID", "created_by_id")
+            )
         if assigned_name_col is None and assigned_txt:
             assigned_txt = user_name_by_id.get(_normalize_id(assigned_txt), assigned_txt)
 
         car_txt = _coerce_text(car)
+        if not car_txt:
+            car_txt = _coerce_text(_raw_get(raw_obj, "UFCRM58_1757152826", "ufcrm58_1757152826"))
         car_lookup_key = _normalize_id(car_txt)
         if car_lookup_key and car_lookup_key in car_name_by_id:
             car_txt = car_name_by_id[car_lookup_key]
