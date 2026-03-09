@@ -37,7 +37,7 @@ AUTO_HOME_CHAT_ID = os.getenv("AUTO_HOME_CHAT_ID", "chat2846").strip() or "chat2
 AUTO_HOME_TZ = os.getenv("AUTO_HOME_TZ", os.getenv("REPORT_TZ", "Europe/Chisinau")).strip() or "Europe/Chisinau"
 AUTO_HOME_SEND_HOUR = int(os.getenv("AUTO_HOME_SEND_HOUR", "20"))
 AUTO_HOME_SEND_MINUTE = int(os.getenv("AUTO_HOME_SEND_MINUTE", "0"))
-AUTO_HOME_ACTIVE_STATUS = os.getenv("AUTO_HOME_ACTIVE_STATUS", "5").strip() or "5"
+AUTO_HOME_ACTIVE_STATUS = os.getenv("AUTO_HOME_ACTIVE_STATUS", "").strip()
 
 AUTO_HOME_MARK_DIR = os.getenv("AUTO_HOME_MARK_DIR", "/tmp").strip() or "/tmp"
 AUTO_HOME_ENABLED = os.getenv("AUTO_HOME_ENABLED", "1") == "1"
@@ -277,7 +277,147 @@ def _raw_get(raw_obj: Any, *keys: str) -> Any:
     return None
 
 
-def _fetch_rows() -> List[Dict[str, Any]]:
+def _bitrix_list_items(entity_type_id: int, select_fields: List[str], order_desc: bool = True, limit: int = 500) -> List[Dict[str, Any]]:
+    webhook = BITRIX_WEBHOOK_REPORTS or BITRIX_WEBHOOK
+    if not webhook:
+        return []
+
+    items: List[Dict[str, Any]] = []
+    start = 0
+    while True:
+        payload: Dict[str, Any] = {
+            "entityTypeId": entity_type_id,
+            "select": select_fields,
+            "order": {"createdTime": "DESC" if order_desc else "ASC"},
+            "start": start,
+        }
+        r = requests.post(f"{webhook}/crm.item.list.json", json=payload, timeout=60)
+        r.raise_for_status()
+        data = r.json() if r.content else {}
+        result = data.get("result") if isinstance(data, dict) else {}
+        page_items = result.get("items") if isinstance(result, dict) else []
+        if not isinstance(page_items, list) or not page_items:
+            break
+        for it in page_items:
+            if isinstance(it, dict):
+                items.append(it)
+                if len(items) >= limit:
+                    return items
+
+        nxt = result.get("next") if isinstance(result, dict) else None
+        if nxt is None:
+            break
+        try:
+            start = int(nxt)
+        except Exception:
+            break
+    return items
+
+
+def _bitrix_car_name_map(car_ids: List[str]) -> Dict[str, str]:
+    out: Dict[str, str] = {}
+    webhook = BITRIX_WEBHOOK_REPORTS or BITRIX_WEBHOOK
+    if not webhook:
+        return out
+
+    unique_ids = [cid for cid in dict.fromkeys(car_ids) if cid]
+    for cid in unique_ids:
+        try:
+            payload = {"entityTypeId": 1114, "id": int(cid)}
+            r = requests.post(f"{webhook}/crm.item.get.json", json=payload, timeout=30)
+            r.raise_for_status()
+            data = r.json() if r.content else {}
+            result = data.get("result") if isinstance(data, dict) else {}
+            item = result.get("item") if isinstance(result, dict) else {}
+            if not isinstance(item, dict):
+                continue
+            title = _coerce_text(item.get("title") or item.get("TITLE"))
+            if title:
+                out[cid] = title
+        except Exception:
+            continue
+    return out
+
+
+def _extract_assigned_from_title(title: str) -> str:
+    t = _coerce_text(title)
+    if not t:
+        return ""
+    m = re.search(r"^\s*(.*?)\s+бер[её]т\s+авто", t, flags=re.IGNORECASE)
+    return _coerce_text(m.group(1)) if m else ""
+
+
+def _extract_car_from_title(title: str) -> str:
+    t = _coerce_text(title)
+    if not t:
+        return ""
+    m = re.search(r"авто\s+(.*?)\s+с\s+целью", t, flags=re.IGNORECASE)
+    return _coerce_text(m.group(1)) if m else ""
+
+
+def _fetch_rows_from_bitrix() -> List[Dict[str, Any]]:
+    select_fields = [
+        "id",
+        "title",
+        "assignedById",
+        "createdTime",
+        "ufCrm58_1757152826",
+        "ufCrm58_1758016604",
+        "ufCrm58_1758016179",
+        "ufCrm58_1761065549",
+    ]
+    items = _bitrix_list_items(1168, select_fields=select_fields, order_desc=True, limit=500)
+    if not items:
+        return []
+
+    now_local = datetime.now(ZoneInfo(AUTO_HOME_TZ))
+    car_ids: List[str] = []
+    for it in items:
+        cid = _normalize_id(_raw_get(it, "ufCrm58_1757152826", "UFCRM58_1757152826"))
+        if cid:
+            car_ids.append(cid)
+    car_name_by_id = _bitrix_car_name_map(car_ids)
+
+    rows: List[Dict[str, Any]] = []
+    seen_cars: set[str] = set()
+    for it in items:
+        created_dt = _as_datetime(_raw_get(it, "createdTime", "dateCreate", "created_at", "CREATED_AT"))
+        if created_dt is None:
+            continue
+        created_local = created_dt.astimezone(ZoneInfo(AUTO_HOME_TZ))
+        days = max((now_local.date() - created_local.date()).days, 0)
+
+        status_txt = _coerce_text(_raw_get(it, "ufCrm58_1758016179", "UFCRM58_1758016179"))
+        if AUTO_HOME_ACTIVE_STATUS and status_txt and status_txt != AUTO_HOME_ACTIVE_STATUS:
+            continue
+
+        title = _coerce_text(_raw_get(it, "title", "TITLE"))
+        assigned_id = _normalize_id(_raw_get(it, "assignedById", "ASSIGNED_BY_ID", "assigned_by_id"))
+        assigned_txt = _extract_assigned_from_title(title) or _bitrix_user_name(assigned_id) or assigned_id
+        goal_txt = _coerce_text(_raw_get(it, "ufCrm58_1758016604", "UFCRM58_1758016604")) or "-"
+
+        car_id = _normalize_id(_raw_get(it, "ufCrm58_1757152826", "UFCRM58_1757152826"))
+        car_txt = car_name_by_id.get(car_id, "") or _extract_car_from_title(title) or car_id or "-"
+
+        dedupe_key = f"id:{car_id}" if car_id else f"name:{_canonical_text(car_txt)}"
+        if dedupe_key in seen_cars:
+            continue
+        seen_cars.add(dedupe_key)
+
+        rows.append(
+            {
+                "assigned": assigned_txt or "Fara responsabil",
+                "car": car_txt or "-",
+                "goal": goal_txt,
+                "created": created_local,
+                "days": days,
+            }
+        )
+
+    return rows
+
+
+def _fetch_rows_from_db() -> List[Dict[str, Any]]:
     with _pg_conn() as conn:
         cols = _table_columns(conn, AUTO_HOME_TABLE)
         if not cols:
@@ -362,6 +502,8 @@ def _fetch_rows() -> List[Dict[str, Any]]:
         if created_dt is None:
             continue
         created_local = created_dt.astimezone(ZoneInfo(AUTO_HOME_TZ))
+        if created_local.date() != now_local.date():
+            continue
         days = max((now_local.date() - created_local.date()).days, 0)
 
         assigned_txt = _coerce_text(assigned_raw)
@@ -422,6 +564,16 @@ def _fetch_rows() -> List[Dict[str, Any]]:
         )
 
     return rows
+
+
+def _fetch_rows() -> List[Dict[str, Any]]:
+    try:
+        rows = _fetch_rows_from_bitrix()
+        if rows:
+            return rows
+    except Exception as e:
+        _log(f"bitrix source failed, fallback to db: {e}")
+    return _fetch_rows_from_db()
 
 
 def _build_png(rows: List[Dict[str, Any]]) -> bytes:
