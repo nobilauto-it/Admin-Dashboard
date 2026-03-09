@@ -2,7 +2,6 @@ import os
 import sys
 import time
 from datetime import datetime, timezone
-from io import BytesIO
 from textwrap import shorten
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
@@ -114,25 +113,29 @@ def _fetch_rows() -> List[Dict[str, Any]]:
         if not cols:
             raise RuntimeError(f"Table public.{AUTO_HOME_TABLE} not found or has no columns")
 
-        assigned_col = _pick_col(cols, "assigned_by_name", "ASSIGNED_BY_NAME")
+        assigned_name_col = _pick_col(cols, "assigned_by_name", "ASSIGNED_BY_NAME")
+        assigned_id_col = _pick_col(cols, "assigned_by_id", "ASSIGNED_BY_ID", "created_by_id", "CREATED_BY_ID")
         car_col = _pick_col(cols, "ufcrm58_1757152826", "UFCRM58_1757152826")
         goal_col = _pick_col(cols, "ufcrm58_1758016604", "UFCRM58_1758016604")
         created_col = _pick_col(cols, "created_at", "CREATED_AT", "date_create", "DATE_CREATE")
         closed_col = _pick_col(cols, "closed", "CLOSED")
 
-        if not assigned_col or not car_col or not goal_col or not created_col:
+        if not car_col or not goal_col or not created_col:
             raise RuntimeError(
                 "Required columns are missing in public."
-                f"{AUTO_HOME_TABLE}. Need assigned_by_name, UFCRM58_1757152826,"
-                " UFCRM58_1758016604, created_at"
+                f"{AUTO_HOME_TABLE}. Need UFCRM58_1757152826, UFCRM58_1758016604, created_at"
             )
 
+        selected_cols: List[str] = []
+        if assigned_name_col:
+            selected_cols.append(assigned_name_col)
+        elif assigned_id_col:
+            selected_cols.append(assigned_id_col)
+        selected_cols.extend([car_col, goal_col, created_col])
+
         parts = [
-            sql.SQL("SELECT {a}, {c}, {g}, {d}").format(
-                a=sql.Identifier(assigned_col),
-                c=sql.Identifier(car_col),
-                g=sql.Identifier(goal_col),
-                d=sql.Identifier(created_col),
+            sql.SQL("SELECT {}").format(
+                sql.SQL(", ").join(sql.Identifier(c) for c in selected_cols)
             ),
             sql.SQL("FROM {}.{}").format(sql.Identifier("public"), sql.Identifier(AUTO_HOME_TABLE)),
             sql.SQL("WHERE {} IS NOT NULL").format(sql.Identifier(created_col)),
@@ -151,17 +154,40 @@ def _fetch_rows() -> List[Dict[str, Any]]:
             cur.execute(query)
             raw = cur.fetchall()
 
+        user_name_by_id: Dict[str, str] = {}
+        if assigned_name_col is None and assigned_id_col:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT id, name FROM b24_users")
+                    for uid, uname in cur.fetchall():
+                        if uid is None:
+                            continue
+                        user_name_by_id[str(uid).strip()] = _coerce_text(uname)
+            except Exception:
+                user_name_by_id = {}
+
     now_local = datetime.now(ZoneInfo(AUTO_HOME_TZ))
     rows: List[Dict[str, Any]] = []
-    for assigned, car, goal, created in raw:
+    for r in raw:
+        if len(r) == 4:
+            assigned_raw, car, goal, created = r
+        else:
+            assigned_raw = None
+            car, goal, created = r
+
         created_dt = _as_datetime(created)
         if created_dt is None:
             continue
         created_local = created_dt.astimezone(ZoneInfo(AUTO_HOME_TZ))
         days = max((now_local.date() - created_local.date()).days, 0)
+
+        assigned_txt = _coerce_text(assigned_raw)
+        if assigned_name_col is None and assigned_txt:
+            assigned_txt = user_name_by_id.get(assigned_txt, assigned_txt)
+
         rows.append(
             {
-                "assigned": _coerce_text(assigned) or "Fara responsabil",
+                "assigned": assigned_txt or "Fara responsabil",
                 "car": _coerce_text(car) or "-",
                 "goal": _coerce_text(goal) or "-",
                 "created": created_local,
