@@ -383,6 +383,9 @@ def _fetch_rows_from_bitrix() -> List[Dict[str, Any]]:
 
         title = _coerce_text(_raw_get(it, "title", "TITLE"))
         assigned_txt = _coerce_text(_raw_get(it, "assignedByName", "ASSIGNED_BY_NAME", "assigned_by_name"))
+        if not assigned_txt:
+            assigned_id = _normalize_id(_raw_get(it, "assignedById", "ASSIGNED_BY_ID", "assigned_by_id"))
+            assigned_txt = _bitrix_user_name(assigned_id) or assigned_id
         goal_txt = _coerce_text(_raw_get(it, "ufCrm58_1758016604", "UFCRM58_1758016604")) or "-"
 
         car_raw = _raw_get(it, "ufCrm58_1757152826", "UFCRM58_1757152826")
