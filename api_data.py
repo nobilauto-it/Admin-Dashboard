@@ -5826,6 +5826,7 @@ def send_stock_auto_reports(
     ?force=1 — принудительная отправка. ?report_date=2026-02-13 — отчёт за 13-е (если уже 14-е).
     """
     mark_file: Optional[str] = None
+    mark_created = False
     token = None
     if report_date:
         try:
@@ -5864,6 +5865,7 @@ def send_stock_auto_reports(
         try:
             fd = os.open(mark_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
             os.close(fd)
+            mark_created = True
         except OSError as e:
             if e.errno == errno.EEXIST:
                 print(
@@ -5893,19 +5895,49 @@ def send_stock_auto_reports(
         os.close(fd)
     except OSError as e:
         if e.errno == errno.EEXIST:
-            print(
-                f"REPORT send: skip (send already in progress or duplicate, lock={lock_file})",
-                file=sys.stderr,
-                flush=True,
-            )
-            _clear_override()
-            return {
-                "ok": False,
-                "sent": 0,
-                "reason": "send_already_in_progress",
-                "detail": "Another request is already sending reports for this date.",
-            }
-        raise
+            stale_sec = int(os.getenv("REPORT_SEND_LOCK_STALE_SEC", "7200"))
+            try:
+                age_sec = max(0.0, time.time() - os.path.getmtime(lock_file))
+            except Exception:
+                age_sec = 0.0
+            if age_sec >= stale_sec:
+                try:
+                    os.remove(lock_file)
+                    print(
+                        f"REPORT send: removed stale lock ({age_sec:.0f}s >= {stale_sec}s): {lock_file}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+                    os.close(fd)
+                except Exception as lock_recreate_err:
+                    print(
+                        f"REPORT send: failed to recreate lock after stale cleanup: {lock_recreate_err}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    _clear_override()
+                    return {
+                        "ok": False,
+                        "sent": 0,
+                        "reason": "send_already_in_progress",
+                        "detail": "Another request is already sending reports for this date.",
+                    }
+            else:
+                print(
+                    f"REPORT send: skip (send already in progress or duplicate, lock={lock_file}, age={age_sec:.0f}s)",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                _clear_override()
+                return {
+                    "ok": False,
+                    "sent": 0,
+                    "reason": "send_already_in_progress",
+                    "detail": "Another request is already sending reports for this date.",
+                }
+        else:
+            raise
     send_lock_file = lock_file
     print(f"REPORT send: lock acquired, sending (lock={lock_file})", file=sys.stderr, flush=True)
 
@@ -7138,6 +7170,25 @@ def send_stock_auto_reports(
             "processed": ungheni_processed,
             "sent": ungheni_sent,
         }
+
+        # If nothing was actually sent, remove daily mark so retry is possible today.
+        if sent == 0 and mark_created and mark_file and os.path.exists(mark_file):
+            try:
+                os.remove(mark_file)
+                resp["ok"] = False
+                resp["reason"] = "nothing_sent_mark_removed"
+                resp["mark_removed"] = mark_file
+                print(
+                    f"REPORT send: no files sent; removed mark for retry: {mark_file}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            except Exception as mark_rm_err:
+                print(
+                    f"REPORT send: failed to remove mark after zero-send: {mark_rm_err}",
+                    file=sys.stderr,
+                    flush=True,
+                )
         
         if send_lock_file and os.path.exists(send_lock_file):
             try:
