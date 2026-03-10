@@ -572,7 +572,7 @@ def _build_png(rows: List[Dict[str, Any]]) -> bytes:
     title_date = datetime.now(ZoneInfo(AUTO_HOME_TZ)).strftime("%d.%m.%y")
     title = f"Masini pe acasa {title_date}"
 
-    row_block_h = 68
+    row_block_h = 86
     header_h = 70
     footer_h = 30
     width = 1100
@@ -593,8 +593,8 @@ def _build_png(rows: List[Dict[str, Any]]) -> bytes:
             second = f"Motiv - {shorten(row['goal'], width=28, placeholder='...')} - Luat: {created_txt} - {row['days']} zile"
 
             d.add(String(40, y - 10, first, fontName="Helvetica-Bold", fontSize=30, fillColor="#c0392b"))
-            d.add(String(40, y - 42, second, fontName="Helvetica-Bold", fontSize=26, fillColor="#111111"))
-            d.add(Line(40, y - 56, width - 40, y - 56, strokeColor="#b0b0b0", strokeWidth=1))
+            d.add(String(40, y - 46, second, fontName="Helvetica-Bold", fontSize=26, fillColor="#111111"))
+            d.add(Line(40, y - 72, width - 40, y - 72, strokeColor="#b0b0b0", strokeWidth=1))
             y -= row_block_h
 
     png_data = renderPM.drawToString(d, fmt="PNG")
