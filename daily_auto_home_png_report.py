@@ -350,6 +350,7 @@ def _fetch_rows_from_bitrix() -> List[Dict[str, Any]]:
         "assignedById",
         "createdTime",
         "ufCrm58_1757152826",
+        "ufCrm58_1757154090",
         "ufCrm58_1758016604",
         "ufCrm58_1758016179",
         "ufCrm58_1761065549",
@@ -372,6 +373,12 @@ def _fetch_rows_from_bitrix() -> List[Dict[str, Any]]:
         status_txt = _coerce_text(_raw_get(it, "ufCrm58_1758016179", "UFCRM58_1758016179"))
         if AUTO_HOME_ACTIVE_STATUS and status_txt and status_txt != AUTO_HOME_ACTIVE_STATUS:
             continue
+
+        # Include only items where UF_CRM_58_1757154090 is empty.
+        blocker_val = _raw_get(it, "ufCrm58_1757154090", "UFCRM58_1757154090")
+        if blocker_val not in (None, "", []):
+            if _coerce_text(blocker_val):
+                continue
 
         title = _coerce_text(_raw_get(it, "title", "TITLE"))
         assigned_id = _normalize_id(_raw_get(it, "assignedById", "ASSIGNED_BY_ID", "assigned_by_id"))
