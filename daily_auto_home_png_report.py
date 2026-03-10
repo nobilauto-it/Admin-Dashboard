@@ -347,6 +347,7 @@ def _fetch_rows_from_bitrix() -> List[Dict[str, Any]]:
     select_fields = [
         "id",
         "title",
+        "assignedByName",
         "assignedById",
         "createdTime",
         "ufCrm58_1757152826",
@@ -381,17 +382,12 @@ def _fetch_rows_from_bitrix() -> List[Dict[str, Any]]:
                 continue
 
         title = _coerce_text(_raw_get(it, "title", "TITLE"))
-        assigned_id = _normalize_id(_raw_get(it, "assignedById", "ASSIGNED_BY_ID", "assigned_by_id"))
-        assigned_txt = (
-            _coerce_text(_raw_get(it, "assignedByName", "ASSIGNED_BY_NAME", "assigned_by_name"))
-            or _extract_assigned_from_title(title)
-            or _bitrix_user_name(assigned_id)
-            or assigned_id
-        )
+        assigned_txt = _coerce_text(_raw_get(it, "assignedByName", "ASSIGNED_BY_NAME", "assigned_by_name"))
         goal_txt = _coerce_text(_raw_get(it, "ufCrm58_1758016604", "UFCRM58_1758016604")) or "-"
 
         car_raw = _raw_get(it, "ufCrm58_1757152826", "UFCRM58_1757152826")
         car_txt = _coerce_text(car_raw)
+        # Keep vehicle from 1168; title parsing is only a readability fallback for CRM-link ids.
         if not car_txt or car_txt.isdigit():
             car_txt = _extract_car_from_title(title) or car_txt
         car_id = _normalize_id(car_txt)
@@ -416,152 +412,7 @@ def _fetch_rows_from_bitrix() -> List[Dict[str, Any]]:
 
 
 def _fetch_rows_from_db() -> List[Dict[str, Any]]:
-    with _pg_conn() as conn:
-        cols = _table_columns(conn, AUTO_HOME_TABLE)
-        if not cols:
-            raise RuntimeError(f"Table public.{AUTO_HOME_TABLE} not found or has no columns")
-
-        assigned_name_col = _pick_col(cols, "assigned_by_name", "ASSIGNED_BY_NAME")
-        assigned_id_col = _pick_col(
-            cols,
-            "assigned_by_id",
-            "ASSIGNED_BY_ID",
-            "assigned_by",
-            "ASSIGNED_BY",
-            "created_by_id",
-            "CREATED_BY_ID",
-            "created_by",
-            "CREATED_BY",
-        )
-        car_col = _pick_col(cols, "ufcrm58_1757152826", "UFCRM58_1757152826")
-        goal_col = _pick_col(cols, "ufcrm58_1758016604", "UFCRM58_1758016604")
-        status_col = _pick_col(cols, "ufcrm58_1758016179", "UFCRM58_1758016179")
-        created_col = _pick_col(cols, "created_at", "CREATED_AT", "date_create", "DATE_CREATE")
-        closed_col = _pick_col(cols, "closed", "CLOSED")
-        raw_col = _pick_col(cols, "raw", "RAW")
-
-        if not car_col or not goal_col or not created_col:
-            raise RuntimeError(
-                "Required columns are missing in public."
-                f"{AUTO_HOME_TABLE}. Need UFCRM58_1757152826, UFCRM58_1758016604, created_at"
-            )
-
-        selected_cols: List[str] = []
-        if assigned_name_col:
-            selected_cols.append(assigned_name_col)
-        elif assigned_id_col:
-            selected_cols.append(assigned_id_col)
-        selected_cols.extend([car_col, goal_col, created_col])
-        if status_col:
-            selected_cols.append(status_col)
-        if raw_col:
-            selected_cols.append(raw_col)
-
-        parts = [
-            sql.SQL("SELECT {}").format(
-                sql.SQL(", ").join(sql.Identifier(c) for c in selected_cols)
-            ),
-            sql.SQL("FROM {}.{}").format(sql.Identifier("public"), sql.Identifier(AUTO_HOME_TABLE)),
-            sql.SQL("WHERE {} IS NOT NULL").format(sql.Identifier(created_col)),
-            sql.SQL("AND {} IS NOT NULL").format(sql.Identifier(car_col)),
-            sql.SQL("AND btrim(CAST({} AS text)) <> ''").format(sql.Identifier(car_col)),
-        ]
-
-        if closed_col:
-            parts.append(sql.SQL("AND ({} IS NULL OR CAST({} AS text) <> 'Y')").format(sql.Identifier(closed_col), sql.Identifier(closed_col)))
-
-        if status_col and AUTO_HOME_ACTIVE_STATUS:
-            parts.append(sql.SQL("AND CAST({} AS text) = %s").format(sql.Identifier(status_col)))
-
-        parts.append(sql.SQL("ORDER BY {} DESC").format(sql.Identifier(created_col)))
-        parts.append(sql.SQL("LIMIT 500"))
-
-        query = sql.SQL(" ").join(parts)
-        with conn.cursor() as cur:
-            params: List[Any] = [AUTO_HOME_ACTIVE_STATUS] if status_col and AUTO_HOME_ACTIVE_STATUS else []
-            cur.execute(query, params)
-            raw = cur.fetchall()
-
-        user_name_by_id = _load_user_name_map(conn)
-        car_name_by_id = _load_car_name_map(conn)
-
-    now_local = datetime.now(ZoneInfo(AUTO_HOME_TZ))
-    rows: List[Dict[str, Any]] = []
-    seen_cars: set[str] = set()
-    for rec in raw:
-        row = dict(zip(selected_cols, rec))
-        assigned_raw = row.get(assigned_name_col) if assigned_name_col else row.get(assigned_id_col) if assigned_id_col else None
-        car = row.get(car_col)
-        goal = row.get(goal_col)
-        created = row.get(created_col)
-        raw_obj = row.get(raw_col) if raw_col else None
-
-        created_dt = _as_datetime(created)
-        if created_dt is None:
-            continue
-        created_local = created_dt.astimezone(ZoneInfo(AUTO_HOME_TZ))
-        if created_local.date() != now_local.date():
-            continue
-        days = max((now_local.date() - created_local.date()).days, 0)
-
-        assigned_txt = _coerce_text(assigned_raw)
-        if not assigned_txt:
-            assigned_txt = _coerce_text(
-                _raw_get(
-                    raw_obj,
-                    "ASSIGNED_BY_NAME",
-                    "assigned_by_name",
-                    "ASSIGNED_BY_ID",
-                    "assigned_by_id",
-                    "ASSIGNED_BY",
-                    "assignedById",
-                    "assignedBy",
-                    "CREATED_BY_ID",
-                    "created_by_id",
-                    "CREATED_BY",
-                    "createdById",
-                    "createdBy",
-                )
-            )
-        if assigned_name_col is None and assigned_txt:
-            aid = _normalize_id(assigned_txt)
-            assigned_txt = user_name_by_id.get(aid, assigned_txt)
-            if aid and (not assigned_txt or assigned_txt == aid):
-                bname = _bitrix_user_name(aid)
-                if bname:
-                    assigned_txt = bname
-                    user_name_by_id[aid] = bname
-
-        car_txt = _coerce_text(car)
-        if not car_txt:
-            car_txt = _coerce_text(_raw_get(raw_obj, "UFCRM58_1757152826", "ufcrm58_1757152826"))
-        car_lookup_key = _normalize_id(car_txt)
-        if car_lookup_key and car_lookup_key in car_name_by_id:
-            car_txt = car_name_by_id[car_lookup_key]
-
-        dedupe_key = ""
-        if car_lookup_key and car_lookup_key in car_name_by_id:
-            dedupe_key = f"id:{car_lookup_key}"
-        else:
-            cname = _canonical_text(car_txt)
-            if cname:
-                dedupe_key = f"name:{cname}"
-        if dedupe_key:
-            if dedupe_key in seen_cars:
-                continue
-            seen_cars.add(dedupe_key)
-
-        rows.append(
-            {
-                "assigned": assigned_txt or "Fara responsabil",
-                "car": car_txt or "-",
-                "goal": _coerce_text(goal) or "-",
-                "created": created_local,
-                "days": days,
-            }
-        )
-
-    return rows
+    raise RuntimeError("DB source is disabled for this report. Use Bitrix source only.")
 
 
 def _fetch_rows() -> List[Dict[str, Any]]:
